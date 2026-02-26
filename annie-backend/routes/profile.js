@@ -1,14 +1,9 @@
-const express = require('express');
-const router = express.Router();
+const authMiddleware = require('../middleware/authMiddleware');
 
-// Crear perfil
-router.post('/', (req, res) => {
-  res.json({ message: "Ruta de creación de perfil funcionando 🚀" });
+router.post('/', authMiddleware, (req, res) => {
+  res.json({ message: "Ruta protegida: creación de perfil 🚀" });
 });
 
-// Obtener perfil
-router.get('/', (req, res) => {
-  res.json({ message: "Ruta de obtener perfil funcionando 🚀" });
+router.get('/', authMiddleware, (req, res) => {
+  res.json({ message: "Ruta protegida: obtener perfil 🚀" });
 });
-
-module.exports = router;
