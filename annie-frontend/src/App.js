@@ -1,7 +1,9 @@
+import Header from './components/Header';
+
 function App() {
   return (
-    <div>
-      <h1>Bienvenido a Annie Frontend 🚀</h1>
+    <div className="main-layout">
+      <Header />
     </div>
   );
 }
