@@ -81,9 +81,9 @@ export const Navigation = (props) => {
                   <Link to="/dashboard">Dashboard</Link>
                 </li>
                 <li>
-                  <a href="#" onClick={handleLogout}>
+                  <button className="btn btn-link" onClick={handleLogout}>
                     Logout
-                  </a>
+                  </button>
                 </li>
               </>
             ) : (

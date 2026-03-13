@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 export const Header = (props) => {
   return (
@@ -13,11 +14,23 @@ export const Header = (props) => {
                   <span></span>
                 </h1>
                 <p>{props.data ? props.data.paragraph : "Loading"}</p>
+                <Link
+                  to="/login"
+                  className="btn btn-custom btn-lg page-scroll"
+                >
+                  Iniciar sesión
+                </Link>{" "}
+                <Link
+                  to="/register"
+                  className="btn btn-custom btn-lg page-scroll"
+                >
+                  Registrarse
+                </Link>{" "}
                 <a
                   href="#features"
                   className="btn btn-custom btn-lg page-scroll"
                 >
-                  Learn More
+                  Explorar plataforma
                 </a>{" "}
               </div>
             </div>
