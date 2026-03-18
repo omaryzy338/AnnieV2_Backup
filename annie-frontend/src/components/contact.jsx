@@ -106,7 +106,7 @@ export const Contact = (props) => {
       <div id="footer">
         <div className="container text-center">
           <p>
-            &copy; 2023 ANNIE 2.0. Plataforma para gestión de pequeños negocios.
+            &copy; 2026 ANNIE. Plataforma para gestión de pequeños negocios.
           </p>
         </div>
       </div>
