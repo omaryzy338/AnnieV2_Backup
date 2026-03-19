@@ -12,6 +12,7 @@ connectDB();
 // middleware
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(require('path').join(__dirname, 'uploads')));
 
 // rutas
 const authRoutes = require('./routes/auth');

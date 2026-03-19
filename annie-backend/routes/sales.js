@@ -8,7 +8,7 @@ const Product = require('../models/Product');
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const sales = await Sale.find({ owner: req.user.id })
-      .populate('product', 'name price')
+      .populate('product', 'name price image')
       .populate('client', 'name email')
       .sort({ createdAt: -1 });
     res.json(sales);
@@ -21,7 +21,7 @@ router.get('/', authMiddleware, async (req, res) => {
 // ── POST /sales — registrar venta y descontar inventario ─────────
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    const { productId, quantity, clientId } = req.body;
+    const { productId, quantity, clientId, discount, discountType } = req.body;
 
     if (!productId || !quantity)
       return res.status(400).json({ message: 'productId y quantity son obligatorios' });
@@ -41,16 +41,21 @@ router.post('/', authMiddleware, async (req, res) => {
       });
 
     // Calcular total con descuento
-    const precioFinal = product.price - (product.price * (product.discount / 100));
-    const total = parseFloat((precioFinal * quantity).toFixed(2));
+    const descuento     = discount !== undefined ? Number(discount) : product.discount;
+    const tipo          = discountType === 'fijo' ? 'fijo' : 'porcentaje';
+    const precioFinal   = tipo === 'fijo'
+      ? Math.max(0, product.price - descuento)
+      : product.price - (product.price * descuento / 100);
+    const total = parseFloat((Math.max(0, precioFinal) * quantity).toFixed(2));
 
     // Registrar la venta
     const sale = new Sale({
-      product: product._id,
-      client: clientId || null,
+      product:      product._id,
+      client:       clientId || null,
       quantity,
-      price: product.price,
-      discount: product.discount,
+      price:        product.price,
+      discount:     descuento,
+      discountType: tipo,
       total,
       owner: req.user.id
     });
@@ -84,6 +89,19 @@ router.get('/resumen', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error al obtener resumen' });
+  }
+});
+
+// ── DELETE /sales/:id — eliminar venta ──────────────────────────
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    const sale = await Sale.findOne({ _id: req.params.id, owner: req.user.id });
+    if (!sale) return res.status(404).json({ message: 'Venta no encontrada' });
+    await sale.deleteOne();
+    res.json({ message: 'Venta eliminada' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al eliminar venta' });
   }
 });
 

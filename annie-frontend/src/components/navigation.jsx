@@ -76,16 +76,9 @@ export const Navigation = (props) => {
               </a>
             </li>
             {isLogged ? (
-              <>
-                <li>
-                  <Link to="/dashboard">Dashboard</Link>
-                </li>
-                <li>
-                  <button className="btn btn-link" onClick={handleLogout}>
-                    Logout
-                  </button>
-                </li>
-              </>
+              <li>
+                <Link to="/dashboard">Dashboard</Link>
+              </li>
             ) : (
               <>
                 <li>
