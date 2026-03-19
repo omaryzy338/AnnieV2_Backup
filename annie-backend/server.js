@@ -12,21 +12,20 @@ connectDB();
 // middleware
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(require('path').join(__dirname, 'uploads')));
 
 // rutas
-const authRoutes = require('./routes/auth');
-const profileRoutes = require('./routes/profile');
-const menuRoutes = require('./routes/menu');
+const authRoutes     = require('./routes/auth');
+const profileRoutes  = require('./routes/profile');
 const productsRoutes = require('./routes/products');
-const salesRoutes = require('./routes/sales');
-const clientsRoutes = require('./routes/clients');
+const salesRoutes    = require('./routes/sales');
+const clientsRoutes  = require('./routes/clients');
 
-app.use('/auth', authRoutes);
-app.use('/profile', profileRoutes);
-app.use('/menu', menuRoutes);
+app.use('/auth',     authRoutes);
+app.use('/profile',  profileRoutes);
 app.use('/products', productsRoutes);
-app.use('/sales', salesRoutes);
-app.use('/clients', clientsRoutes);
+app.use('/sales',    salesRoutes);
+app.use('/clients',  clientsRoutes);
 
 // inicio del servidor
 const PORT = process.env.PORT || 5000;
