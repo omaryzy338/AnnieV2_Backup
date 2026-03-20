@@ -9,7 +9,7 @@ router.get('/', authMiddleware, async (req, res) => {
   try {
     const sales = await Sale.find({ owner: req.user.id })
       .populate('product', 'name price image')
-      .populate('client', 'name email')
+      .populate('client', 'name lastName email')
       .sort({ createdAt: -1 });
     res.json(sales);
   } catch (err) {
@@ -21,7 +21,7 @@ router.get('/', authMiddleware, async (req, res) => {
 // ── POST /sales — registrar venta y descontar inventario ─────────
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    const { productId, quantity, clientId, discount, discountType } = req.body;
+    const { productId, quantity, clientId, discount, discountType, saleDate } = req.body;
 
     if (!productId || !quantity)
       return res.status(400).json({ message: 'productId y quantity son obligatorios' });
@@ -57,6 +57,7 @@ router.post('/', authMiddleware, async (req, res) => {
       discount:     descuento,
       discountType: tipo,
       total,
+      saleDate:     saleDate ? new Date(saleDate + "T12:00:00") : null,
       owner: req.user.id
     });
     await sale.save();

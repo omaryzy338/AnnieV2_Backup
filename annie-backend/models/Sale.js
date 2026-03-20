@@ -8,6 +8,7 @@ const saleSchema = new mongoose.Schema({
   discount:     { type: Number, default: 0 },
   discountType: { type: String, enum: ['porcentaje', 'fijo'], default: 'porcentaje' },
   total:        { type: Number, required: true },
+  saleDate:     { type: Date, default: null },
   owner:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
 }, { timestamps: true });
 
