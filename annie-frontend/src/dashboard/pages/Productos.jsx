@@ -40,7 +40,7 @@ const Productos = () => {
   const [filtro, setFiltro]       = useState("Todos");
   const [busqueda, setBusqueda]   = useState("");
   const [confirmId, setConfirmId] = useState(null); // id del producto a eliminar
-  const [imgModo, setImgModo]     = useState("url");  // "url" | "archivo"
+  const [imgModo, setImgModo]     = useState("archivo");
   const [uploading, setUploading] = useState(false);
   const [ordenar, setOrdenar]     = useState("");      // "" | "stock_asc" | "stock_desc" | "precio_desc"
   const [vista, setVista]         = useState("tabla"); // "tabla" | "grid"
@@ -271,10 +271,10 @@ const Productos = () => {
                           ...styles.catChip,
                           background: sel ? c.bg : "#fafafa",
                           border: sel ? `2px solid ${c.color}` : "1.5px solid #e8e8e8",
-                          color: sel ? c.color : "#666",
-                          fontWeight: sel ? 700 : 500,
+                          color: sel ? c.color : "#1a1a2e",
+                          fontWeight: sel ? 700 : 600,
                         }}>
-                        <i className={`fa ${c.icon}`} style={{ fontSize: 15, color: sel ? c.color : "#bbb", marginBottom: 4, display: "block" }} />
+                        <i className={`fa ${c.icon}`} style={{ fontSize: 15, color: sel ? c.color : "#9599b3", marginBottom: 4, display: "block" }} />
                         <span style={{ fontSize: 11, lineHeight: 1.2 }}>{c.label}</span>
                       </button>
                     );
@@ -364,54 +364,37 @@ const Productos = () => {
                 <label style={styles.label}>
                   <i className="fa fa-image" style={styles.labelIcon} />Imagen del producto
                 </label>
-                {/* Tabs URL / Archivo */}
-                <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-                  {[
-                    { v: "url",     icon: "fa-link",        l: "URL"    },
-                    { v: "archivo", icon: "fa-folder-open", l: "Archivo" },
-                  ].map(({ v, icon, l }) => (
-                    <button key={v} type="button" onClick={() => setImgModo(v)}
-                      style={{
-                        padding: "8px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600,
-                        cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6,
-                        border: imgModo === v ? "1.5px solid transparent" : "1.5px solid #e0e0e0",
-                        background: imgModo === v ? "linear-gradient(to right,#6372ff,#5ca9fb)" : "#fff",
-                        color: imgModo === v ? "#fff" : "#666",
-                      }}>
-                      <i className={`fa ${icon}`} style={{ fontSize: 12 }} />{l}
-                    </button>
-                  ))}
+                <div>
+                  <input type="file" accept="image/*" id="imgFileInput" style={{ display: "none" }}
+                    onChange={handleImageFile} />
+                  <label htmlFor="imgFileInput" style={{
+                    display: "inline-flex", alignItems: "center", gap: 10, cursor: "pointer",
+                    background: "#f4f6ff", border: "1.5px dashed #6372ff", borderRadius: 10,
+                    padding: "14px 24px", fontSize: 13, color: "#6372ff", fontWeight: 600,
+                  }}>
+                    {uploading
+                      ? <><i className="fa fa-spinner fa-spin" style={{ fontSize: 16 }} /> Subiendo imagen...</>
+                      : <><i className="fa fa-cloud-upload" style={{ fontSize: 18 }} /> Seleccionar imagen desde tu dispositivo</>}
+                  </label>
                 </div>
-                {imgModo === "url" ? (
-                  <input style={styles.input} name="image" value={form.image}
-                    onChange={handleChange} placeholder="https://ejemplo.com/imagen.jpg" />
-                ) : (
-                  <div>
-                    <input type="file" accept="image/*" id="imgFileInput" style={{ display: "none" }}
-                      onChange={handleImageFile} />
-                    <label htmlFor="imgFileInput" style={{
-                      display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer",
-                      background: "#f4f6ff", border: "1.5px dashed #6372ff", borderRadius: 8,
-                      padding: "10px 20px", fontSize: 13, color: "#6372ff", fontWeight: 600,
-                    }}>
-                      {uploading
-                        ? <><i className="fa fa-spinner fa-spin" /> Subiendo...</>
-                        : <><i className="fa fa-upload" /> Seleccionar imagen</>}
-                    </label>
-                  </div>
-                )}
                 {/* Preview */}
                 {form.image && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10 }}>
+                  <div style={{ marginTop: 12 }}>
                     <img
                       src={form.image.startsWith("/uploads") ? `http://localhost:5000${form.image}` : form.image}
                       alt="preview"
-                      style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 10, border: "2px solid #e8eaff" }}
+                      style={{
+                        width: "100%", maxWidth: 340, height: 200,
+                        objectFit: "cover", borderRadius: 12,
+                        border: "2px solid #e8eaff",
+                        display: "block", marginBottom: 10,
+                        boxShadow: "0 4px 16px rgba(99,114,255,0.12)",
+                      }}
                     />
                     <button type="button"
                       onClick={() => setForm((p) => ({ ...p, image: "" }))}
-                      style={styles.btnDelete}>
-                      <i className="fa fa-times" style={{ marginRight: 5 }} />Quitar imagen
+                      style={styles.btnCancel}>
+                      <i className="fa fa-times" style={{ marginRight: 8 }} />Quitar imagen
                     </button>
                   </div>
                 )}
@@ -673,7 +656,7 @@ const Productos = () => {
                       );
                     })() : <span style={{ color: "#ccc" }}>—</span>}
                   </td>
-                  <td style={{ ...styles.td, fontWeight: 600 }}>
+                  <td style={{ ...styles.td, fontWeight: 700, color: "#1a1a2e" }}>
                     <div>${p.price}</div>
                     {p.cost > 0 && (
                       <div style={{ fontSize: 11, color: "#27ae60", fontWeight: 700, marginTop: 2 }}>
@@ -763,8 +746,8 @@ const styles = {
   labelIcon: { color: "#6372ff", fontSize: 12 },
   input: {
     width: "100%", padding: "10px 14px", borderRadius: 8, border: "1.5px solid #e8e8e8",
-    fontSize: 14, outline: "none", boxSizing: "border-box", background: "#fafafa",
-    transition: "border-color 0.2s",
+    fontSize: 14, color: "#1a1a2e", fontWeight: 600, outline: "none",
+    boxSizing: "border-box", background: "#fafafa", transition: "border-color 0.2s",
   },
   inputPrefix: { display: "flex" },
   prefix: {
@@ -777,7 +760,7 @@ const styles = {
     padding: "12px 16px", textAlign: "left", fontSize: 11, color: "#888",
     fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5,
   },
-  td: { padding: "12px 16px", fontSize: 13, verticalAlign: "middle" },
+  td: { padding: "12px 16px", fontSize: 13, verticalAlign: "middle", color: "#1a1a2e", fontWeight: 600 },
   catBadge: {
     background: "#f0f2ff", color: "#6372ff", borderRadius: 6,
     padding: "3px 10px", fontSize: 12, fontWeight: 600, display: "inline-flex", alignItems: "center",
@@ -884,7 +867,8 @@ const styles = {
     outline: "none",
     boxSizing: "border-box",
     background: "#fff",
-    color: "#333",
+    color: "#1a1a2e",
+    fontWeight: 600,
   },
   searchClear: {
     position: "absolute",

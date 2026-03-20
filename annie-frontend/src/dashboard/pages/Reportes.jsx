@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "../../api/axiosConfig";
+import * as XLSX from "xlsx";
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -44,7 +45,7 @@ const Reportes = () => {
       mapa[key] = { dia: key, total: 0, transacciones: 0 };
     }
     ventas.forEach((v) => {
-      const d = new Date(v.createdAt);
+      const d = new Date(v.saleDate || v.createdAt);
       const key = `${d.getDate()}/${d.getMonth() + 1}`;
       if (mapa[key]) {
         mapa[key].total += v.total;
@@ -83,7 +84,7 @@ const Reportes = () => {
   // ── Resumen del mes actual ─────────────────────────────────────────
   const ahora = new Date();
   const ventasMes = ventas.filter((v) => {
-    const d = new Date(v.createdAt);
+    const d = new Date(v.saleDate || v.createdAt);
     return d.getMonth() === ahora.getMonth() && d.getFullYear() === ahora.getFullYear();
   });
   const totalMes   = ventasMes.reduce((a, v) => a + v.total, 0);
@@ -103,20 +104,103 @@ const Reportes = () => {
   // Valor total del inventario
   const valorInventario = productos.reduce((a, p) => a + (p.price * p.quantity), 0);
 
-  // Exportar ventas a CSV
-  const exportarCSV = () => {
-    const headers = ["Fecha", "Producto", "Cantidad", "Precio Unit.", "Descuento%", "Total"];
-    const rows = ventas.map((v) => [
-      new Date(v.createdAt).toLocaleDateString("es-MX"),
-      `"${v.product?.name || ""}"`,
-      v.quantity, v.price, v.discount || 0, v.total,
-    ]);
-    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = "ventas.csv"; a.click();
-    URL.revokeObjectURL(url);
+  // Ganancia neta del mes (solo productos con costo registrado)
+  const hayDatosCosto = productos.some((p) => p.cost > 0);
+  const gananciaNeta  = ventasMes.reduce((acc, v) => {
+    const prod = productos.find((p) => p._id === (v.product?._id || v.product));
+    if (prod && prod.cost > 0) acc += v.total - prod.cost * v.quantity;
+    return acc;
+  }, 0);
+
+  // Mes anterior para comparativo
+  const mesAnterior = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
+  const ventasMesAnt = ventas.filter((v) => {
+    const d = new Date(v.saleDate || v.createdAt);
+    return d.getMonth() === mesAnterior.getMonth() && d.getFullYear() === mesAnterior.getFullYear();
+  });
+  const totalMesAnt   = ventasMesAnt.reduce((a, v) => a + v.total, 0);
+  const cambioMes     = totalMesAnt > 0 ? ((totalMes - totalMesAnt) / totalMesAnt * 100).toFixed(1) : null;
+
+  // Ventas por día de la semana
+  const ventasPorSemana = (() => {
+    const dias = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+    const base = dias.map((d) => ({ dia: d, total: 0, ventas: 0 }));
+    ventas.forEach((v) => {
+      const idx = new Date(v.saleDate || v.createdAt).getDay();
+      base[idx].total  += v.total;
+      base[idx].ventas += 1;
+    });
+    return base;
+  })();
+
+  // Comparativo mes actual vs anterior por producto (top 5)
+  const comparativoProductos = (() => {
+    const mapa = {};
+    const agregarVentas = (lista, campo) => {
+      lista.forEach((v) => {
+        const nombre = v.product?.name || "Otro";
+        if (!mapa[nombre]) mapa[nombre] = { name: nombre, actual: 0, anterior: 0 };
+        mapa[nombre][campo] += v.total;
+      });
+    };
+    agregarVentas(ventasMes,    "actual");
+    agregarVentas(ventasMesAnt, "anterior");
+    return Object.values(mapa)
+      .sort((a, b) => (b.actual + b.anterior) - (a.actual + a.anterior))
+      .slice(0, 5)
+      .map((x) => ({ ...x, actual: parseFloat(x.actual.toFixed(2)), anterior: parseFloat(x.anterior.toFixed(2)) }));
+  })();
+
+  const nombreMes = (d) => d.toLocaleDateString("es-MX", { month: "long" });
+
+  // Top 5 clientes por monto gastado (total historial)
+  const topClientes = (() => {
+    const mapa = {};
+    ventas.forEach((v) => {
+      if (!v.client) return;
+      const id     = v.client._id || v.client;
+      const nombre = `${v.client.name || ""} ${v.client.lastName || ""}`.trim() || "Sin nombre";
+      if (!mapa[id]) mapa[id] = { nombre, total: 0, compras: 0 };
+      mapa[id].total   += v.total;
+      mapa[id].compras += 1;
+    });
+    return Object.values(mapa).sort((a, b) => b.total - a.total).slice(0, 5);
+  })();
+
+  // Exportar ventas a Excel
+  const exportarExcel = () => {
+    const datos = ventas.map((v) => ({
+      Fecha:          fechaUTC(v.saleDate || v.createdAt),
+      Producto:       v.product?.name || "",
+      Cliente:        v.client ? `${v.client.name || ""} ${v.client.lastName || ""}`.trim() : "Sin cliente",
+      Cantidad:       v.quantity,
+      "Precio Unit.": v.price,
+      Descuento:      v.discount || 0,
+      "Tipo desc.": v.discountType || "porcentaje",
+      Total:          v.total,
+    }));
+    const ws   = XLSX.utils.json_to_sheet(datos);
+    const wb   = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Ventas");
+    // Hoja resumen
+    const resumen = [
+      { Concepto: "Total ventas del mes", Valor: `$${totalMes.toFixed(2)}` },
+      { Concepto: "Transacciones del mes", Valor: ventasMes.length },
+      { Concepto: "Ticket promedio",       Valor: `$${ticketProm.toFixed(2)}` },
+      { Concepto: "Valor del inventario",  Valor: `$${valorInventario.toFixed(2)}` },
+      { Concepto: "Producto estrella",     Valor: productoEstrella },
+    ];
+    const wsR = XLSX.utils.json_to_sheet(resumen);
+    XLSX.utils.book_append_sheet(wb, wsR, "Resumen");
+    XLSX.writeFile(wb, `reporte-ventas-${new Date().toISOString().split("T")[0]}.xlsx`);
+  };
+
+  // Helper: fecha sin desfase UTC
+  const fechaUTC = (iso) => {
+    const d = new Date(iso);
+    const day   = d.getUTCDate().toString().padStart(2, "0");
+    const mes   = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"][d.getUTCMonth()];
+    return `${day}/${mes}/${d.getUTCFullYear()}`;
   };
 
   if (loading) return <div style={{ padding: 30 }}>Cargando reportes...</div>;
@@ -135,8 +219,8 @@ const Reportes = () => {
             Análisis de ventas, inventario y clientes
           </p>
         </div>
-        <button onClick={exportarCSV} style={styles.btnExport}>
-          <i className="fa fa-download" style={{ marginRight: 7 }} />Exportar ventas CSV
+        <button onClick={exportarExcel} style={styles.btnExport}>
+          <i className="fa fa-file-excel-o" style={{ marginRight: 7 }} />Exportar a Excel
         </button>
       </div>
 
@@ -146,9 +230,15 @@ const Reportes = () => {
           <div style={{ ...styles.cardIcon, background: "#f0f2ff" }}>
             <i className="fa fa-money" style={{ color: "#6372ff", fontSize: 22 }} />
           </div>
-          <div>
+          <div style={{ flex: 1 }}>
             <div style={styles.cardValue}>${totalMes.toFixed(2)}</div>
             <div style={styles.cardLabel}>Ventas del mes</div>
+            {cambioMes !== null && (
+              <div style={{ marginTop: 4, fontSize: 11, fontWeight: 700,
+                color: Number(cambioMes) >= 0 ? "#27ae60" : "#e94560" }}>
+                {Number(cambioMes) >= 0 ? "▲" : "▼"} {Math.abs(cambioMes)}% vs mes ant.
+              </div>
+            )}
           </div>
         </div>
         <div style={styles.card}>
@@ -178,6 +268,17 @@ const Reportes = () => {
             <div style={styles.cardLabel}>Valor del inventario</div>
           </div>
         </div>
+        {hayDatosCosto && (
+          <div style={styles.card}>
+            <div style={{ ...styles.cardIcon, background: gananciaNeta >= 0 ? "#e8f5e9" : "#fff0f3" }}>
+              <i className="fa fa-star" style={{ color: gananciaNeta >= 0 ? "#27ae60" : "#e94560", fontSize: 22 }} />
+            </div>
+            <div>
+              <div style={{ ...styles.cardValue, color: gananciaNeta >= 0 ? "#27ae60" : "#e94560" }}>${gananciaNeta.toFixed(2)}</div>
+              <div style={styles.cardLabel}>Ganancia neta del mes</div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Gráfica de ventas por día */}
@@ -318,6 +419,176 @@ const Reportes = () => {
           <span>Producto estrella del mes: <strong>{productoEstrella}</strong></span>
         </div>
       )}
+
+      {/* Comparativo mes actual vs anterior */}
+      <div style={styles.twoCol}>
+        {/* Barra comparativa por producto */}
+        <div style={styles.chartCard}>
+          <div style={styles.chartHeader}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <i className="fa fa-bar-chart" style={{ color: "#6372ff" }} />
+              <span style={styles.chartTitle}>Comparativo mensual</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 11, color: "#9599b3" }}>
+                {nombreMes(mesAnterior)} vs {nombreMes(ahora)}
+              </span>
+              {cambioMes !== null && (
+                <span style={{
+                  fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 12,
+                  background: Number(cambioMes) >= 0 ? "#e8f5e9" : "#fff0f3",
+                  color: Number(cambioMes) >= 0 ? "#27ae60" : "#e94560",
+                }}>
+                  {Number(cambioMes) >= 0 ? "+" : ""}{cambioMes}%
+                </span>
+              )}
+            </div>
+          </div>
+          {comparativoProductos.length === 0 ? (
+            <div style={styles.empty}>
+              <i className="fa fa-bar-chart" style={{ fontSize: 28, color: "#e0e0e0", display: "block", marginBottom: 8 }} />
+              Sin datos suficientes
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={comparativoProductos} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f4" />
+                <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#888" }} interval={0} />
+                <YAxis tick={{ fontSize: 10, fill: "#aaa" }} tickFormatter={(v) => `$${v}`} width={52} />
+                <Tooltip formatter={(v, name) => [`$${v}`, name === "actual" ? nombreMes(ahora) : nombreMes(mesAnterior)]}
+                  contentStyle={{ borderRadius: 10, border: "1px solid #eee", fontSize: 12 }} />
+                <Legend formatter={(v) => v === "actual" ? nombreMes(ahora) : nombreMes(mesAnterior)} wrapperStyle={{ fontSize: 11 }} />
+                <Bar dataKey="anterior" fill="#e0e4ff" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="actual"   fill="#6372ff" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* Ventas por día de la semana */}
+        <div style={styles.chartCard}>
+          <div style={styles.chartHeader}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <i className="fa fa-calendar" style={{ color: "#f06292" }} />
+              <span style={styles.chartTitle}>Ventas por día de la semana</span>
+            </div>
+            <span style={{ fontSize: 11, color: "#9599b3" }}>Todo el historial</span>
+          </div>
+          {ventas.length === 0 ? (
+            <div style={styles.empty}>
+              <i className="fa fa-calendar" style={{ fontSize: 28, color: "#e0e0e0", display: "block", marginBottom: 8 }} />
+              Sin ventas todavía
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={ventasPorSemana} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f4" />
+                <XAxis dataKey="dia" tick={{ fontSize: 12, fill: "#555" }} />
+                <YAxis tick={{ fontSize: 10, fill: "#aaa" }} tickFormatter={(v) => `$${v}`} width={52} />
+                <Tooltip formatter={(v, name) => [name === "total" ? `$${v.toFixed(2)}` : v, name === "total" ? "Ingresos" : "Transacciones"]}
+                  contentStyle={{ borderRadius: 10, border: "1px solid #eee", fontSize: 12 }} />
+                <Bar dataKey="total" radius={[6, 6, 0, 0]}>
+                  {ventasPorSemana.map((entry, i) => {
+                    const max = Math.max(...ventasPorSemana.map((d) => d.total));
+                    return <Cell key={i} fill={entry.total === max ? "#f06292" : "#f8bbd0"} />;
+                  })}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
+      {/* Fila: Top clientes + Últimas ventas */}
+      <div style={styles.twoCol}>
+
+        {/* Top clientes */}
+        <div style={styles.chartCard}>
+          <div style={styles.chartHeader}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <i className="fa fa-users" style={{ color: "#27ae60" }} />
+              <span style={styles.chartTitle}>Top clientes</span>
+            </div>
+            <span style={{ fontSize: 11, color: "#9599b3" }}>Por monto total</span>
+          </div>
+          {topClientes.length === 0 ? (
+            <div style={styles.empty}>
+              <i className="fa fa-users" style={{ fontSize: 28, color: "#e0e0e0", display: "block", marginBottom: 8 }} />
+              Sin ventas con cliente asignado
+            </div>
+          ) : (
+            topClientes.map((c, i) => {
+              const maxT = topClientes[0].total;
+              const pct  = Math.round((c.total / maxT) * 100);
+              return (
+                <div key={i} style={{ marginBottom: i < topClientes.length - 1 ? 12 : 0 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontWeight: 700, color: "#9599b3", fontSize: 12, width: 20 }}>#{i + 1}</span>
+                      <div style={{ width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+                        background: "linear-gradient(135deg,#6372ff,#5ca9fb)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        color: "#fff", fontWeight: 700, fontSize: 11 }}>
+                        {c.nombre.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, color: "#1a1a2e", fontSize: 13 }}>{c.nombre}</div>
+                        <div style={{ fontSize: 11, color: "#9599b3" }}>{c.compras} compra{c.compras !== 1 ? "s" : ""}</div>
+                      </div>
+                    </div>
+                    <span style={{ fontWeight: 700, color: "#6372ff", fontSize: 13 }}>${c.total.toFixed(2)}</span>
+                  </div>
+                  <div style={{ height: 5, borderRadius: 4, background: "#f0f2ff", overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${pct}%`, borderRadius: 4,
+                      background: "linear-gradient(to right,#6372ff,#5ca9fb)" }} />
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Últimas ventas */}
+        <div style={styles.chartCard}>
+          <div style={styles.chartHeader}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <i className="fa fa-history" style={{ color: "#5ca9fb" }} />
+              <span style={styles.chartTitle}>Últimas ventas</span>
+            </div>
+            <span style={{ fontSize: 11, color: "#9599b3" }}>Las 8 más recientes</span>
+          </div>
+          {ventas.length === 0 ? (
+            <div style={styles.empty}>
+              <i className="fa fa-shopping-cart" style={{ fontSize: 28, color: "#e0e0e0", display: "block", marginBottom: 8 }} />
+              Sin ventas todavía
+            </div>
+          ) : (
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ background: "#f8f9ff" }}>
+                  {["Producto", "Cliente", "Total", "Fecha"].map((h) => (
+                    <th key={h} style={{ padding: "8px 12px", fontSize: 10, color: "#9599b3", fontWeight: 700,
+                      textTransform: "uppercase", textAlign: "left", borderBottom: "1.5px solid #f0f0f0" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[...ventas].sort((a, b) => new Date(b.saleDate || b.createdAt) - new Date(a.saleDate || a.createdAt)).slice(0, 8).map((v) => (
+                  <tr key={v._id} style={{ borderBottom: "1px solid #f4f4f4" }}>
+                    <td style={{ padding: "9px 12px", fontSize: 12, color: "#1a1a2e", fontWeight: 600 }}>{v.product?.name || "—"}</td>
+                    <td style={{ padding: "9px 12px", fontSize: 12, color: "#1a1a2e" }}>{v.client ? `${v.client.name || ""} ${v.client.lastName || ""}`.trim() : <span style={{ color: "#ccc" }}>Sin cliente</span>}</td>
+                    <td style={{ padding: "9px 12px", fontSize: 12, fontWeight: 700, color: "#6372ff" }}>${v.total.toFixed(2)}</td>
+                    <td style={{ padding: "9px 12px", fontSize: 11, color: "#9599b3" }}>
+                      {new Date(v.saleDate || v.createdAt).toLocaleDateString("es-MX", { day: "2-digit", month: "short" })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+      </div>
     </div>
   );
 };
@@ -329,7 +600,7 @@ const styles = {
     display: "inline-flex", alignItems: "center", flexShrink: 0,
   },
   cardsGrid: {
-    display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14,
+    display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 14,
   },
   card: {
     background: "#fff", borderRadius: 12, padding: "18px 16px",
