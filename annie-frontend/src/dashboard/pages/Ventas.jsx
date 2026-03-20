@@ -1,7 +1,7 @@
 ﻿import React, { useEffect, useState, useRef } from "react";
 import axios from "../../api/axiosConfig";
 
-const formInicial = { productId: "", clientId: "", quantity: 1, discount: 0, discountType: "porcentaje" };
+const formInicial = { productId: "", clientId: "", quantity: 1, discount: 0, discountType: "porcentaje", saleDate: new Date().toISOString().split("T")[0] };
 
 const Ventas = () => {
   const [ventas, setVentas]           = useState([]);
@@ -62,6 +62,24 @@ const Ventas = () => {
     return Math.max(0, base - base * desc / 100).toFixed(2);
   };
 
+  const calcGanancia = () => {
+    if (!productoSel || !form.quantity) return null;
+    if (!productoSel.cost || productoSel.cost <= 0) return null;
+    const qty        = Number(form.quantity);
+    const totalVenta = parseFloat(calcTotal());
+    const costoTotal = productoSel.cost * qty;
+    const ganancia   = totalVenta - costoTotal;
+    const pct        = totalVenta > 0 ? (ganancia / totalVenta * 100) : 0;
+    return { ganancia: ganancia.toFixed(2), pct: pct.toFixed(1), costoTotal: costoTotal.toFixed(2) };
+  };
+
+  const calcDescPct = () => {
+    if (form.discountType !== "fijo" || !productoSel || !form.quantity) return null;
+    const base = productoSel.price * Number(form.quantity);
+    if (base <= 0) return null;
+    return (Number(form.discount) / base * 100).toFixed(1);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -72,6 +90,7 @@ const Ventas = () => {
         quantity:     Number(form.quantity),
         discount:     Number(form.discount) || 0,
         discountType: form.discountType,
+        saleDate:     form.saleDate || undefined,
       });
       mostrarExito("Venta registrada correctamente");
       setForm(formInicial);
@@ -104,7 +123,7 @@ const Ventas = () => {
              (v.client?.name  || "").toLowerCase().includes(busqueda.toLowerCase());
     })
     .filter((v) => {
-      const f = new Date(v.createdAt);
+      const f = new Date(v.saleDate || v.createdAt);
       if (periodo === "hoy")    return f.toDateString() === ahora.toDateString();
       if (periodo === "semana") { const h = new Date(ahora); h.setDate(ahora.getDate() - 7); return f >= h; }
       if (periodo === "mes")    return f.getMonth() === ahora.getMonth() && f.getFullYear() === ahora.getFullYear();
@@ -112,17 +131,29 @@ const Ventas = () => {
     });
 
   // KPIs
-  const ventasHoy = ventas.filter((v) => new Date(v.createdAt).toDateString() === ahora.toDateString());
+  const ventasHoy = ventas.filter((v) => new Date(v.saleDate || v.createdAt).toDateString() === ahora.toDateString());
   const ventasMes = ventas.filter((v) => {
-    const f = new Date(v.createdAt);
+    const f = new Date(v.saleDate || v.createdAt);
     return f.getMonth() === ahora.getMonth() && f.getFullYear() === ahora.getFullYear();
   });
   const totalMes       = ventasMes.reduce((a, v) => a + v.total, 0);
   const ticketPromedio = ventasMes.length ? (totalMes / ventasMes.length).toFixed(2) : "0.00";
   const clientesUnicos = new Set(ventasMes.filter((v) => v.client).map((v) => v.client._id)).size;
 
-  const formatFecha = (iso) =>
-    new Date(iso).toLocaleString("es-MX", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  // Muestra la fecha de la venta respetando el día UTC (sin desfase de zona horaria)
+  const formatFecha = (iso) => {
+    const d = new Date(iso);
+    // Si tiene hora guardada (saleDate guardado a T12:00), mostrar solo fecha
+    // Usamos UTC para evitar que medianoche UTC => día anterior en MX
+    const day   = d.getUTCDate().toString().padStart(2, "0");
+    const month = d.toLocaleDateString("es-MX", { month: "short", timeZone: "UTC" });
+    const year  = d.getUTCFullYear();
+    const hour  = d.getUTCHours();
+    // Si fue guardado como saleDate (T12:00 = mediodía UTC), solo mostrar fecha
+    if (hour >= 11 && hour <= 13) return `${day} ${month} ${year}`;
+    // Si es createdAt o un saleDate antiguo (T00:00), mostrar fecha con hora local
+    return new Date(iso).toLocaleString("es-MX", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  };
 
   const handleExportCSV = () => {
     const header = ["Fecha", "Producto", "Cliente", "Cantidad", "Precio", "Descuento", "Total"];
@@ -225,19 +256,64 @@ const Ventas = () => {
                 <label style={styles.label}>
                   <i className="fa fa-cube" style={styles.labelIcon} />Producto *
                 </label>
-                <select style={styles.input} name="productId" value={form.productId}
-                  onChange={handleChange} required>
-                  <option value="">Seleccionar producto</option>
-                  {productos.map((p) => (
-                    <option key={p._id} value={p._id} disabled={p.quantity < 1}>
-                      {p.name}{p.brand ? ` - ${p.brand}` : ""} | Stock: {p.quantity} | ${p.price}
-                      {p.discount > 0 ? ` (-${p.discount}%)` : ""}
-                    </option>
-                  ))}
-                </select>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {productos.map((p) => {
+                    const sel = form.productId === p._id;
+                    const sinStock = p.quantity < 1;
+                    return (
+                      <button key={p._id} type="button"
+                        disabled={sinStock}
+                        onClick={() => {
+                          setProductoSel(p);
+                          setForm((prev) => ({
+                            ...prev,
+                            productId: p._id,
+                            discount: p.discount || 0,
+                            discountType: "porcentaje",
+                          }));
+                        }}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: 8,
+                          padding: "6px 14px 6px 6px", borderRadius: 8, fontSize: 13, fontWeight: 600,
+                          cursor: sinStock ? "not-allowed" : "pointer", transition: "all 0.15s",
+                          opacity: sinStock ? 0.45 : 1,
+                          background: sel ? "#f0f2ff" : "#fff",
+                          color: sel ? "#6372ff" : "#555",
+                          border: sel ? "1.5px solid #6372ff" : "1.5px solid #e0e0e0",
+                        }}>
+                        {/* Thumbnail */}
+                        {p.image ? (
+                          <img
+                            src={p.image.startsWith("/uploads") ? `http://localhost:5000${p.image}` : p.image}
+                            alt=""
+                            style={{ width: 26, height: 26, objectFit: "cover", borderRadius: 6,
+                              border: sel ? "1.5px solid #6372ff" : "1.5px solid #e0e0e0", flexShrink: 0 }}
+                          />
+                        ) : (
+                          <div style={{
+                            width: 26, height: 26, borderRadius: 6, flexShrink: 0,
+                            background: sel ? "linear-gradient(135deg,#6372ff,#5ca9fb)" : "#e8eaff",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                          }}>
+                            <i className="fa fa-cube" style={{ color: sel ? "#fff" : "#9599b3", fontSize: 11 }} />
+                          </div>
+                        )}
+                        <span>{p.name}{p.brand ? ` · ${p.brand}` : ""}</span>
+                        <span style={{
+                          fontSize: 11, fontWeight: 700, marginLeft: 2,
+                          color: sel ? "#6372ff" : "#1a1a2e",
+                        }}>${p.price}</span>
+                        {sinStock && (
+                          <span style={{ fontSize: 10, color: "#e74c3c", fontWeight: 700 }}>sin stock</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
                 {/* Preview producto seleccionado */}
                 {productoSel && (
-                  <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 14,
+                  <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 14,
                     background: "#f8f9ff", border: "1.5px solid #e8eaff", borderRadius: 10, padding: "10px 14px" }}>
                     {productoSel.image ? (
                       <img
@@ -255,7 +331,7 @@ const Ventas = () => {
                       <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>
                         Stock disponible:{" "}
                         <strong style={{ color: productoSel.quantity < 5 ? "#e74c3c" : "#27ae60" }}>{productoSel.quantity}</strong>
-                        {" - "}
+                        {" · "}
                         Precio: <strong>${productoSel.price}</strong>
                       </div>
                     </div>
@@ -264,16 +340,52 @@ const Ventas = () => {
               </div>
 
               {/* Cliente */}
-              <div style={styles.fieldWrap}>
+              <div style={{ ...styles.fieldWrap, gridColumn: "1 / -1" }}>
                 <label style={styles.label}>
-                  <i className="fa fa-user" style={styles.labelIcon} />Cliente (opcional)
+                  <i className="fa fa-users" style={styles.labelIcon} />Cliente (opcional)
                 </label>
-                <select style={styles.input} name="clientId" value={form.clientId} onChange={handleChange}>
-                  <option value="">Sin cliente</option>
-                  {clientes.map((c) => (
-                    <option key={c._id} value={c._id}>{c.name} {c.lastName || ""}</option>
-                  ))}
-                </select>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {/* Sin cliente */}
+                  <button type="button"
+                    onClick={() => setForm((p) => ({ ...p, clientId: "" }))}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 7,
+                      padding: "8px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600,
+                      cursor: "pointer", transition: "all 0.15s",
+                      background: !form.clientId ? "linear-gradient(to right,#6372ff,#5ca9fb)" : "#fff",
+                      color: !form.clientId ? "#fff" : "#666",
+                      border: !form.clientId ? "1.5px solid transparent" : "1.5px solid #e0e0e0",
+                    }}>
+                    <i className="fa fa-user-times" style={{ fontSize: 12 }} />
+                    Sin cliente
+                  </button>
+                  {clientes.map((c) => {
+                    const sel = form.clientId === c._id;
+                    const ini = ((c.name || "?").charAt(0) + (c.lastName || "").charAt(0)).toUpperCase();
+                    return (
+                      <button key={c._id} type="button"
+                        onClick={() => setForm((p) => ({ ...p, clientId: c._id }))}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: 8,
+                          padding: "6px 14px 6px 6px", borderRadius: 8, fontSize: 13, fontWeight: 600,
+                          cursor: "pointer", transition: "all 0.15s",
+                          background: sel ? "#f0f2ff" : "#fff",
+                          color: sel ? "#6372ff" : "#555",
+                          border: sel ? "1.5px solid #6372ff" : "1.5px solid #e0e0e0",
+                        }}>
+                        <div style={{
+                          width: 26, height: 26, borderRadius: "50%",
+                          background: sel
+                            ? "linear-gradient(135deg,#6372ff,#5ca9fb)"
+                            : "linear-gradient(135deg,#d0d4ff,#b8d8ff)",
+                          color: "#fff", fontWeight: 700, fontSize: 10,
+                          display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                        }}>{ini}</div>
+                        {c.name} {c.lastName || ""}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Cantidad */}
@@ -286,6 +398,16 @@ const Ventas = () => {
                   value={form.quantity} onChange={handleChange} required />
               </div>
 
+              {/* Fecha de la venta */}
+              <div style={styles.fieldWrap}>
+                <label style={styles.label}>
+                  <i className="fa fa-calendar" style={styles.labelIcon} />Fecha de la venta
+                </label>
+                <input style={styles.input} name="saleDate" type="date"
+                  value={form.saleDate} onChange={handleChange}
+                  max={new Date().toISOString().split("T")[0]} />
+              </div>
+
               {/* Descuento (ancho completo) */}
               <div style={{ ...styles.fieldWrap, gridColumn: "1 / -1" }}>
                 <label style={styles.label}>
@@ -294,19 +416,19 @@ const Ventas = () => {
                 <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                   {/* Toggle tipo */}
                   {[
-                    { v: "porcentaje", icon: "fa-percent",   l: "Porcentaje %" },
-                    { v: "fijo",       icon: "fa-dollar",    l: "Monto fijo $" },
-                  ].map(({ v, icon, l }) => (
+                    { v: "porcentaje", l: "% Porcentaje" },
+                    { v: "fijo",       l: "$ Monto fijo" },
+                  ].map(({ v, l }) => (
                     <button key={v} type="button"
                       onClick={() => setForm((p) => ({ ...p, discountType: v, discount: 0 }))}
                       style={{
-                        padding: "8px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600,
-                        cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6,
+                        padding: "9px 18px", borderRadius: 8, fontSize: 13, fontWeight: 600,
+                        cursor: "pointer", lineHeight: 1, minWidth: 120,
                         border: form.discountType === v ? "1.5px solid transparent" : "1.5px solid #e0e0e0",
                         background: form.discountType === v ? "linear-gradient(to right,#6372ff,#5ca9fb)" : "#fff",
                         color: form.discountType === v ? "#fff" : "#666",
                       }}>
-                      <i className={`fa ${icon}`} style={{ fontSize: 11 }} />{l}
+                      {l}
                     </button>
                   ))}
                   {/* Input valor */}
@@ -352,6 +474,9 @@ const Ventas = () => {
                       <div style={{ fontSize: 16, fontWeight: 700, color: "#e05555" }}>
                         {form.discountType === "porcentaje" ? `${form.discount}%` : `$${form.discount}`}
                       </div>
+                      {calcDescPct() && (
+                        <div style={{ fontSize: 11, color: "#e05555", fontWeight: 600, marginTop: 2 }}>≈ {calcDescPct()}% del total</div>
+                      )}
                     </div>
                   )}
                   <div style={{ marginLeft: "auto", textAlign: "right" }}>
@@ -359,6 +484,41 @@ const Ventas = () => {
                     <div style={{ fontSize: 26, fontWeight: 800, color: "#27ae60" }}>${calcTotal()}</div>
                   </div>
                 </div>
+
+                {/* Ganancia neta */}
+                {(() => {
+                  const g = calcGanancia();
+                  const sinCosto = !productoSel.cost || productoSel.cost <= 0;
+                  return (
+                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed #e8eaff",
+                      display: "flex", gap: 28, flexWrap: "wrap", alignItems: "center" }}>
+                      {sinCosto ? (
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff8e1",
+                          border: "1.5px solid #ffe082", borderRadius: 8, padding: "8px 14px", flex: 1 }}>
+                          <i className="fa fa-info-circle" style={{ color: "#f9a825", fontSize: 14 }} />
+                          <span style={{ fontSize: 12, color: "#1a1a2e", fontWeight: 600 }}>
+                            Sin precio de costo. Agrégalo en <strong>Productos → Editar</strong> para ver la ganancia.
+                          </span>
+                        </div>
+                      ) : (
+                        <>
+                          <div>
+                            <div style={{ fontSize: 11, color: "#1a1a2e", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Ganancia neta</div>
+                            <div style={{ fontSize: 22, fontWeight: 800, color: Number(g.ganancia) >= 0 ? "#27ae60" : "#e94560", lineHeight: 1.1 }}>${g.ganancia}</div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 11, color: "#1a1a2e", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Margen</div>
+                            <div style={{ fontSize: 16, fontWeight: 700, color: Number(g.ganancia) >= 0 ? "#27ae60" : "#e94560" }}>{g.pct}%</div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 11, color: "#1a1a2e", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Costo total</div>
+                            <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a2e" }}>${g.costoTotal}</div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
@@ -464,32 +624,46 @@ const Ventas = () => {
                     background: hoveredRow === v._id ? "#f8f9ff" : "transparent",
                     transition: "background 0.12s" }}>
                   <td style={{ ...styles.td, color: "#888", fontSize: 12, whiteSpace: "nowrap" }}>
-                    {formatFecha(v.createdAt)}
+                    {formatFecha(v.saleDate || v.createdAt)}
                   </td>
                   <td style={styles.td}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       {v.product?.image ? (
                         <img
                           src={v.product.image.startsWith("/uploads") ? `http://localhost:5000${v.product.image}` : v.product.image}
-                          alt="" style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 6,
+                          alt="" style={{ width: 38, height: 38, objectFit: "cover", borderRadius: 8,
                             border: "1.5px solid #e8eaff", flexShrink: 0 }} />
                       ) : (
-                        <div style={{ width: 32, height: 32, borderRadius: 6, background: "#f0f2ff",
+                        <div style={{ width: 38, height: 38, borderRadius: 8, background: "#f0f2ff",
                           border: "1.5px solid #e8eaff", display: "flex", alignItems: "center",
                           justifyContent: "center", flexShrink: 0 }}>
-                          <i className="fa fa-cube" style={{ color: "#c8ccff", fontSize: 13 }} />
+                          <i className="fa fa-cube" style={{ color: "#c8ccff", fontSize: 16 }} />
                         </div>
                       )}
-                      <strong style={{ color: "#1a1a2e" }}>{v.product?.name || "-"}</strong>
+                      <div>
+                        <span style={{ fontWeight: 700, color: "#1a1a2e" }}>{v.product?.name || "-"}</span>
+                      </div>
                     </div>
                   </td>
                   <td style={styles.td}>
-                    {v.client
-                      ? <span style={{ fontWeight: 600, color: "#1a1a2e" }}>{v.client.name}</span>
-                      : <span style={{ color: "#ccc", fontSize: 12 }}>-</span>}
+                    {v.client ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{
+                          width: 30, height: 30, borderRadius: "50%",
+                          background: "linear-gradient(135deg, #6372ff, #5ca9fb)",
+                          color: "#fff", fontWeight: 700, fontSize: 11,
+                          display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                        }}>
+                          {((v.client.name || "?").charAt(0) + (v.client.lastName || "").charAt(0)).toUpperCase()}
+                        </div>
+                        <span style={{ fontWeight: 600, color: "#1a1a2e" }}>
+                          {v.client.name} {v.client.lastName || ""}
+                        </span>
+                      </div>
+                    ) : <span style={{ color: "#ccc", fontSize: 12 }}>--</span>}
                   </td>
-                  <td style={{ ...styles.td, textAlign: "center", fontWeight: 700 }}>{v.quantity}</td>
-                  <td style={styles.td}>${v.price}</td>
+                  <td style={{ ...styles.td, textAlign: "center", fontWeight: 700, color: "#1a1a2e" }}>{v.quantity}</td>
+                  <td style={{ ...styles.td, fontWeight: 700, color: "#1a1a2e" }}>${v.price}</td>
                   <td style={styles.td}>
                     {v.discount > 0
                       ? <span style={{ background: "#fff0f3", color: "#e05555", borderRadius: 6,
@@ -499,7 +673,7 @@ const Ventas = () => {
                       : <span style={{ color: "#ccc" }}>-</span>}
                   </td>
                   <td style={styles.td}>
-                    <strong style={{ color: "#27ae60", fontSize: 15 }}>${v.total}</strong>
+                    <span style={{ color: "#27ae60", fontSize: 15, fontWeight: 800 }}>${v.total}</span>
                   </td>
                   <td style={styles.td}>
                     <button style={styles.btnDelete} onClick={() => setConfirmId(v._id)}>
@@ -573,9 +747,9 @@ const styles = {
   },
   labelIcon: { fontSize: 11, color: "#9599b3" },
   input: {
-    border: "1.5px solid #e8eaff", borderRadius: 8, padding: "9px 12px",
-    fontSize: 13, color: "#1a1a2e", outline: "none",
-    background: "#fafbff", width: "100%", boxSizing: "border-box",
+    width: "100%", padding: "10px 14px", borderRadius: 8, border: "1.5px solid #e8e8e8",
+    fontSize: 14, color: "#1a1a2e", fontWeight: 600, outline: "none",
+    boxSizing: "border-box", background: "#fafafa", transition: "border-color 0.2s",
   },
   resumen: {
     background: "linear-gradient(135deg, #f8f9ff, #eef0ff)",
@@ -590,15 +764,21 @@ const styles = {
     fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5,
     textAlign: "left", borderBottom: "1.5px solid #f0f0f0",
   },
-  td: { padding: "12px 16px", fontSize: 13, verticalAlign: "middle" },
-  searchBox: {
-    display: "flex", alignItems: "center", background: "#fff",
-    border: "1.5px solid #e8eaff", borderRadius: 8, padding: "6px 12px",
-    gap: 8, minWidth: 200, flex: 1, maxWidth: 320,
+  td: { padding: "12px 16px", fontSize: 13, verticalAlign: "middle", color: "#1a1a2e", fontWeight: 600 },
+  searchBox: { position: "relative", width: 320 },
+  searchIcon: {
+    position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)",
+    color: "#6372ff", fontSize: 14, pointerEvents: "none",
   },
-  searchIcon:  { color: "#b0b4d0", fontSize: 14 },
-  searchInput: { border: "none", outline: "none", fontSize: 13, color: "#1a1a2e", width: "100%", background: "transparent" },
-  searchClear: { background: "none", border: "none", cursor: "pointer", color: "#bbb", fontSize: 12, padding: 0 },
+  searchInput: {
+    width: "100%", padding: "10px 14px 10px 40px", borderRadius: 10,
+    border: "1.5px solid #d0d4ff", fontSize: 14, outline: "none",
+    boxSizing: "border-box", background: "#fff", color: "#1a1a2e", fontWeight: 600,
+  },
+  searchClear: {
+    position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
+    background: "none", border: "none", cursor: "pointer", color: "#bbb", fontSize: 13, padding: 0,
+  },
   empty: {
     background: "#fff", borderRadius: 12, padding: "50px 30px",
     textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.07)",

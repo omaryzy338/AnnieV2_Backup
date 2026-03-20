@@ -55,8 +55,8 @@ const Inicio = () => {
 
   const stockBajo = productos.filter((p) => p.quantity < 5);
 
-  // Top productos: los que más veces aparecen en ventas
-  const topProductos = Object.values(
+  // Top productos: #1 más vendido por cantidad, #2 mayor ganancia generada (sin duplicar)
+  const topMapProductos = Object.values(
     ventas.reduce((acc, v) => {
       const key = v.product?._id;
       if (!key) return acc;
@@ -65,7 +65,17 @@ const Inicio = () => {
       acc[key].total  += v.total;
       return acc;
     }, {})
-  ).sort((a, b) => b.total - a.total).slice(0, 5);
+  );
+
+  const topProductos = [...topMapProductos].sort((a, b) => b.total - a.total);
+  const masVendido  = [...topMapProductos].sort((a, b) => b.ventas - a.ventas)[0]  || null;
+  const masGanancia = [...topMapProductos].sort((a, b) => b.total  - a.total)[0]   || null;
+  const topProductosDuo = masVendido && masGanancia && masVendido.nombre === masGanancia.nombre
+    ? [{ ...masVendido, badge: "Más vendido · Más ganancia" }]
+    : [
+        masVendido  ? { ...masVendido,  badge: "Más vendido"  } : null,
+        masGanancia ? { ...masGanancia, badge: "Más ganancia" } : null,
+      ].filter(Boolean);
 
   const formatFecha = (iso) =>
     new Date(iso).toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
@@ -86,14 +96,7 @@ const Inicio = () => {
         <StatCard icon="fa-users"         label="Clientes"     value={clientes.length}                 color="#27ae60" />
       </div>
 
-      {/* Alerta stock bajo */}
-      {stockBajo.length > 0 && (
-        <div style={styles.alert}>
-          <i className="fa fa-exclamation-triangle" style={{ marginRight: 8 }} />
-          <strong>{stockBajo.length} producto(s) con poco stock:</strong>{" "}
-          {stockBajo.map((p) => `${p.name} (${p.quantity} ${p.unit || "uds."})`).join(" · ")}
-        </div>
-      )}
+
 
       {/* Grid principal: 3 columnas */}
       <div style={styles.mainGrid}>
@@ -124,10 +127,12 @@ const Inicio = () => {
             <span style={styles.sectionTitle}>Distribución de ventas</span>
           </div>
           {topProductos.length > 0 ? (
-            <ResponsiveContainer width="100%" height={160}>
+            <ResponsiveContainer width="100%" height={190}>
               <PieChart>
-                <Pie data={topProductos} dataKey="total" nameKey="nombre" cx="50%" cy="45%" outerRadius={65}
-                  label={({ percent }) => `${(percent * 100).toFixed(1)}%`} labelLine={false}>
+                <Pie data={topProductos} dataKey="total" nameKey="nombre" cx="50%" cy="46%"
+                  outerRadius={60} innerRadius={30} paddingAngle={2}
+                  label={({ percent }) => percent > 0.06 ? `${(percent * 100).toFixed(0)}%` : ""}
+                  labelLine={{ stroke: "#bbb", strokeWidth: 1 }}>
                   {topProductos.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
                 </Pie>
                 <Tooltip formatter={(v, name) => [`$${v}`, name]} contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 2px 12px rgba(0,0,0,0.1)" }} />
@@ -148,17 +153,22 @@ const Inicio = () => {
               <span style={{ ...styles.dot, background: "#FF9800" }} />
               <span style={styles.sectionTitle}>Top productos</span>
             </div>
-            {topProductos.length === 0 ? (
+            {topProductosDuo.length === 0 ? (
               <p style={{ color: "#bbb", textAlign: "center", fontSize: 13 }}>Sin datos</p>
             ) : (
-              topProductos.slice(0, 3).map((p, i) => (
+              topProductosDuo.map((p, i) => (
                 <div key={i} style={styles.topRow}>
-                  <span style={styles.rank}>#{i + 1}</span>
+                  <div style={{ width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
+                    background: i === 0 ? "linear-gradient(135deg,#FF9800,#ffb74d)" : "linear-gradient(135deg,#6372ff,#5ca9fb)",
+                    display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <i className={`fa fa-${i === 0 ? "trophy" : "star"}`} style={{ color: "#fff", fontSize: 11 }} />
+                  </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>{p.nombre}</div>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: "#1a1a2e" }}>{p.nombre}</div>
+                    <div style={{ fontSize: 10, color: "#9599b3", fontWeight: 600 }}>{p.badge}</div>
                     <div style={{ fontSize: 11, color: "#aaa" }}>{p.ventas} {p.unit || "uds."}</div>
                   </div>
-                  <strong style={{ color: "#6372ff", fontSize: 13 }}>${p.total}</strong>
+                  <strong style={{ color: "#6372ff", fontSize: 13, fontWeight: 700 }}>${p.total.toFixed(2)}</strong>
                 </div>
               ))
             )}
@@ -170,22 +180,39 @@ const Inicio = () => {
               <span style={{ ...styles.dot, background: "#5ca9fb" }} />
               <span style={styles.sectionTitle}>Estado del inventario</span>
             </div>
-            {productos.slice(0, 4).map((p) => {
-              const pct   = Math.min(100, Math.round((p.quantity / 100) * 100));
-              const color = p.quantity < 5 ? "#e94560" : p.quantity < 20 ? "#FF9800" : "#27ae60";
-              return (
-                <div key={p._id} style={{ marginBottom: 8 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 3 }}>
-                    <span>{p.name}</span>
-                    <span style={{ color, fontWeight: 600 }}>{p.quantity} {p.unit || "uds."}</span>
-                  </div>
-                  <div style={styles.barBg}>
-                    <div style={{ ...styles.barFill, width: `${pct}%`, background: color }} />
-                  </div>
-                </div>
-              );
-            })}
+            {(() => {
+              if (productos.length === 0) return <p style={{ color: "#bbb", textAlign: "center", fontSize: 13 }}>Sin productos</p>;
+              const sorted = [...productos].sort((a, b) => a.quantity - b.quantity);
+              const menor  = sorted[0];
+              const mayor  = sorted[sorted.length - 1];
+              const maxQ   = mayor.quantity || 1;
+              return [menor, mayor]
+                .filter((p, i, arr) => arr.findIndex(x => x._id === p._id) === i)
+                .map((p) => {
+                  const pct   = Math.min(100, Math.round((p.quantity / maxQ) * 100));
+                  const color = p.quantity < 5 ? "#e94560" : p.quantity < 20 ? "#FF9800" : "#27ae60";
+                  const tag   = p._id === menor._id
+                    ? { label: "Menor stock", color: "#e94560", bg: "#fff0f3" }
+                    : { label: "Mayor stock", color: "#27ae60", bg: "#f0fff4" };
+                  return (
+                    <div key={p._id} style={{ marginBottom: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, marginBottom: 4 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ fontWeight: 600, color: "#1a1a2e" }}>{p.name}</span>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: tag.color, background: tag.bg,
+                            borderRadius: 4, padding: "1px 6px" }}>{tag.label}</span>
+                        </div>
+                        <span style={{ color, fontWeight: 700 }}>{p.quantity} {p.unit || "uds."}</span>
+                      </div>
+                      <div style={styles.barBg}>
+                        <div style={{ ...styles.barFill, width: `${pct}%`, background: color }} />
+                      </div>
+                    </div>
+                  );
+                });
+            })()}
           </div>
+
 
         </div>
       </div>
@@ -210,13 +237,13 @@ const Inicio = () => {
               </tr>
             </thead>
             <tbody>
-              {ventas.slice(0, 4).map((v) => (
+              {ventas.slice(0, 1).map((v) => (
                 <tr key={v._id} style={{ borderBottom: "1px solid #f0f0f0" }}>
                   <td style={styles.td}>{v.product?.name || "—"}</td>
-                  <td style={styles.td}><span style={{ color: v.client ? "#333" : "#bbb" }}>{v.client?.name || "Sin cliente"}</span></td>
-                  <td style={styles.td}>{v.quantity}</td>
-                  <td style={styles.td}><strong style={{ color: "#27ae60" }}>${v.total}</strong></td>
-                  <td style={{ ...styles.td, color: "#aaa", fontSize: 12 }}>{formatFecha(v.createdAt)}</td>
+                  <td style={styles.td}><span style={{ color: v.client ? "#1a1a2e" : "#bbb", fontWeight: 600 }}>{v.client?.name || "Sin cliente"}</span></td>
+                  <td style={{ ...styles.td, fontWeight: 700, color: "#1a1a2e" }}>{v.quantity}</td>
+                  <td style={styles.td}><span style={{ color: "#27ae60", fontWeight: 800 }}>${v.total}</span></td>
+                  <td style={{ ...styles.td, color: "#aaa", fontSize: 12 }}>{formatFecha(v.saleDate || v.createdAt)}</td>
                 </tr>
               ))}
             </tbody>
@@ -239,7 +266,7 @@ const Inicio = () => {
             const label = dias[d.getDay()];
             const total = ventas
               .filter((v) => {
-                const vd = new Date(v.createdAt);
+                const vd = new Date(v.saleDate || v.createdAt);
                 return vd.toDateString() === d.toDateString();
               })
               .reduce((sum, v) => sum + v.total, 0);
@@ -300,21 +327,15 @@ const styles = {
   },
   cardValue: {
     fontSize: 20,
-    fontWeight: "bold",
+    fontWeight: 800,
     lineHeight: 1,
+    color: "#1a1a2e",
   },
   cardLabel: {
     fontSize: 12,
     color: "#888",
+    fontWeight: 600,
     marginTop: 3,
-  },
-  alert: {
-    background: "#fff3cd",
-    border: "1px solid #ffc107",
-    borderRadius: 8,
-    padding: "8px 14px",
-    color: "#856404",
-    fontSize: 13,
   },
   mainGrid: {
     display: "grid",
@@ -363,6 +384,8 @@ const styles = {
     padding: "8px 10px",
     fontSize: 13,
     verticalAlign: "middle",
+    color: "#1a1a2e",
+    fontWeight: 600,
   },
   topRow: {
     display: "flex",

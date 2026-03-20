@@ -37,10 +37,20 @@ const TopBar = () => {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  const PAGINAS = [
+    { label: "Inicio",      ruta: "/dashboard",            icon: "fa-home",        keywords: ["inicio", "home", "dashboard", "principio"] },
+    { label: "Productos",   ruta: "/dashboard/productos",   icon: "fa-cube",        keywords: ["productos", "producto", "inventario", "stock", "articulos"] },
+    { label: "Ventas",      ruta: "/dashboard/ventas",      icon: "fa-shopping-cart", keywords: ["ventas", "venta", "pedidos", "ordenes", "cobros"] },
+    { label: "Clientes",    ruta: "/dashboard/clientes",    icon: "fa-users",       keywords: ["clientes", "cliente", "personas", "compradores"] },
+    { label: "Reportes",    ruta: "/dashboard/reportes",    icon: "fa-bar-chart",   keywords: ["reportes", "reporte", "estadisticas", "graficas", "analisis"] },
+    { label: "Mi Negocio",  ruta: "/dashboard/mi-negocio", icon: "fa-building",    keywords: ["negocio", "empresa", "mi negocio", "perfil negocio", "configuracion"] },
+  ];
+
   const q         = busqueda.trim().toLowerCase();
   const matchProd = q.length >= 2 ? productos.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 5) : [];
   const matchCli  = q.length >= 2 ? clientes.filter((c) => `${c.name} ${c.lastName || ""}`.toLowerCase().includes(q)).slice(0, 5) : [];
-  const hayResultados = matchProd.length > 0 || matchCli.length > 0;
+  const matchPag  = q.length >= 2 ? PAGINAS.filter((pg) => pg.keywords.some((k) => k.includes(q))) : [];
+  const hayResultados = matchProd.length > 0 || matchCli.length > 0 || matchPag.length > 0;
 
   const handleSelect = (ruta) => {
     setBusqueda("");
@@ -130,6 +140,29 @@ const TopBar = () => {
                 ))}
               </>
             )}
+
+            {matchPag.length > 0 && (
+              <>
+                <div style={styles.dropLabel}>
+                  <i className="fa fa-compass" style={{ marginRight: 6 }} />Páginas
+                </div>
+                {matchPag.map((pg) => (
+                  <button key={pg.ruta} style={styles.dropItem}
+                    onClick={() => handleSelect(pg.ruta)}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                      background: "linear-gradient(135deg,#6372ff,#5ca9fb)",
+                      display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <i className={`fa ${pg.icon}`} style={{ color: "#fff", fontSize: 13 }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0, marginLeft: 8 }}>
+                      <div style={{ fontWeight: 600, color: "#1a1a2e", fontSize: 13 }}>{pg.label}</div>
+                      <div style={{ fontSize: 11, color: "#9599b3" }}>Ir a la sección</div>
+                    </div>
+                    <i className="fa fa-arrow-right" style={{ color: "#c8ccff", fontSize: 11 }} />
+                  </button>
+                ))}
+              </>
+            )}
           </div>
         )}
       </div>
@@ -183,7 +216,8 @@ const styles = {
     outline: "none",
     boxSizing: "border-box",
     background: "#fff",
-    color: "#333",
+    color: "#1a1a2e",
+    fontWeight: 600,
   },
   clearBtn: {
     position: "absolute",
