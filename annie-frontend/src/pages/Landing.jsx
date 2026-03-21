@@ -7,7 +7,6 @@ import {
   Services,
   Gallery,
   Testimonials,
-  Team,
   Contact,
 } from "../components";
 import JsonData from "../data/data.json";
@@ -27,7 +26,6 @@ const Landing = () => {
       <Services data={landingPageData.Services} />
       <Gallery data={landingPageData.Gallery} />
       <Testimonials data={landingPageData.Testimonials} />
-      <Team data={landingPageData.Team} />
       <Contact data={landingPageData.Contact} />
     </>
   );

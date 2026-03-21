@@ -4,67 +4,67 @@
     "paragraph": "Una plataforma web diseñada para ayudar a emprendedores a administrar su negocio de manera sencilla, accesible y moderna."
   },
   "About": {
-    "paragraph": "ANNIE ofrece una plataforma digital accesible que permite administrar información del negocio desde una interfaz web simple. La herramienta permite registrar productos, ventas y clientes sin necesidad de conocimientos técnicos avanzados.",
+    "paragraph": "ANNIE 2.0 es una plataforma web moderna diseñada para democratizar el acceso a herramientas de gestión empresarial. Permiten a emprendedores y pequeños negocios administrar su operación sin necesidad de inversiones costosas ni conocimientos técnicos avanzados.",
     "Why": [
-      "Interfaz intuitiva",
-      "Acceso desde cualquier dispositivo",
-      "Sin costos elevados",
-      "Herramientas modernas"
+      "Interfaz intuitiva y fácil de usar",
+      "Acceso desde cualquier dispositivo o navegador",
+      "Solución accesible sin costos prohibitivos",
+      "Herramientas modernas y confiables"
     ],
     "Why2": [
-      "Gestión de inventario",
-      "Registro de ventas",
-      "Administración de clientes",
-      "Reportes básicos"
+      "Gestión eficiente de inventario",
+      "Registro y seguimiento de ventas",
+      "Administración organizada de clientes",
+      "Reportes analíticos y exportación de datos"
     ]
   },
   "Gallery": [
     {
       "title": "React",
-      "largeImage": "img/portfolio/01-large.jpg",
-      "smallImage": "img/portfolio/01-small.jpg"
+      "largeImage": "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/react.svg",
+      "smallImage": "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/react.svg"
     },
     {
       "title": "Node.js",
-      "largeImage": "img/portfolio/02-large.jpg",
-      "smallImage": "img/portfolio/02-small.jpg"
+      "largeImage": "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/nodedotjs.svg",
+      "smallImage": "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/nodedotjs.svg"
     },
     {
       "title": "Express",
-      "largeImage": "img/portfolio/03-large.jpg",
-      "smallImage": "img/portfolio/03-small.jpg"
+      "largeImage": "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/express.svg",
+      "smallImage": "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/express.svg"
     },
     {
       "title": "MongoDB",
-      "largeImage": "img/portfolio/04-large.jpg",
-      "smallImage": "img/portfolio/04-small.jpg"
+      "largeImage": "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/mongodb.svg",
+      "smallImage": "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/mongodb.svg"
     },
     {
       "title": "JWT",
-      "largeImage": "img/portfolio/05-large.jpg",
-      "smallImage": "img/portfolio/05-small.jpg"
+      "largeImage": "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/jsonwebtokens.svg",
+      "smallImage": "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/jsonwebtokens.svg"
     }
   ],
   "Services": [
     {
       "icon": "fa fa-cubes",
-      "name": "Gestión de inventario",
-      "text": "Registra y administra tus productos de manera sencilla. Mantén un control preciso de tu stock y evita pérdidas."
+      "name": "Gestión de Inventario",
+      "text": "Controla tu stock en tiempo real. Registra productos con categorías, precios y cantidades. Recibe alertas cuando el inventario está bajo."
     },
     {
       "icon": "fa fa-shopping-cart",
-      "name": "Registro de ventas",
-      "text": "Registra todas tus ventas y mantén un historial completo. Facilita el seguimiento de ingresos y tendencias."
+      "name": "Registro de Ventas",
+      "text": "Documenta cada transacción con facilidad. Calcula automáticamente totales, ganancias y márgenes. Genera historial completo de operaciones."
     },
     {
       "icon": "fa fa-users",
-      "name": "Gestión de clientes",
-      "text": "Mantén información organizada de tus clientes. Mejora la relación y fideliza a tu base de compradores."
+      "name": "Gestión de Clientes",
+      "text": "Organiza la información de tus clientes. Visualiza historiales de compras. Mejora la relación y personaliza tu servicio."
     },
     {
       "icon": "fa fa-bar-chart",
-      "name": "Reportes básicos",
-      "text": "Visualiza datos generales de tu negocio. Toma decisiones informadas con reportes claros y accesibles."
+      "name": "Reportes y Análisis",
+      "text": "Visualiza métricas clave de tu negocio. Gráficos interactivos y reportes descargables. Toma decisiones basadas en datos."
     }
   ],
   "Testimonials": [
@@ -84,28 +84,6 @@
       "name": "Limitación Actual"
     }
   ],
-  "Team": [
-    {
-      "img": "img/team/01.jpg",
-      "name": "ANNIE 2.0",
-      "job": "Democratizar el acceso a herramientas digitales"
-    },
-    {
-      "img": "img/team/02.jpg",
-      "name": "Objetivo",
-      "job": "Facilitar la gestión empresarial para emprendedores"
-    },
-    {
-      "img": "img/team/03.jpg",
-      "name": "Impacto",
-      "job": "Mejorar organización y eficiencia en negocios pequeños"
-    },
-    {
-      "img": "img/team/04.jpg",
-      "name": "Visión",
-      "job": "Plataforma accesible y adaptable"
-    }
-  ],
   "Contact": {
     "address": "Empieza a administrar tu negocio hoy",
     "phone": "Crea tu cuenta en ANNIE y comienza a organizar tu negocio",
@@ -116,24 +94,24 @@
   },
   "Features": [
     {
-      "icon": "fa fa-comments-o",
+      "icon": "fa fa-warning",
       "title": "Problema Actual",
-      "text": "Muchos emprendedores no tienen acceso a herramientas digitales para administrar su negocio debido al costo de los sistemas de gestión empresarial."
+      "text": "Muchos emprendedores carecen de herramientas digitales asequibles para administrar su negocio."
     },
     {
-      "icon": "fa fa-bullhorn",
-      "title": "Barrera Económica",
-      "text": "Los sistemas de punto de venta pueden tener costos elevados que dificultan su adopción por parte de pequeños negocios."
+      "icon": "fa fa-money",
+      "title": "Costos Elevados",
+      "text": "Los sistemas de gestión empresarial tienen precios que dificultan su adopción por pequeños negocios."
     },
     {
-      "icon": "fa fa-group",
-      "title": "Limitación",
-      "text": "Esto limita la organización interna de muchos emprendimientos."
+      "icon": "fa fa-times-circle",
+      "title": "Desorganización",
+      "text": "Sin herramientas adecuadas, muchos emprendimientos operan de forma desorganizada e ineficiente."
     },
     {
-      "icon": "fa fa-magic",
+      "icon": "fa fa-lightbulb-o",
       "title": "Nuestra Solución",
-      "text": "ANNIE ofrece una alternativa accesible y moderna para gestionar negocios pequeños."
+      "text": "ANNIE es accesible, moderna y diseñada específicamente para emprendedores que desean profesionalizar su negocio."
     }
   ]
 }

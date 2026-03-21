@@ -8,16 +8,17 @@ export const Gallery = (props) => {
         <div className="section-title">
           <h2>Tecnologías Utilizadas</h2>
           <p>
-            ANNIE está construido con tecnologías modernas y robustas para garantizar una experiencia confiable.
+            ANNIE está construido con el stack tecnológico más moderno y fiable para garantizar rendimiento, seguridad y escalabilidad.
           </p>
         </div>
-        <div className="row">
+        <div className="row" style={{ marginTop: "40px" }}>
           <div className="portfolio-items">
             {props.data
               ? props.data.map((d, i) => (
                   <div
                     key={`${d.title}-${i}`}
-                    className="col-sm-6 col-md-4 col-lg-4"
+                    className="col-xs-12 col-sm-6 col-md-4 col-lg-4"
+                    style={{ paddingTop: "20px", paddingBottom: "20px" }}
                   >
                     <Image
                       title={d.title}

@@ -6,98 +6,87 @@ export const Contact = (props) => {
     <>
       <div id="contact">
         <div className="container">
-          <div className="col-md-8">
-            <div className="row">
+          <div className="row">
+            <div className="col-xs-12 col-md-8" style={{ marginBottom: "40px" }}>
               <div className="section-title">
-                <h2>Empieza Hoy</h2>
-                <p>
+                <h2 style={{ fontSize: "clamp(24px, 5vw, 32px)", marginBottom: "16px" }}>
+                  Comienza Hoy
+                </h2>
+                <p style={{ fontSize: "clamp(14px, 3vw, 16px)", lineHeight: "1.6", marginBottom: "24px" }}>
                   {props.data ? props.data.address : "Loading"}
                 </p>
-                <p>
+                <p style={{ fontSize: "clamp(13px, 2.5vw, 15px)", color: "#666", marginBottom: "32px" }}>
                   {props.data ? props.data.phone : "Loading"}
                 </p>
               </div>
-              <div className="row">
-                <div className="col-md-6">
+              <div className="row" style={{ marginTop: "32px" }}>
+                <div className="col-xs-12 col-sm-6" style={{ marginBottom: "16px" }}>
                   <Link
                     to="/register"
                     className="btn btn-custom btn-lg"
+                    style={{ width: "100%", textAlign: "center", display: "block", padding: "14px 20px" }}
                   >
-                    Registrarse
+                    Crear Cuenta
                   </Link>
                 </div>
-                <div className="col-md-6">
+                <div className="col-xs-12 col-sm-6" style={{ marginBottom: "16px" }}>
                   <Link
                     to="/login"
                     className="btn btn-custom btn-lg"
+                    style={{ width: "100%", textAlign: "center", display: "block", padding: "14px 20px" }}
                   >
                     Iniciar sesión
                   </Link>
                 </div>
               </div>
             </div>
-          </div>
-          <div className="col-md-3 col-md-offset-1 contact-info">
-            <div className="contact-item">
-              <h3>Información</h3>
-              <p>
-                <span>
-                  <i className="fa fa-envelope-o"></i> Email
-                </span>{" "}
-                {props.data ? props.data.email : "loading"}
-              </p>
-            </div>
-            <div className="contact-item">
-              <p>
-                <span>
-                  <i className="fa fa-facebook"></i> Facebook
-                </span>{" "}
-                <a href={props.data ? props.data.facebook : "/"}>
-                  {props.data ? props.data.facebook : "loading"}
-                </a>
-              </p>
-            </div>
-            <div className="contact-item">
-              <p>
-                <span>
-                  <i className="fa fa-twitter"></i> Twitter
-                </span>{" "}
-                <a href={props.data ? props.data.twitter : "/"}>
-                  {props.data ? props.data.twitter : "loading"}
-                </a>
-              </p>
-            </div>
-            <div className="contact-item">
-              <p>
-                <span>
-                  <i className="fa fa-youtube"></i> YouTube
-                </span>{" "}
-                <a href={props.data ? props.data.youtube : "/"}>
-                  {props.data ? props.data.youtube : "loading"}
-                </a>
-              </p>
-            </div>
-          </div>
-          <div className="col-md-12">
-            <div className="row">
-              <div className="social">
-                <ul>
-                  <li>
-                    <a href={props.data ? props.data.facebook : "/"}>
-                      <i className="fa fa-facebook"></i>
-                    </a>
-                  </li>
-                  <li>
-                    <a href={props.data ? props.data.twitter : "/"}>
-                      <i className="fa fa-twitter"></i>
-                    </a>
-                  </li>
-                  <li>
-                    <a href={props.data ? props.data.youtube : "/"}>
-                      <i className="fa fa-youtube"></i>
-                    </a>
-                  </li>
-                </ul>
+            
+            <div className="col-xs-12 col-md-3 col-md-offset-1 contact-info" style={{ marginTop: "30px" }}>
+              <div className="contact-item" style={{ marginBottom: "24px" }}>
+                <h3 style={{ fontSize: "clamp(14px, 2.5vw, 16px)", fontWeight: "600", marginBottom: "12px" }}>
+                  Información
+                </h3>
+                <p style={{ fontSize: "clamp(12px, 2vw, 14px)", color: "#666" }}>
+                  <span style={{ display: "flex", alignItems: "center", marginBottom: "8px" }}>
+                    <i className="fa fa-envelope-o" style={{ marginRight: "8px", color: "#6372ff" }}></i> 
+                    Email
+                  </span>
+                  <span style={{ marginLeft: "28px" }}>
+                    {props.data ? props.data.email : "loading"}
+                  </span>
+                </p>
+              </div>
+              
+              <div className="contact-item" style={{ marginBottom: "24px" }}>
+                <h3 style={{ fontSize: "clamp(14px, 2.5vw, 16px)", fontWeight: "600", marginBottom: "12px" }}>
+                  Síguenos
+                </h3>
+                <div style={{ display: "flex", gap: "16px" }}>
+                  <a 
+                    href={props.data ? props.data.facebook : "/"} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{ fontSize: "clamp(16px, 4vw, 20px)", color: "#6372ff", textDecoration: "none" }}
+                  >
+                    <i className="fa fa-facebook"></i>
+                  </a>
+                  <a 
+                    href={props.data ? props.data.twitter : "/"} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{ fontSize: "clamp(16px, 4vw, 20px)", color: "#6372ff", textDecoration: "none" }}
+                  >
+                    <i className="fa fa-twitter"></i>
+                  </a>
+                  <a 
+                    href={props.data ? props.data.youtube : "/"} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{ fontSize: "clamp(16px, 4vw, 20px)", color: "#6372ff", textDecoration: "none" }}
+                  >
+                    <i className="fa fa-youtube"></i>
+                  </a>
+                </div>
               </div>
             </div>
           </div>

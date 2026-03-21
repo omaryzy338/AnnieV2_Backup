@@ -30,8 +30,12 @@ export const Navigation = (props) => {
             <span className="icon-bar"></span>
             <span className="icon-bar"></span>
           </button>
-          <Link className="navbar-brand page-scroll" to="/">
-            Annie
+          <Link className="navbar-brand page-scroll" to="/" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="32" height="32" rx="6" fill="#6372ff"/>
+              <text x="16" y="22" fontSize="18" fontWeight="bold" fill="white" textAnchor="middle" fontFamily="Arial">A</text>
+            </svg>
+            <span style={{ fontWeight: "600", fontSize: "18px" }}>ANNIE</span>
           </Link>
         </div>
 
@@ -66,11 +70,6 @@ export const Navigation = (props) => {
               </a>
             </li>
             <li>
-              <a href="#team" className="page-scroll">
-                Team
-              </a>
-            </li>
-            <li>
               <a href="#contact" className="page-scroll">
                 Contact
               </a>
@@ -88,6 +87,13 @@ export const Navigation = (props) => {
                   <Link to="/register">Register</Link>
                 </li>
               </>
+            )}
+            {isLogged && (
+              <li>
+                <a onClick={handleLogout} style={{ cursor: "pointer" }}>
+                  Logout
+                </a>
+              </li>
             )}
           </ul>
         </div>
