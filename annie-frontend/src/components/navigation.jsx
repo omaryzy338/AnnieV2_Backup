@@ -33,7 +33,7 @@ export const Navigation = (props) => {
           <Link className="navbar-brand page-scroll" to="/" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
 
             <img 
-    src="/logo512.png" 
+    src="/favicon.png" 
     alt="Logo ANNIE" 
     width="200" 
     height="200" 
