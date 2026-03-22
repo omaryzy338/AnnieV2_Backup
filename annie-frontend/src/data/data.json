@@ -94,7 +94,7 @@
   },
   "Features": [
     {
-      "icon": "fa fa-warning",
+      "icon": "fa fa-exclamation-triangle",
       "title": "Problema Actual",
       "text": "Muchos emprendedores carecen de herramientas digitales asequibles para administrar su negocio."
     },
