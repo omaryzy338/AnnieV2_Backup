@@ -1,5 +1,21 @@
 /* ===== MEJORAS GENERALES ===== */
 
+html, body, #root {
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #1a1a2e;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100%;
+  margin: 0;
+}
+
+* {
+  transition: none !important;
+}
+
+
 /* Espaciado de secciones */
 #features,
 #about,

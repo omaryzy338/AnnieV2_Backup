@@ -1,19 +1,31 @@
 import React, { useState } from "react";
 import axios from "../api/axiosConfig";
 import { useNavigate, Link } from "react-router-dom";
+import useWindowWidth from "../hooks/useWindowWidth";
 
-const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
+const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
 
 const Register = () => {
   const [form, setForm] = useState({
     name: "", lastName: "", businessName: "",
     email: "", password: "", confirmPassword: "",
-    address: "", phone: "",
   });
+  const [logoFile, setLogoFile]   = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
   const [error, setError]     = useState("");
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
+
+  const handleLogo = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) { setError("La imagen no debe superar 3 MB"); return; }
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
+  };
   const navigate = useNavigate();
+  const w = useWindowWidth();
+  const isMobile = w < 768;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -39,13 +51,23 @@ const Register = () => {
         businessName: form.businessName,
         email:        form.email,
         password:     form.password,
-        address:      form.address || undefined,
-        phone:        form.phone   || undefined,
       });
       const { token, user } = res.data;
       localStorage.setItem("token", token);
       if (user) localStorage.setItem("user", JSON.stringify(user));
-      navigate("/dashboard");
+
+      // Subir foto del negocio si se seleccionó
+      if (logoFile) {
+        try {
+          const fd = new FormData();
+          fd.append("logo", logoFile);
+          await axios.post("/profile/business/logo", fd, {
+            headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
+          });
+        } catch (_) { /* no bloquear registro si falla la foto */ }
+      }
+
+      navigate("/dashboard/mi-negocio");
     } catch (err) {
       setError(err.response?.data?.message || "Error al crear la cuenta");
     } finally {
@@ -54,8 +76,9 @@ const Register = () => {
   };
 
   return (
-    <div style={styles.page}>
+    <div style={{ ...styles.page, flexDirection: isMobile ? "column" : "row" }}>
       {/* Panel izquierdo */}
+      {!isMobile && (
       <div style={styles.leftPanel}>
         <div style={styles.leftContent}>
           <div style={styles.brand}>ANNIE</div>
@@ -77,11 +100,17 @@ const Register = () => {
           <div style={styles.decorCircle2} />
         </div>
       </div>
+      )}
 
       {/* Panel derecho */}
       <div style={styles.rightPanel}>
-        <div style={styles.card}>
-          <div style={styles.mobileBrand}>ANNIE</div>
+        <div style={{ ...styles.card, padding: isMobile ? "28px 20px" : "36px 34px", position: "relative" }}>
+          {/* Botón volver */}
+          <button onClick={() => navigate("/")} style={styles.btnBack}>
+            <i className="fa fa-arrow-left" style={{ marginRight: 6 }} />Volver
+          </button>
+
+          {isMobile && <div style={{ ...styles.mobileBrand, display: "block" }}>ANNIE</div>}
 
           <div style={styles.cardHeader}>
             <div style={styles.iconWrap}>
@@ -100,7 +129,7 @@ const Register = () => {
 
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {/* Fila nombre + apellido */}
-            <div style={{ display: "flex", gap: 10 }}>
+            <div style={{ display: "flex", gap: 10, flexDirection: isMobile ? "column" : "row" }}>
               <div style={{ ...styles.fieldWrap, flex: 1 }}>
                 <label style={styles.label}>
                   <i className="fa fa-user" style={styles.labelIcon} />Nombre *
@@ -143,6 +172,32 @@ const Register = () => {
               />
             </div>
 
+            {/* Foto del negocio (opcional) */}
+            <div style={styles.fieldWrap}>
+              <label style={styles.label}>
+                <i className="fa fa-camera" style={styles.labelIcon} />Foto de tu negocio
+                <span style={{ fontWeight: 400, textTransform: "none", color: "#bbb", marginLeft: 4 }}>(opcional)</span>
+              </label>
+              <label htmlFor="logo-upload" style={styles.logoUploadArea}>
+                {logoPreview ? (
+                  <img src={logoPreview} alt="Preview" style={styles.logoPreviewImg} />
+                ) : (
+                  <>
+                    <i className="fa fa-camera" style={{ fontSize: 24, color: "#6372ff", marginBottom: 6 }} />
+                    <span style={{ fontSize: 12, color: "#888", fontWeight: 600 }}>Toca para subir imagen</span>
+                    <span style={{ fontSize: 11, color: "#bbb" }}>JPG, PNG o WebP · máx 3 MB</span>
+                  </>
+                )}
+              </label>
+              <input
+                id="logo-upload"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleLogo}
+                style={{ display: "none" }}
+              />
+            </div>
+
             <div style={styles.fieldWrap}>
               <label style={styles.label}>
                 <i className="fa fa-envelope" style={styles.labelIcon} />Correo electrónico *
@@ -158,33 +213,7 @@ const Register = () => {
               />
             </div>
 
-            {/* Fila dirección + teléfono */}
-            <div style={{ display: "flex", gap: 10 }}>
-              <div style={{ ...styles.fieldWrap, flex: 1 }}>
-                <label style={styles.label}>
-                  <i className="fa fa-map-marker" style={styles.labelIcon} />Dirección
-                </label>
-                <input
-                  style={styles.input}
-                  type="text" name="address"
-                  placeholder="Calle, colonia..."
-                  value={form.address}
-                  onChange={handleChange}
-                />
-              </div>
-              <div style={{ ...styles.fieldWrap, flex: 1 }}>
-                <label style={styles.label}>
-                  <i className="fa fa-phone" style={styles.labelIcon} />Teléfono
-                </label>
-                <input
-                  style={styles.input}
-                  type="tel" name="phone"
-                  placeholder="55 1234 5678"
-                  value={form.phone}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
+
 
             <div style={styles.fieldWrap}>
               <label style={styles.label}>
@@ -333,6 +362,22 @@ const styles = {
   },
   switchText: { textAlign: "center", marginTop: 20, color: "#aaa", fontSize: 13 },
   switchLink: { color: "#6372ff", fontWeight: 700, textDecoration: "none" },
+  btnBack: {
+    position: "absolute", top: 16, left: 16,
+    background: "none", border: "1.5px solid #e0e0e0", borderRadius: 8,
+    padding: "6px 14px", cursor: "pointer", color: "#888", fontSize: 12,
+    fontWeight: 600, display: "inline-flex", alignItems: "center",
+    transition: "all 0.15s",
+  },
+  logoUploadArea: {
+    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+    border: "2px dashed #d5d8f0", borderRadius: 12, padding: "16px 12px",
+    cursor: "pointer", background: "#f8f9ff", transition: "border-color 0.2s",
+    minHeight: 90, textAlign: "center", gap: 2,
+  },
+  logoPreviewImg: {
+    width: 80, height: 80, objectFit: "cover", borderRadius: 12,
+  },
 };
 
 export default Register;

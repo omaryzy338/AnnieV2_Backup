@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "../../api/axiosConfig";
+import useWindowWidth from "../../hooks/useWindowWidth";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -26,6 +27,8 @@ const Inicio = () => {
   const [clientes, setClientes]   = useState([]);
   const [ventas, setVentas]       = useState([]);
   const [loading, setLoading]     = useState(true);
+  const w = useWindowWidth();
+  const isMobile = w < 768;
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
@@ -89,7 +92,7 @@ const Inicio = () => {
       </p>
 
       {/* Tarjetas */}
-      <div style={styles.cardRow}>
+      <div className="dash-stat-row" style={{ ...styles.cardRow, gridTemplateColumns: isMobile ? "1fr 1fr" : undefined }}>
         <StatCard icon="fa-shopping-cart" label="Total Ventas" value={`$${resumen?.totalVentas ?? 0}`} color="#6372ff" />
         <StatCard icon="fa-shopping-cart" label="Num. Ventas"  value={resumen?.cantidadVentas ?? 0}    color="#5ca9fb" />
         <StatCard icon="fa-cube"          label="Productos"    value={productos.length}                color="#FF9800" />
@@ -99,7 +102,7 @@ const Inicio = () => {
 
 
       {/* Grid principal: 3 columnas */}
-      <div style={styles.mainGrid}>
+      <div style={{ ...styles.mainGrid, gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 300px" }}>
 
         {/* Col 1: Gráfica barras */}
         <div style={styles.section}>

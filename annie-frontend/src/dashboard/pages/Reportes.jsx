@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import axios from "../../api/axiosConfig";
-import * as XLSX from "xlsx";
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -90,17 +89,6 @@ const Reportes = () => {
   const totalMes   = ventasMes.reduce((a, v) => a + v.total, 0);
   const ticketProm = ventasMes.length > 0 ? totalMes / ventasMes.length : 0;
 
-  // Producto estrella del mes
-  const productoEstrella = (() => {
-    const mapa = {};
-    ventasMes.forEach((v) => {
-      const nombre = v.product?.name || "?";
-      mapa[nombre] = (mapa[nombre] || 0) + v.quantity;
-    });
-    const top = Object.entries(mapa).sort((a, b) => b[1] - a[1]);
-    return top[0]?.[0] || "—";
-  })();
-
   // Valor total del inventario
   const valorInventario = productos.reduce((a, p) => a + (p.price * p.quantity), 0);
 
@@ -167,42 +155,6 @@ const Reportes = () => {
     return Object.values(mapa).sort((a, b) => b.total - a.total).slice(0, 5);
   })();
 
-  // Exportar ventas a Excel
-  const exportarExcel = () => {
-    const datos = ventas.map((v) => ({
-      Fecha:          fechaUTC(v.saleDate || v.createdAt),
-      Producto:       v.product?.name || "",
-      Cliente:        v.client ? `${v.client.name || ""} ${v.client.lastName || ""}`.trim() : "Sin cliente",
-      Cantidad:       v.quantity,
-      "Precio Unit.": v.price,
-      Descuento:      v.discount || 0,
-      "Tipo desc.": v.discountType || "porcentaje",
-      Total:          v.total,
-    }));
-    const ws   = XLSX.utils.json_to_sheet(datos);
-    const wb   = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Ventas");
-    // Hoja resumen
-    const resumen = [
-      { Concepto: "Total ventas del mes", Valor: `$${totalMes.toFixed(2)}` },
-      { Concepto: "Transacciones del mes", Valor: ventasMes.length },
-      { Concepto: "Ticket promedio",       Valor: `$${ticketProm.toFixed(2)}` },
-      { Concepto: "Valor del inventario",  Valor: `$${valorInventario.toFixed(2)}` },
-      { Concepto: "Producto estrella",     Valor: productoEstrella },
-    ];
-    const wsR = XLSX.utils.json_to_sheet(resumen);
-    XLSX.utils.book_append_sheet(wb, wsR, "Resumen");
-    XLSX.writeFile(wb, `reporte-ventas-${new Date().toISOString().split("T")[0]}.xlsx`);
-  };
-
-  // Helper: fecha sin desfase UTC
-  const fechaUTC = (iso) => {
-    const d = new Date(iso);
-    const day   = d.getUTCDate().toString().padStart(2, "0");
-    const mes   = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"][d.getUTCMonth()];
-    return `${day}/${mes}/${d.getUTCFullYear()}`;
-  };
-
   if (loading) return <div style={{ padding: 30 }}>Cargando reportes...</div>;
 
   return (
@@ -219,13 +171,10 @@ const Reportes = () => {
             Análisis de ventas, inventario y clientes
           </p>
         </div>
-        <button onClick={exportarExcel} style={styles.btnExport}>
-          <i className="fa fa-file-excel-o" style={{ marginRight: 7 }} />Exportar a Excel
-        </button>
       </div>
 
       {/* Tarjetas resumen */}
-      <div style={styles.cardsGrid}>
+      <div className="dash-kpi-grid" style={styles.cardsGrid}>
         <div style={styles.card}>
           <div style={{ ...styles.cardIcon, background: "#f0f2ff" }}>
             <i className="fa fa-money" style={{ color: "#6372ff", fontSize: 22 }} />
@@ -332,7 +281,7 @@ const Reportes = () => {
       </div>
 
       {/* Fila: Top productos + Ventas por categoría */}
-      <div style={styles.twoCol}>
+      <div className="dash-two-col" style={styles.twoCol}>
 
         {/* Bar: top productos */}
         <div style={styles.chartCard}>
@@ -412,16 +361,8 @@ const Reportes = () => {
         ))}
       </div>
 
-      {/* Nota si product estrella */}
-      {productoEstrella !== "—" && (
-        <div style={styles.estrella}>
-          <i className="fa fa-star" style={{ color: "#ffb74d", marginRight: 8, fontSize: 16 }} />
-          <span>Producto estrella del mes: <strong>{productoEstrella}</strong></span>
-        </div>
-      )}
-
       {/* Comparativo mes actual vs anterior */}
-      <div style={styles.twoCol}>
+      <div className="dash-two-col" style={styles.twoCol}>
         {/* Barra comparativa por producto */}
         <div style={styles.chartCard}>
           <div style={styles.chartHeader}>
@@ -500,7 +441,7 @@ const Reportes = () => {
       </div>
 
       {/* Fila: Top clientes + Últimas ventas */}
-      <div style={styles.twoCol}>
+      <div className="dash-two-col" style={styles.twoCol}>
 
         {/* Top clientes */}
         <div style={styles.chartCard}>
@@ -594,11 +535,6 @@ const Reportes = () => {
 };
 
 const styles = {
-  btnExport: {
-    background: "linear-gradient(to right, #6372ff, #5ca9fb)", color: "#fff", border: "none",
-    borderRadius: 8, padding: "10px 18px", cursor: "pointer", fontWeight: 600, fontSize: 13,
-    display: "inline-flex", alignItems: "center", flexShrink: 0,
-  },
   cardsGrid: {
     display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 14,
   },
@@ -638,11 +574,6 @@ const styles = {
   },
   statNum:   { fontSize: 28, fontWeight: 800, lineHeight: 1 },
   statLabel: { fontSize: 12, color: "#9599b3", marginTop: 6 },
-  estrella: {
-    background: "linear-gradient(to right, #fffde7, #fff9e3)",
-    border: "1.5px solid #ffe082", borderRadius: 10, padding: "12px 18px",
-    fontSize: 14, color: "#7a5f00", display: "flex", alignItems: "center",
-  },
 };
 
 export default Reportes;

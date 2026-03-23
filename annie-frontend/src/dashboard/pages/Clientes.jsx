@@ -1,5 +1,6 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "../../api/axiosConfig";
+import useWindowWidth from "../../hooks/useWindowWidth";
 
 const camposIniciales = { name: "", lastName: "", email: "", phone: "" };
 
@@ -15,6 +16,8 @@ const Clientes = () => {
   const [busqueda, setBusqueda]       = useState("");
   const [confirmId, setConfirmId]     = useState(null);
   const [hoveredRow, setHoveredRow]   = useState(null);
+  const w = useWindowWidth();
+  const isMobile = w < 768;
 
   const cargar = async () => {
     try {
@@ -131,9 +134,9 @@ const Clientes = () => {
       )}
 
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
         <div>
-          <h4 style={{ margin: 0, color: "#1a1a2e" }}>
+          <h4 style={{ margin: 0, color: "#1a1a2e", fontSize: isMobile ? 16 : 18 }}>
             <i className="fa fa-users" style={{ color: "#6372ff", marginRight: 10 }} />
             Clientes
           </h4>
@@ -157,7 +160,7 @@ const Clientes = () => {
 
       {/* KPI cards */}
       {clientes.length > 0 && (
-        <div style={styles.kpiGrid}>
+        <div className="dash-kpi-grid" style={styles.kpiGrid}>
           {[
             { icon: "fa-users",        bg: "#f0f2ff", color: "#6372ff", val: clientes.length, label: "Total clientes"    },
             { icon: "fa-envelope",     bg: "#e8f5e9", color: "#27ae60", val: conEmail,         label: "Con email"         },
@@ -185,7 +188,7 @@ const Clientes = () => {
             <h5 style={{ margin: 0, color: "#1a1a2e" }}>{editId ? "Editar cliente" : "Nuevo cliente"}</h5>
           </div>
           <form onSubmit={handleSubmit}>
-            <div style={styles.formGrid}>
+            <div className="dash-form-grid" style={styles.formGrid}>
               <div style={styles.fieldWrap}>
                 <label style={styles.label}>
                   <i className="fa fa-user" style={styles.labelIcon} />Nombre *
@@ -232,7 +235,7 @@ const Clientes = () => {
       {/* Busqueda + contador */}
       {clientes.length > 0 && (
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <div style={styles.searchBox}>
+          <div style={{ ...styles.searchBox, width: isMobile ? "100%" : 340 }}>
             <i className="fa fa-search" style={styles.searchIcon} />
             <input
               style={styles.searchInput}
@@ -259,8 +262,54 @@ const Clientes = () => {
           <div style={{ fontWeight: 600, color: "#555", marginBottom: 4 }}>Aun no tienes clientes</div>
           <div style={{ color: "#aaa", fontSize: 13 }}>Agrega tu primer cliente con el boton de arriba</div>
         </div>
+      ) : isMobile ? (
+        /* Vista cards en móvil */
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {clientesFiltrados.length === 0 ? (
+            <div style={{ padding: 30, textAlign: "center", color: "#aaa", fontSize: 13, background: "#fff", borderRadius: 12 }}>
+              Sin resultados para <strong>"{busqueda}"</strong>
+            </div>
+          ) : clientesFiltrados.map((c) => {
+            const st = statsCliente(c._id);
+            return (
+              <div key={c._id} style={{ background: "#fff", borderRadius: 12, padding: 16, boxShadow: "0 2px 8px rgba(0,0,0,0.07)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                  <div style={styles.avatar}>{inicial(c)}</div>
+                  <div style={{ flex: 1 }}>
+                    <strong style={{ color: "#1a1a2e", fontSize: 14 }}>{c.name} {c.lastName || ""}</strong>
+                    {c.email && (
+                      <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>
+                        <i className="fa fa-envelope" style={{ color: "#6372ff", fontSize: 10, marginRight: 5 }} />{c.email}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+                  {c.phone && (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, background: "#f0f2ff", borderRadius: 20, padding: "3px 10px", fontWeight: 600, color: "#6372ff" }}>
+                      <i className="fa fa-phone" style={{ fontSize: 10 }} />{c.phone}
+                    </span>
+                  )}
+                  {st.compras > 0 ? (
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#6372ff" }}>${st.total.toFixed(2)} · {st.compras} compra{st.compras !== 1 ? "s" : ""}</span>
+                  ) : (
+                    <span style={{ fontSize: 12, color: "#ccc" }}>Sin compras</span>
+                  )}
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button style={{ ...styles.btnEdit, flex: 1, justifyContent: "center" }} onClick={() => handleEditar(c)}>
+                    <i className="fa fa-pencil" style={{ marginRight: 5 }} />Editar
+                  </button>
+                  <button style={{ ...styles.btnDelete, flex: 1, justifyContent: "center" }} onClick={() => setConfirmId(c._id)}>
+                    <i className="fa fa-trash" style={{ marginRight: 5 }} />Eliminar
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       ) : (
-        <div style={styles.tableCard}>
+        <div className="dash-table-wrap" style={styles.tableCard}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#f8f9fa", borderBottom: "2px solid #eee" }}>

@@ -1,5 +1,6 @@
 ﻿import React, { useEffect, useState, useRef } from "react";
 import axios from "../../api/axiosConfig";
+import useWindowWidth from "../../hooks/useWindowWidth";
 
 const formInicial = { productId: "", clientId: "", quantity: 1, discount: 0, discountType: "porcentaje", saleDate: new Date().toISOString().split("T")[0] };
 
@@ -16,6 +17,8 @@ const Ventas = () => {
   const [periodo, setPeriodo]         = useState("mes");
   const [hoveredRow, setHoveredRow]   = useState(null);
   const [form, setForm]               = useState(formInicial);
+  const ww = useWindowWidth();
+  const isMobile = ww < 768;
   const [productoSel, setProductoSel] = useState(null);
   const successTimer                  = useRef(null);
 
@@ -155,21 +158,6 @@ const Ventas = () => {
     return new Date(iso).toLocaleString("es-MX", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
   };
 
-  const handleExportCSV = () => {
-    const header = ["Fecha", "Producto", "Cliente", "Cantidad", "Precio", "Descuento", "Total"];
-    const rows = ventasFiltradas.map((v) => [
-      new Date(v.createdAt).toLocaleString("es-MX"),
-      v.product?.name || "",
-      v.client?.name  || "Sin cliente",
-      v.quantity, v.price, v.discount > 0 ? `${v.discount}` : "0", v.total,
-    ]);
-    const csv  = "\uFEFF" + [header, ...rows].map((r) => r.join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a"); a.href = url; a.download = "ventas.csv"; a.click();
-    URL.revokeObjectURL(url);
-  };
-
   if (loading) return <div style={{ padding: 30 }}>Cargando...</div>;
 
   return (
@@ -195,9 +183,9 @@ const Ventas = () => {
       )}
 
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
         <div>
-          <h4 style={{ margin: 0, color: "#1a1a2e" }}>
+          <h4 style={{ margin: 0, color: "#1a1a2e", fontSize: isMobile ? 16 : 18 }}>
             <i className="fa fa-shopping-cart" style={{ color: "#6372ff", marginRight: 10 }} />
             Ventas
           </h4>
@@ -222,9 +210,9 @@ const Ventas = () => {
       {success && <div style={styles.alertSuccess}><i className="fa fa-check-circle" style={{ marginRight: 8 }} />{success}</div>}
 
       {/* KPI cards */}
-      <div style={styles.kpiGrid}>
+      <div className="dash-kpi-grid" style={styles.kpiGrid}>
         {[
-          { icon: "fa-bolt",       bg: "#e8f5e9", color: "#27ae60", val: `$${ventasHoy.reduce((a,v) => a + v.total, 0).toFixed(2)}`, label: "Ventas hoy"         },
+          { icon: "fa-bolt",       bg: "#e8f5e9", color: "#6372ff", val: `$${ventasHoy.reduce((a,v) => a + v.total, 0).toFixed(2)}`, label: "Ventas hoy"         },
           { icon: "fa-calendar",   bg: "#f0f2ff", color: "#6372ff", val: `$${totalMes.toFixed(2)}`,                                   label: "Total este mes"     },
           { icon: "fa-line-chart", bg: "#fff8e1", color: "#f9a825", val: `$${ticketPromedio}`,                                        label: "Ticket promedio"    },
           { icon: "fa-users",      bg: "#fce4ec", color: "#e91e63", val: clientesUnicos,                                              label: "Clientes este mes"  },
@@ -234,7 +222,7 @@ const Ventas = () => {
               <i className={`fa ${icon}`} style={{ color, fontSize: 18 }} />
             </div>
             <div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: "#1a1a2e", lineHeight: 1.1 }}>{val}</div>
+              <div style={{ fontSize: isMobile ? 18 : 20, fontWeight: 800, color: "#1a1a2e", lineHeight: 1.1 }}>{val}</div>
               <div style={{ fontSize: 11, color: "#9599b3", marginTop: 3 }}>{label}</div>
             </div>
           </div>
@@ -249,7 +237,7 @@ const Ventas = () => {
             <h5 style={{ margin: 0, color: "#1a1a2e" }}>Nueva venta</h5>
           </div>
           <form onSubmit={handleSubmit}>
-            <div style={styles.formGrid}>
+            <div className="dash-form-grid" style={styles.formGrid}>
 
               {/* Producto (ancho completo) */}
               <div style={{ ...styles.fieldWrap, gridColumn: "1 / -1" }}>
@@ -481,7 +469,7 @@ const Ventas = () => {
                   )}
                   <div style={{ marginLeft: "auto", textAlign: "right" }}>
                     <div style={{ fontSize: 11, color: "#9599b3", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Total</div>
-                    <div style={{ fontSize: 26, fontWeight: 800, color: "#27ae60" }}>${calcTotal()}</div>
+                    <div style={{ fontSize: isMobile ? 20 : 24, fontWeight: 800, color: "#27ae60" }}>${calcTotal()}</div>
                   </div>
                 </div>
 
@@ -491,7 +479,7 @@ const Ventas = () => {
                   const sinCosto = !productoSel.cost || productoSel.cost <= 0;
                   return (
                     <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed #e8eaff",
-                      display: "flex", gap: 28, flexWrap: "wrap", alignItems: "center" }}>
+                      display: "flex", gap: 28, flexWrap: "wrap", alignItems: "baseline" }}>
                       {sinCosto ? (
                         <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff8e1",
                           border: "1.5px solid #ffe082", borderRadius: 8, padding: "8px 14px", flex: 1 }}>
@@ -504,15 +492,15 @@ const Ventas = () => {
                         <>
                           <div>
                             <div style={{ fontSize: 11, color: "#1a1a2e", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Ganancia neta</div>
-                            <div style={{ fontSize: 22, fontWeight: 800, color: Number(g.ganancia) >= 0 ? "#27ae60" : "#e94560", lineHeight: 1.1 }}>${g.ganancia}</div>
+                            <div style={{ fontSize: isMobile ? 18 : 20, fontWeight: 800, color: Number(g.ganancia) >= 0 ? "#27ae60" : "#e94560", lineHeight: 1.1 }}>${g.ganancia}</div>
                           </div>
                           <div>
                             <div style={{ fontSize: 11, color: "#1a1a2e", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Margen</div>
-                            <div style={{ fontSize: 16, fontWeight: 700, color: Number(g.ganancia) >= 0 ? "#27ae60" : "#e94560" }}>{g.pct}%</div>
+                            <div style={{ fontSize: isMobile ? 18 : 20, fontWeight: 800, color: Number(g.ganancia) >= 0 ? "#27ae60" : "#e94560" }}>{g.pct}%</div>
                           </div>
                           <div>
                             <div style={{ fontSize: 11, color: "#1a1a2e", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Costo total</div>
-                            <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a2e" }}>${g.costoTotal}</div>
+                            <div style={{ fontSize: isMobile ? 18 : 20, fontWeight: 800, color: "#1a1a2e" }}>${g.costoTotal}</div>
                           </div>
                         </>
                       )}
@@ -535,10 +523,10 @@ const Ventas = () => {
         </div>
       )}
 
-      {/* Barra busqueda + periodo + exportar */}
+      {/* Barra busqueda + periodo */}
       {ventas.length > 0 && (
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          <div style={styles.searchBox}>
+          <div style={{ ...styles.searchBox, width: isMobile ? "100%" : 320 }}>
             <i className="fa fa-search" style={styles.searchIcon} />
             <input style={styles.searchInput} placeholder="Buscar por producto o cliente..."
               value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
@@ -568,13 +556,6 @@ const Ventas = () => {
               </button>
             ))}
           </div>
-
-          <button onClick={handleExportCSV}
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, marginLeft: "auto",
-              background: "#fff", color: "#6372ff", border: "1.5px solid #d0d4ff",
-              borderRadius: 8, padding: "8px 14px", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>
-            <i className="fa fa-download" />Exportar CSV
-          </button>
         </div>
       )}
 
@@ -594,8 +575,52 @@ const Ventas = () => {
           <div style={{ fontWeight: 600, color: "#555", marginBottom: 4 }}>Sin ventas todavia</div>
           <div style={{ color: "#aaa", fontSize: 13 }}>Registra tu primera venta con el boton de arriba</div>
         </div>
+      ) : isMobile ? (
+        /* Vista cards en móvil */
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {ventasFiltradas.length === 0 ? (
+            <div style={{ padding: 30, textAlign: "center", color: "#aaa", fontSize: 13, background: "#fff", borderRadius: 12 }}>
+              Sin resultados para este periodo
+            </div>
+          ) : ventasFiltradas.map((v) => (
+            <div key={v._id} style={{ background: "#fff", borderRadius: 12, padding: 16, boxShadow: "0 2px 8px rgba(0,0,0,0.07)", border: "1.5px solid #f0f2ff" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                {v.product?.image ? (
+                  <img src={v.product.image.startsWith("/uploads") ? `http://localhost:5000${v.product.image}` : v.product.image}
+                    alt="" style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 8, border: "1.5px solid #e8eaff", flexShrink: 0 }} />
+                ) : (
+                  <div style={{ width: 40, height: 40, borderRadius: 8, background: "#f0f2ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <i className="fa fa-cube" style={{ color: "#c8ccff", fontSize: 16 }} />
+                  </div>
+                )}
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, color: "#1a1a2e", fontSize: 14 }}>{v.product?.name || "-"}</div>
+                  <div style={{ fontSize: 11, color: "#9599b3" }}>{formatFecha(v.saleDate || v.createdAt)}</div>
+                </div>
+                <span style={{ color: "#27ae60", fontSize: 18, fontWeight: 800 }}>${v.total}</span>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                {v.client && (
+                  <span style={{ fontSize: 12, color: "#555", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                    <i className="fa fa-user" style={{ color: "#6372ff", fontSize: 10 }} />
+                    {v.client.name} {v.client.lastName || ""}
+                  </span>
+                )}
+                <span style={{ fontSize: 12, color: "#888" }}>×{v.quantity} · ${v.price}</span>
+                {v.discount > 0 && (
+                  <span style={{ background: "#fff0f3", color: "#e05555", borderRadius: 6, padding: "2px 7px", fontSize: 11, fontWeight: 700 }}>
+                    {v.discountType === "fijo" ? `$${v.discount}` : `${v.discount}%`}
+                  </span>
+                )}
+                <button style={{ ...styles.btnDelete, marginLeft: "auto", padding: "4px 10px" }} onClick={() => setConfirmId(v._id)}>
+                  <i className="fa fa-trash" style={{ fontSize: 11 }} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
-        <div style={styles.tableCard}>
+        <div className="dash-table-wrap" style={styles.tableCard}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#f8f9ff" }}>

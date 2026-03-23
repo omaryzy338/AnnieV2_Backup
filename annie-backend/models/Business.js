@@ -7,7 +7,11 @@ const businessSchema = new mongoose.Schema({
   address:  { type: String, trim: true },
   phone:    { type: String, trim: true },
   category: { type: String, trim: true },
-  description: { type: String, trim: true }
+  description: { type: String, trim: true },
+  logo:     { type: String, trim: true },
+  country:  { type: String, trim: true },
+  state:    { type: String, trim: true },
+  city:     { type: String, trim: true }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Business', businessSchema);

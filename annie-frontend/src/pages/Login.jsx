@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "../api/axiosConfig";
 import { useNavigate, Link } from "react-router-dom";
+import useWindowWidth from "../hooks/useWindowWidth";
 
 const Login = () => {
   const [form, setForm]       = useState({ email: "", password: "" });
@@ -8,6 +9,8 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
   const navigate = useNavigate();
+  const w = useWindowWidth();
+  const isMobile = w < 768;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -32,8 +35,9 @@ const Login = () => {
   };
 
   return (
-    <div style={styles.page}>
+    <div style={{ ...styles.page, flexDirection: isMobile ? "column" : "row" }}>
       {/* Panel izquierdo — decorativo */}
+      {!isMobile && (
       <div style={styles.leftPanel}>
         <div style={styles.leftContent}>
           <div style={styles.brand}>ANNIE</div>
@@ -42,12 +46,18 @@ const Login = () => {
           <div style={styles.decorCircle2} />
         </div>
       </div>
+      )}
 
       {/* Panel derecho — formulario */}
       <div style={styles.rightPanel}>
-        <div style={styles.card}>
+        <div style={{ ...styles.card, padding: isMobile ? "28px 20px" : "44px 40px", position: "relative" }}>
+          {/* Botón volver */}
+          <button onClick={() => navigate("/")} style={styles.btnBack}>
+            <i className="fa fa-arrow-left" style={{ marginRight: 6 }} />Volver
+          </button>
+
           {/* Logo móvil */}
-          <div style={styles.mobileBrand}>ANNIE</div>
+          {isMobile && <div style={{ ...styles.mobileBrand, display: "block" }}>ANNIE</div>}
 
           <div style={styles.cardHeader}>
             <div style={styles.iconWrap}>
@@ -80,13 +90,18 @@ const Login = () => {
               />
             </div>
 
-            <div style={styles.fieldWrap}>
+            <style>{`
+        input[type=password]::-ms-clear, input[type=password]::-ms-reveal { display: none; }
+        input[type=password]::-webkit-textfield-decoration-container { display: none; }
+        input[type=password]::-webkit-credentials-auto-fill-button { display: none !important; }
+      `}</style>
+      <div style={styles.fieldWrap}>
               <label style={styles.label}>
                 <i className="fa fa-lock" style={styles.labelIcon} />Contraseña
               </label>
               <div style={{ position: "relative" }}>
                 <input
-                  style={styles.input}
+                  style={{ ...styles.input, WebkitTextSecurity: showPass ? "none" : "disc" }}
                   type={showPass ? "text" : "password"}
                   name="password"
                   placeholder="••••••••"
@@ -94,11 +109,12 @@ const Login = () => {
                   onChange={handleChange}
                   required
                   autoComplete="current-password"
+                  inputMode="text"
                 />
-                <button type="button" onClick={() => setShowPass((p) => !p)}
-                  style={styles.eyeBtn}>
+                <span onClick={() => setShowPass((p) => !p)}
+                  style={{ ...styles.eyeBtn, cursor: "pointer", background: "none", border: "none" }}>
                   <i className={`fa ${showPass ? "fa-eye-slash" : "fa-eye"}`} />
-                </button>
+                </span>
               </div>
             </div>
 
@@ -204,6 +220,13 @@ const styles = {
   },
   switchText: { textAlign: "center", marginTop: 22, color: "#aaa", fontSize: 13 },
   switchLink: { color: "#6372ff", fontWeight: 700, textDecoration: "none" },
+  btnBack: {
+    position: "absolute", top: 16, left: 16,
+    background: "none", border: "1.5px solid #e0e0e0", borderRadius: 8,
+    padding: "6px 14px", cursor: "pointer", color: "#888", fontSize: 12,
+    fontWeight: 600, display: "inline-flex", alignItems: "center",
+    transition: "all 0.15s",
+  },
 };
 
 export default Login;

@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "../../api/axiosConfig";
+import useWindowWidth from "../../hooks/useWindowWidth";
 
 const CATEGORIAS = [
   { label: "Bebidas",            icon: "fa-tint",      color: "#4fc3f7", bg: "#e1f5fe" },
@@ -40,11 +41,12 @@ const Productos = () => {
   const [filtro, setFiltro]       = useState("Todos");
   const [busqueda, setBusqueda]   = useState("");
   const [confirmId, setConfirmId] = useState(null); // id del producto a eliminar
-  const [imgModo, setImgModo]     = useState("archivo");
   const [uploading, setUploading] = useState(false);
   const [ordenar, setOrdenar]     = useState("");      // "" | "stock_asc" | "stock_desc" | "precio_desc"
   const [vista, setVista]         = useState("tabla"); // "tabla" | "grid"
   const [hoveredRow, setHoveredRow] = useState(null);
+  const ww = useWindowWidth();
+  const isMobile = ww < 768;
 
   const handleImageFile = async (e) => {
     const file = e.target.files[0];
@@ -117,20 +119,6 @@ const Productos = () => {
     finally { setConfirmId(null); }
   };
 
-  const handleExportCSV = () => {
-    const headers = ["Nombre", "Marca", "Categoría", "Precio venta", "Precio costo", "Margen%", "Stock", "Unidad"];
-    const rows = productos.map((p) => {
-      const margen = p.cost > 0 ? ((p.price - p.cost) / p.price * 100).toFixed(1) : "";
-      return [`"${p.name}"`, `"${p.brand || ""}"`, `"${p.category || ""}"`, p.price, p.cost || 0, margen, p.quantity, `"${p.unit || ""}"`];
-    });
-    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = "inventario.csv"; a.click();
-    URL.revokeObjectURL(url);
-  };
-
   // Categorías que aparecen en los productos actuales (para los filtros)
   const categoriasEnUso = ["Todos", ...new Set(productos.map((p) => p.category).filter(Boolean))];
 
@@ -182,11 +170,11 @@ const Productos = () => {
       )}
 
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
         <div>
-          <h4 style={{ margin: 0, color: "#1a1a2e" }}>
+          <h4 style={{ margin: 0, color: "#1a1a2e", fontSize: isMobile ? 16 : 18 }}>
             <i className="fa fa-cube" style={{ color: "#6372ff", marginRight: 10 }} />
-            Inventario de productos
+            {isMobile ? "Productos" : "Inventario de productos"}
           </h4>
           <p style={{ margin: "4px 0 0", color: "#aaa", fontSize: 13 }}>
             {productos.length} producto{productos.length !== 1 ? "s" : ""} registrados
@@ -208,7 +196,7 @@ const Productos = () => {
 
       {/* KPI cards */}
       {productos.length > 0 && (
-        <div style={styles.kpiGrid}>
+        <div className="dash-kpi-grid" style={styles.kpiGrid}>
           {[
             { icon: "fa-cube",                 bg: "#f0f2ff", color: "#6372ff", val: productos.length,             label: "Total productos"       },
             { icon: "fa-money",                bg: "#e8f5e9", color: "#27ae60", val: `$${valorInventario.toFixed(2)}`, label: "Valor en inventario" },
@@ -236,7 +224,7 @@ const Productos = () => {
             <h5 style={{ margin: 0, color: "#1a1a2e" }}>{editId ? "Editar producto" : "Nuevo producto"}</h5>
           </div>
           <form onSubmit={handleSubmit}>
-            <div style={styles.formGrid}>
+            <div className="dash-form-grid" style={styles.formGrid}>
 
               {/* Nombre */}
               <div style={styles.fieldWrap}>
@@ -415,10 +403,10 @@ const Productos = () => {
         </div>
       )}
 
-      {/* Barra de búsqueda + Ordenar + Exportar */}
+      {/* Barra de búsqueda + Ordenar */}
       {productos.length > 0 && (
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          <div style={styles.searchBox}>
+          <div style={{ ...styles.searchBox, width: isMobile ? "100%" : 280 }}>
             <i className="fa fa-search" style={styles.searchIcon} />
             <input
               style={styles.searchInput}
@@ -434,6 +422,7 @@ const Productos = () => {
           </div>
 
           {/* Botones de ordenamiento */}
+          {!isMobile && (
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {[
               { v: "",            icon: "fa-clock-o",           l: "Reciente"    },
@@ -456,16 +445,10 @@ const Productos = () => {
               </button>
             ))}
           </div>
-
-          {/* Exportar */}
-          <button onClick={handleExportCSV}
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, marginLeft: "auto",
-              background: "#fff", color: "#6372ff", border: "1.5px solid #d0d4ff",
-              borderRadius: 8, padding: "8px 14px", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>
-            <i className="fa fa-download" />Exportar CSV
-          </button>
+          )}
 
           {/* Toggle vista */}
+          {!isMobile && (
           <div style={{ display: "flex", border: "1.5px solid #e0e0e0", borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
             {[{ v: "tabla", icon: "fa-list" }, { v: "grid", icon: "fa-th" }].map(({ v, icon }) => (
               <button key={v} onClick={() => setVista(v)}
@@ -478,6 +461,7 @@ const Productos = () => {
               </button>
             ))}
           </div>
+          )}
         </div>
       )}
 
@@ -533,7 +517,7 @@ const Productos = () => {
           <div style={{ fontWeight: 600, color: "#555", marginBottom: 4 }}>Sin productos todavía</div>
           <div style={{ color: "#aaa", fontSize: 13 }}>Agrega tu primer producto con el botón de arriba</div>
         </div>
-      ) : vista === "grid" ? (
+      ) : (isMobile || vista === "grid") ? (
         /* ── Vista Grid ────────────────────────────────────────── */
         <div style={styles.gridContainer}>
           {productosFiltrados.length === 0 ? (
@@ -599,7 +583,7 @@ const Productos = () => {
         </div>
       ) : (
         /* ── Vista Tabla ─────────────────────────────────────── */
-        <div style={styles.tableCard}>
+        <div className="dash-table-wrap" style={styles.tableCard}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#f8f9fa", borderBottom: "2px solid #eee" }}>

@@ -11,8 +11,10 @@ export const Navigation = (props) => {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setIsLogged(false);
     navigate("/");
+    window.location.reload();
   };
 
   return (

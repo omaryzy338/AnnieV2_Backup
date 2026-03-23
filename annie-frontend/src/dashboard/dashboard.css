@@ -1,0 +1,90 @@
+/* ===== DASHBOARD RESPONSIVE ===== */
+
+.dash-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 992px) {
+  .dash-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .dash-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+  .dash-form-grid, .dash-two-col {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Tables scroll on mobile */
+.dash-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 767px) {
+  /* KPI grids: 4 cols -> 2 cols */
+  .dash-kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Form grids: 2 cols -> 1 col */
+  .dash-form-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Two-column layouts -> 1 col */
+  .dash-two-col {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Tables: smaller text */
+  .dash-table-wrap table {
+    min-width: 580px;
+  }
+
+  /* Card headers: stack on very small */
+  .dash-card-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  /* Top bar search */
+  .dash-topbar {
+    padding: 10px 12px !important;
+  }
+
+  /* Form action buttons */
+  .dash-form-actions {
+    flex-direction: column !important;
+  }
+  .dash-form-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Stat cards wrap */
+  .dash-stat-row {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    flex-wrap: wrap !important;
+  }
+  .dash-stat-row > div {
+    min-width: 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .dash-kpi-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .dash-stat-row {
+    grid-template-columns: 1fr !important;
+  }
+}

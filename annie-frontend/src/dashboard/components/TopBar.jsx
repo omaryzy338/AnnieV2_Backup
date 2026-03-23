@@ -2,11 +2,12 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "../../api/axiosConfig";
 
-const TopBar = () => {
+const TopBar = ({ isMobile, onMenuToggle }) => {
   const [busqueda, setBusqueda]   = useState("");
   const [showDrop, setShowDrop]   = useState(false);
   const [productos, setProductos] = useState([]);
   const [clientes, setClientes]   = useState([]);
+  const [logoUrl, setLogoUrl]     = useState(null);
   const wrapperRef = useRef(null);
   const navigate   = useNavigate();
 
@@ -18,10 +19,22 @@ const TopBar = () => {
   useEffect(() => {
     const cargar = async () => {
       try {
-        const [rP, rC] = await Promise.all([axios.get("/products"), axios.get("/clients")]);
+        const [rP, rC, rPerfil] = await Promise.all([
+          axios.get("/products"),
+          axios.get("/clients"),
+          axios.get("/profile")
+        ]);
         setProductos(rP.data);
         setClientes(rC.data);
-      } catch {}
+
+        const businessLogo = rPerfil.data.business?.logo;
+        if (businessLogo) {
+          const base = process.env.REACT_APP_API_URL || "http://localhost:5000";
+          setLogoUrl(businessLogo.startsWith("http") ? businessLogo : `${base}${businessLogo}`);
+        }
+      } catch {
+        // ignore
+      }
     };
     cargar();
   }, []);
@@ -60,8 +73,18 @@ const TopBar = () => {
 
   return (
     <div style={styles.topbar}>
+      {/* Hamburger en mobile */}
+      {isMobile && (
+        <button onClick={onMenuToggle} style={{
+          background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#1a1a2e",
+          padding: "4px 8px", marginRight: 8, flexShrink: 0,
+        }}>
+          <i className="fa fa-bars" />
+        </button>
+      )}
+
       {/* Buscador */}
-      <div ref={wrapperRef} style={styles.searchWrapper}>
+      <div ref={wrapperRef} style={{ ...styles.searchWrapper, width: isMobile ? "100%" : 320 }}>
         <i className="fa fa-search" style={styles.searchIcon} />
         <input
           style={styles.searchInput}
@@ -168,15 +191,23 @@ const TopBar = () => {
       </div>
 
       {/* Derecha: info del usuario */}
+      {!isMobile && (
       <div style={styles.userArea}>
         {nombreCompleto && (
           <div style={{ textAlign: "right" }}>
             <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a2e" }}>{nombreCompleto}</div>
-            <div style={{ fontSize: 11, color: "#aaa" }}>Administrador</div>
+            {/* Administrador eliminado */}
           </div>
         )}
-        <div style={styles.avatar}>{inicial}</div>
+        <div style={styles.avatar}>
+          {logoUrl ? (
+            <img src={logoUrl} alt="Logo" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
+          ) : (
+            inicial
+          )}
+        </div>
       </div>
+      )}
     </div>
   );
 };
