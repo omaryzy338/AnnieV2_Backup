@@ -18,6 +18,7 @@ export const Navigation = (props) => {
   return (
     <nav id="menu" className="navbar navbar-default navbar-fixed-top">
       <div className="container">
+
         <div className="navbar-header">
           <button
             type="button"
@@ -30,15 +31,18 @@ export const Navigation = (props) => {
             <span className="icon-bar"></span>
             <span className="icon-bar"></span>
           </button>
-          <Link className="navbar-brand page-scroll" to="/" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
 
-            <img 
-    src="/favicon.png" 
-    alt="Logo ANNIE" 
-    width="200" 
-    height="200" 
-    style={{ marginRight: "auto", marginLeft: "auto", marginTop: "10px" }}
-  />
+          <Link
+            className="navbar-brand page-scroll"
+            to="/"
+            style={{ display: "flex", alignItems: "center", gap: "8px" }}
+          >
+                              <img
+                                src="/favicon.png"
+                                alt="Logo ANNIE"
+                                style={{ height: "75px", width: "auto", display: "block", margin: 0 }}
+                              />
+
           </Link>
         </div>
 
