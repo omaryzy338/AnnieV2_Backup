@@ -13,7 +13,7 @@ const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<
 // ── REGISTRO ─────────────────────────────────────────────────
 router.post('/register', async (req, res) => {
   try {
-    const { name, lastName, email, password, businessName, address, phone, category, description } = req.body;
+    const { name, lastName, email, password, businessName, address, phone, category, description } = req.body || {};
 
     // Campos obligatorios
     if (!name || !lastName || !email || !password || !businessName)
@@ -70,7 +70,7 @@ router.post('/register', async (req, res) => {
 // ── LOGIN ───────────────────────────────────────────────────────────
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.body || {};
 
     if (!email || !password)
       return res.status(400).json({ message: 'Email y contraseña son requeridos' });
