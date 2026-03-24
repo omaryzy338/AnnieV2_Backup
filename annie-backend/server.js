@@ -15,6 +15,11 @@ app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(require('path').join(__dirname, 'uploads')));
 
+// ruta raíz — verificar que la API está viva
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', message: 'Annie API funcionando correctamente 🚀' });
+});
+
 // rutas
 const authRoutes     = require('./routes/auth');
 const profileRoutes  = require('./routes/profile');
