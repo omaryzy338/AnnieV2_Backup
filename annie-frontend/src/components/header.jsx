@@ -1,5 +1,4 @@
 import React from "react";
-import { Link } from "react-router-dom";
 
 export const Header = (props) => {
   return (
@@ -29,31 +28,6 @@ export const Header = (props) => {
                 >
                   {props.data ? props.data.paragraph : "Loading"}
                 </p>
-                
-                <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap", marginBottom: "20px" }}>
-                  <Link
-                    to="/login"
-                    className="btn btn-custom btn-lg page-scroll"
-                    style={{ display: "inline-block", padding: "12px 28px" }}
-                  >
-                    Iniciar sesión
-                  </Link>
-                  <Link
-                    to="/register"
-                    className="btn btn-custom btn-lg page-scroll"
-                    style={{ display: "inline-block", padding: "12px 28px" }}
-                  >
-                    Registrarse
-                  </Link>
-                </div>
-
-                <a
-                  href="#features"
-                  className="btn btn-custom btn-lg page-scroll"
-                  style={{ display: "inline-block", padding: "12px 28px", marginTop: "10px" }}
-                >
-                  Explorar plataforma
-                </a>
               </div>
             </div>
           </div>
