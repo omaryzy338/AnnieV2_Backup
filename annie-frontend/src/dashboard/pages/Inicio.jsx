@@ -56,6 +56,7 @@ const Inicio = () => {
 
   if (loading) return <div style={{ padding: 30 }}>Cargando...</div>;
 
+  // eslint-disable-next-line no-unused-vars
   const stockBajo = productos.filter((p) => p.quantity < 5);
 
   // Top productos: #1 más vendido por cantidad, #2 mayor ganancia generada (sin duplicar)
