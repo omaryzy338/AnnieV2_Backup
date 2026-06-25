@@ -94,10 +94,10 @@ export const Navigation = (props) => {
 
             {isLogged && (
               <li>
-                <a onClick={handleLogout} className="annie-nav__link" style={{ cursor: "pointer" }}>
+                <button onClick={handleLogout} className="annie-nav__link" type="button" aria-label="Cerrar sesión">
                   <i className="fa fa-sign-out" aria-hidden="true" />
                   <span>Salir</span>
-                </a>
+                </button>
               </li>
             )}
           </ul>
