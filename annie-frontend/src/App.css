@@ -50,17 +50,91 @@ html, body, #root {
 
 /* Navbar */
 #menu.navbar-default {
-  background-color: #ffffff;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+  background: rgba(255, 255, 255, 0.94);
+  border: none;
+  box-shadow: 0 16px 40px rgba(38, 70, 157, 0.12) !important;
+  transition: background 0.25s ease, transform 0.25s ease;
+}
 
-
-  align-content: center;
+#menu.navbar-default.scrolled {
+  background: rgba(255, 255, 255, 0.98);
+  transform: translateY(-1px);
 }
 
 #menu .navbar-brand {
-  font-weight: 600;
+  font-weight: 700;
   font-size: 18px;
-  color: #333 !important;
+  color: #1a1a2e !important;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.annie-nav__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #1a1a2e !important;
+}
+
+.annie-nav__item-logo,
+.annie-nav__logo {
+  height: 28px;
+  width: auto;
+  display: block;
+}
+
+.annie-nav__links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.annie-nav__link,
+#menu .navbar-nav li a {
+  color: #38407f !important;
+  font-weight: 500;
+  text-transform: capitalize;
+  letter-spacing: 0.02em;
+  padding: 12px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.annie-nav__link:hover,
+#menu .navbar-nav li.active a,
+#menu .navbar-nav li a:hover {
+  color: #4d66ff !important;
+}
+
+.annie-nav__cta-link {
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: transparent;
+  border: none;
+  color: #38407f !important;
+  font-weight: 700;
+  text-transform: none;
+}
+
+.annie-nav__cta-link:hover {
+  color: #4d66ff !important;
+}
+
+#menu .navbar-toggle {
+  border-color: #cdd6f0;
+}
+
+#menu .navbar-toggle .icon-bar {
+  background-color: #2c3d99;
+}
+
+#menu .navbar-toggle:hover {
+  border-color: #a3b3f5;
+}
+
+.navbar-default .navbar-nav > li > a {
+  transition: color 0.2s ease, background 0.2s ease;
 }
 
 /* Header */
