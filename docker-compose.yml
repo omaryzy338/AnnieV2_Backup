@@ -1,0 +1,62 @@
+# ── Stack completo de Annie ──────────────────────────────────────
+# Levantar todo:   docker compose up --build
+# Apagar:          docker compose down
+# Apagar + borrar datos: docker compose down -v
+#
+# URLs una vez arriba:
+#   Frontend  -> http://localhost:8080
+#   Backend   -> http://localhost:5000
+#   MongoDB   -> mongodb://localhost:27017/annie_db
+
+services:
+  # ── Base de datos ──────────────────────────────────────────────
+  mongo:
+    image: mongo:7
+    container_name: annie-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Backend (Express + Mongoose) ───────────────────────────────
+  backend:
+    build: ./annie-backend
+    container_name: annie-backend
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      PORT: 5000
+      DB_URI: mongodb://mongo:27017/annie_db
+      # Cámbialo por una clave larga y segura (o define JWT_SECRET en un .env)
+      JWT_SECRET: ${JWT_SECRET:-cambia_esto_por_una_clave_secreta_segura}
+      NODE_ENV: production
+    ports:
+      - "5000:5000"
+    volumes:
+      - uploads_data:/app/uploads
+
+  # ── Frontend (React servido con nginx) ─────────────────────────
+  frontend:
+    build:
+      context: ./annie-frontend
+      args:
+        # URL a la que el navegador llamará al backend (se hornea en build)
+        REACT_APP_API_URL: http://localhost:5000
+    container_name: annie-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  mongo_data:
+  uploads_data:
