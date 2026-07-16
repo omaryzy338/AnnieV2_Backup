@@ -22,7 +22,8 @@ app.use(
       styleSrc: ["'self'", "'unsafe-inline'"],
       connectSrc: ["'self'"],
       objectSrc: ["'none'"],
-      frameSrc: ["'self'"]
+      frameSrc: ["'self'"],
+      frameAncestors: ["'none'"]
     },
   })
 );
