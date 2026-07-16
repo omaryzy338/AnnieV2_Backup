@@ -12,27 +12,34 @@ const app = express();
 // conectar base de datos
 connectDB();
 
-// Configuración de CSP con Helmet
+// ✅ Configuración de CSP con Helmet
 app.use(
   helmet.contentSecurityPolicy({
     directives: {
-      defaultSrc: ["'self'"],              // Fallback general
-      imgSrc: ["'self'", "data:"],         // Permite imágenes locales y base64
-      scriptSrc: ["'self'"],               // Scripts solo desde tu servidor
-      styleSrc: ["'self'", "'unsafe-inline'"], // Estilos locales + inline (útil en dev)
-      connectSrc: ["'self'"],              // Conexiones API locales
-      objectSrc: ["'none'"],               // Bloquea objetos/flash
-      frameSrc: ["'self'"]                 // Frames solo locales
+      defaultSrc: ["'self'"],
+      imgSrc: ["'self'", "data:"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      connectSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      frameSrc: ["'self'"]
     },
   })
 );
 
+// Configuración estricta de CORS
+app.use(cors({
+  origin: 'http://localhost:3000',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+
 // middleware
-app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// ✅ Servir archivos estáticos (incluye tus íconos en /public/img)
+// ✅ Servir archivos estáticos (incluye tus íconos y robots.txt en /public)
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ruta raíz — verificar que la API está viva
