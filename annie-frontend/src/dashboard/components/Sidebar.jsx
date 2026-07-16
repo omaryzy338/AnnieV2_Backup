@@ -7,6 +7,7 @@ const links = [
   { to: "/dashboard/productos",  icon: "fa-cube",          label: "Productos" },
   { to: "/dashboard/ventas",     icon: "fa-shopping-cart", label: "Ventas" },
   { to: "/dashboard/clientes",   icon: "fa-users",         label: "Clientes" },
+  { to: "/dashboard/creditos",   icon: "fa-credit-card",   label: "Créditos" },
   { to: "/dashboard/reportes",   icon: "fa-bar-chart",     label: "Reportes" },
   { to: "/dashboard/mi-negocio", icon: "fa-briefcase",     label: "Mi Negocio" },
 ];

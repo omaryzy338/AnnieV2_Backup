@@ -2,7 +2,20 @@ import React, { useEffect, useState } from "react";
 import axios from "../../api/axiosConfig";
 import useWindowWidth from "../../hooks/useWindowWidth";
 
-const camposIniciales = { name: "", lastName: "", email: "", phone: "" };
+// Validación de RFC en el cliente (espejo del backend)
+const RFC_FISICA = /^[A-ZÑ&]{4}[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[A-Z0-9]{2}[0-9A]$/;
+const RFC_MORAL  = /^[A-ZÑ&]{3}[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[A-Z0-9]{2}[0-9A]$/;
+const limpiarRFC = (r) => String(r || "").toUpperCase().replace(/[\s-]/g, "");
+const rfcValido = (rfc, tipo) => {
+  const c = limpiarRFC(rfc);
+  if (tipo === "moral") return RFC_MORAL.test(c);
+  return RFC_FISICA.test(c); // por defecto persona física
+};
+
+const camposIniciales = {
+  name: "", lastName: "", email: "", phone: "",
+  esMayoreo: false, tipoPersona: "fisica", rfc: "", razonSocial: "", limiteCredito: "",
+};
 
 const Clientes = () => {
   const [clientes, setClientes]       = useState([]);
@@ -43,12 +56,39 @@ const Clientes = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(""); setSuccess("");
+
+    // Validación extra para clientes de mayoreo / crédito
+    if (form.esMayoreo) {
+      if (!form.rfc.trim()) return setError("El RFC es obligatorio para clientes de mayoreo / crédito");
+      if (!rfcValido(form.rfc, form.tipoPersona))
+        return setError(
+          form.tipoPersona === "moral"
+            ? "RFC de persona moral inválido (12 caracteres, ej. ABC010101XY9)"
+            : "RFC de persona física inválido (13 caracteres, ej. XAXX010101000)"
+        );
+    }
+
+    // Construir payload
+    const payload = {
+      name: form.name,
+      lastName: form.lastName,
+      email: form.email,
+      phone: form.phone,
+      esMayoreo: form.esMayoreo,
+    };
+    if (form.esMayoreo) {
+      payload.tipoPersona   = form.tipoPersona;
+      payload.rfc           = limpiarRFC(form.rfc);
+      payload.razonSocial   = form.razonSocial;
+      payload.limiteCredito = Number(form.limiteCredito) || 0;
+    }
+
     try {
       if (editId) {
-        await axios.put(`/clients/${editId}`, form);
+        await axios.put(`/clients/${editId}`, payload);
         mostrarExito("Cliente actualizado correctamente");
       } else {
-        await axios.post("/clients", form);
+        await axios.post("/clients", payload);
         mostrarExito("Cliente registrado correctamente");
       }
       setForm(camposIniciales);
@@ -61,7 +101,14 @@ const Clientes = () => {
   };
 
   const handleEditar = (c) => {
-    setForm({ name: c.name, lastName: c.lastName || "", email: c.email || "", phone: c.phone || "" });
+    setForm({
+      name: c.name, lastName: c.lastName || "", email: c.email || "", phone: c.phone || "",
+      esMayoreo: !!c.esMayoreo,
+      tipoPersona: c.tipoPersona || "fisica",
+      rfc: c.rfc || "",
+      razonSocial: c.razonSocial || "",
+      limiteCredito: c.limiteCredito != null ? String(c.limiteCredito) : "",
+    });
     setEditId(c._id);
     setShowForm(true);
     setError(""); setSuccess("");
@@ -218,6 +265,79 @@ const Clientes = () => {
                   onChange={handleChange} placeholder="Ej: 555-123-4567" />
               </div>
             </div>
+
+            {/* ── Mayoreo / crédito ──────────────────────────────── */}
+            <div style={{ marginTop: 16, padding: 16, background: "#f8f9ff", border: "1.5px solid #eef0ff", borderRadius: 10 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none" }}>
+                <input type="checkbox" checked={form.esMayoreo}
+                  onChange={(e) => setForm((p) => ({ ...p, esMayoreo: e.target.checked }))}
+                  style={{ width: 18, height: 18, accentColor: "#6372ff", cursor: "pointer" }} />
+                <span style={{ fontWeight: 700, color: "#1a1a2e", fontSize: 14 }}>
+                  <i className="fa fa-credit-card" style={{ color: "#6372ff", marginRight: 8 }} />
+                  Cliente de mayoreo (con línea de crédito)
+                </span>
+              </label>
+
+              {form.esMayoreo && (
+                <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 16 }}>
+                  {/* Tipo de persona */}
+                  <div>
+                    <label style={styles.label}><i className="fa fa-id-card" style={styles.labelIcon} />Tipo de persona *</label>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {[
+                        { v: "fisica", l: "Persona física", ico: "fa-user" },
+                        { v: "moral",  l: "Persona moral",  ico: "fa-building" },
+                      ].map(({ v, l, ico }) => (
+                        <button key={v} type="button"
+                          onClick={() => setForm((p) => ({ ...p, tipoPersona: v }))}
+                          style={{
+                            display: "inline-flex", alignItems: "center", gap: 8,
+                            padding: "9px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer",
+                            border: form.tipoPersona === v ? "1.5px solid transparent" : "1.5px solid #e0e0e0",
+                            background: form.tipoPersona === v ? "linear-gradient(to right,#6372ff,#5ca9fb)" : "#fff",
+                            color: form.tipoPersona === v ? "#fff" : "#666",
+                          }}>
+                          <i className={`fa ${ico}`} style={{ fontSize: 12 }} />{l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="dash-form-grid" style={styles.formGrid}>
+                    <div style={styles.fieldWrap}>
+                      <label style={styles.label}><i className="fa fa-id-card-o" style={styles.labelIcon} />RFC *</label>
+                      <input
+                        style={{ ...styles.input, textTransform: "uppercase",
+                          borderColor: form.rfc && !rfcValido(form.rfc, form.tipoPersona) ? "#e05555" : "#e8e8e8" }}
+                        name="rfc" value={form.rfc}
+                        onChange={(e) => setForm((p) => ({ ...p, rfc: e.target.value.toUpperCase() }))}
+                        maxLength={13}
+                        placeholder={form.tipoPersona === "moral" ? "12 caracteres" : "13 caracteres"} />
+                      {form.rfc && (
+                        <span style={{ fontSize: 11, marginTop: 4, fontWeight: 600,
+                          color: rfcValido(form.rfc, form.tipoPersona) ? "#27ae60" : "#e05555" }}>
+                          <i className={`fa ${rfcValido(form.rfc, form.tipoPersona) ? "fa-check-circle" : "fa-exclamation-circle"}`} style={{ marginRight: 5 }} />
+                          {rfcValido(form.rfc, form.tipoPersona) ? "RFC válido" : "Formato inválido"}
+                        </span>
+                      )}
+                    </div>
+                    <div style={styles.fieldWrap}>
+                      <label style={styles.label}><i className="fa fa-credit-card" style={styles.labelIcon} />Límite de crédito</label>
+                      <input style={styles.input} name="limiteCredito" type="number" min="0" step="0.01"
+                        value={form.limiteCredito} onChange={handleChange} placeholder="0.00" />
+                    </div>
+                    {form.tipoPersona === "moral" && (
+                      <div style={{ ...styles.fieldWrap, gridColumn: "1 / -1" }}>
+                        <label style={styles.label}><i className="fa fa-building" style={styles.labelIcon} />Razón social</label>
+                        <input style={styles.input} name="razonSocial" value={form.razonSocial}
+                          onChange={handleChange} placeholder="Ej: Distribuidora Ejemplo S.A. de C.V." />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
               <button type="submit" style={styles.btnSuccess}>
                 <i className={`fa ${editId ? "fa-save" : "fa-check"}`} style={{ marginRight: 8 }} />
@@ -277,6 +397,14 @@ const Clientes = () => {
                   <div style={styles.avatar}>{inicial(c)}</div>
                   <div style={{ flex: 1 }}>
                     <strong style={{ color: "#1a1a2e", fontSize: 14 }}>{c.name} {c.lastName || ""}</strong>
+                    {c.esMayoreo && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
+                        <span style={styles.badgeMayoreo}>
+                          <i className="fa fa-credit-card" style={{ fontSize: 9, marginRight: 4 }} />Mayoreo
+                        </span>
+                        {c.rfc && <span style={{ fontSize: 11, color: "#9599b3", fontFamily: "monospace" }}>{c.rfc}</span>}
+                      </div>
+                    )}
                     {c.email && (
                       <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>
                         <i className="fa fa-envelope" style={{ color: "#6372ff", fontSize: 10, marginRight: 5 }} />{c.email}
@@ -344,6 +472,14 @@ const Clientes = () => {
                         <strong style={{ color: "#1a1a2e", fontSize: 14 }}>
                           {c.name} {c.lastName || ""}
                         </strong>
+                        {c.esMayoreo && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+                            <span style={styles.badgeMayoreo}>
+                              <i className="fa fa-credit-card" style={{ fontSize: 9, marginRight: 4 }} />Mayoreo
+                            </span>
+                            {c.rfc && <span style={{ fontSize: 11, color: "#9599b3", fontFamily: "monospace" }}>{c.rfc}</span>}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </td>
@@ -467,6 +603,11 @@ const styles = {
   searchClear: {
     position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
     background: "none", border: "none", cursor: "pointer", color: "#aaa", fontSize: 13, padding: "2px 4px",
+  },
+  badgeMayoreo: {
+    display: "inline-flex", alignItems: "center", fontSize: 10, fontWeight: 700,
+    color: "#6372ff", background: "#f0f2ff", border: "1px solid #d6dbff",
+    borderRadius: 6, padding: "2px 7px", textTransform: "uppercase", letterSpacing: 0.3,
   },
   kpiGrid: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 },
   kpiCard: {

@@ -6,6 +6,7 @@ import Inicio     from "../dashboard/pages/Inicio";
 import Productos  from "../dashboard/pages/Productos";
 import Ventas     from "../dashboard/pages/Ventas";
 import Clientes   from "../dashboard/pages/Clientes";
+import Creditos   from "../dashboard/pages/Creditos";
 import Reportes   from "../dashboard/pages/Reportes";
 import MiNegocio  from "../dashboard/pages/MiNegocio";
 import useWindowWidth from "../hooks/useWindowWidth";
@@ -41,6 +42,7 @@ const Dashboard = () => {
             <Route path="productos" element={<Productos />} />
             <Route path="ventas"    element={<Ventas />} />
             <Route path="clientes"  element={<Clientes />} />
+            <Route path="creditos"  element={<Creditos />} />
             <Route path="reportes"  element={<Reportes />} />
             <Route path="mi-negocio" element={<MiNegocio />} />
           </Routes>
