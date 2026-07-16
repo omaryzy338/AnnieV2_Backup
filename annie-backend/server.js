@@ -2,6 +2,8 @@ require('dotenv').config({ path: require('path').join(__dirname, '.env'), overri
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
+const helmet = require('helmet');
+const path = require('path');
 const connectDB = require('./config/db');
 
 // crear la aplicación express
@@ -10,10 +12,28 @@ const app = express();
 // conectar base de datos
 connectDB();
 
+// Configuración de CSP con Helmet
+app.use(
+  helmet.contentSecurityPolicy({
+    directives: {
+      defaultSrc: ["'self'"],              // Fallback general
+      imgSrc: ["'self'", "data:"],         // Permite imágenes locales y base64
+      scriptSrc: ["'self'"],               // Scripts solo desde tu servidor
+      styleSrc: ["'self'", "'unsafe-inline'"], // Estilos locales + inline (útil en dev)
+      connectSrc: ["'self'"],              // Conexiones API locales
+      objectSrc: ["'none'"],               // Bloquea objetos/flash
+      frameSrc: ["'self'"]                 // Frames solo locales
+    },
+  })
+);
+
 // middleware
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static(require('path').join(__dirname, 'uploads')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// ✅ Servir archivos estáticos (incluye tus íconos en /public/img)
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ruta raíz — verificar que la API está viva
 app.get('/', (req, res) => {
