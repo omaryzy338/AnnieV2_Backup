@@ -16,31 +16,26 @@ export const Services = (props) => {
                 <div key={`${d.name}-${i}`} className="col-xs-12 col-sm-6 col-md-3" style={{ marginBottom: "30px" }}>
                   <div 
                     style={{
-                      padding: "20px",
+                      padding: "28px 16px",
                       borderRadius: "8px",
                       backgroundColor: "#f8f9fa",
                       minHeight: "clamp(240px, 50vh, 280px)",
                       display: "flex",
-                      flexDirection: "column",
                       alignItems: "center",
-                      justifyContent: "flex-start"
+                      justifyContent: "center"
                     }}
                   >
                     <i 
                       className={d.icon}
+                      title={d.name}
+                      aria-label={d.name}
                       style={{ 
-                        fontSize: "clamp(36px, 8vw, 48px)", 
+                        fontSize: "clamp(44px, 10vw, 72px)", 
                         color: "#6372ff",
-                        marginBottom: "16px",
                         display: "block"
                       }}
                     ></i>
-                    <h3 style={{ marginTop: "12px", marginBottom: "12px", fontSize: "clamp(14px, 3.5vw, 16px)", fontWeight: "600" }}>
-                      {d.name}
-                    </h3>
-                    <p style={{ color: "#666", fontSize: "clamp(12px, 2.5vw, 14px)", lineHeight: "1.5", marginBottom: 0 }}>
-                      {d.text}
-                    </p>
+                    <span className="sr-only">{d.name}</span>
                   </div>
                 </div>
               ))

@@ -1,13 +1,18 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 export const Header = (props) => {
+  const heroImageUrl = `${process.env.PUBLIC_URL || ""}/img/hero-guided.jpg`;
+
   return (
     <header
       id="header"
       style={{
-        backgroundImage: "url('/img/intro-bp.jpg')",
+        backgroundColor: "#0b162a",
+        backgroundImage: `linear-gradient(rgba(11, 22, 42, 0.35), rgba(11, 22, 42, 0.35)), url(${heroImageUrl})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
         paddingTop: "min(140px, 20vw)",
       }}
     >
@@ -28,6 +33,14 @@ export const Header = (props) => {
                 >
                   {props.data ? props.data.paragraph : "Loading"}
                 </p>
+                <div className="annie-hero-actions">
+                  <Link to="/register" className="btn-custom annie-hero-btn">
+                    Crear cuenta
+                  </Link>
+                  <Link to="/login" className="btn-custom annie-hero-btn annie-hero-btn--secondary">
+                    Entrar
+                  </Link>
+                </div>
               </div>
             </div>
           </div>

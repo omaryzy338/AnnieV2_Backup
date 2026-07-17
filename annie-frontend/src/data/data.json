@@ -4,7 +4,7 @@
     "paragraph": "Una plataforma web diseñada para ayudar a emprendedores a administrar su negocio de manera sencilla, accesible y moderna."
   },
   "About": {
-    "paragraph": "ANNIE 2.0 es una plataforma web moderna diseñada para democratizar el acceso a herramientas de gestión empresarial. Permiten a emprendedores y pequeños negocios administrar su operación sin necesidad de inversiones costosas ni conocimientos técnicos avanzados.",
+    "paragraph": "Annie 2.0 es una plataforma web moderna diseñada para democratizar el acceso a herramientas de gestión empresarial. Permiten a emprendedores y pequeños negocios administrar su operación sin necesidad de inversiones costosas ni conocimientos técnicos avanzados.",
     "Why": [
       "Interfaz intuitiva y fácil de usar",
       "Acceso desde cualquier dispositivo o navegador",
@@ -22,27 +22,32 @@
     {
       "title": "React",
       "largeImage": "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/react.svg",
-      "smallImage": "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/react.svg"
+      "smallImage": "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/react.svg",
+      "url": "https://react.dev/"
     },
     {
       "title": "Node.js",
       "largeImage": "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/nodedotjs.svg",
-      "smallImage": "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/nodedotjs.svg"
+      "smallImage": "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/nodedotjs.svg",
+      "url": "https://nodejs.org/"
     },
     {
       "title": "Express",
       "largeImage": "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/express.svg",
-      "smallImage": "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/express.svg"
+      "smallImage": "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/express.svg",
+      "url": "https://expressjs.com/"
     },
     {
       "title": "MongoDB",
       "largeImage": "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/mongodb.svg",
-      "smallImage": "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/mongodb.svg"
+      "smallImage": "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/mongodb.svg",
+      "url": "https://www.mongodb.com/"
     },
     {
       "title": "JWT",
       "largeImage": "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/jsonwebtokens.svg",
-      "smallImage": "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/jsonwebtokens.svg"
+      "smallImage": "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/jsonwebtokens.svg",
+      "url": "https://jwt.io/"
     }
   ],
   "Services": [
@@ -86,7 +91,7 @@
   ],
   "Contact": {
     "address": "Empieza a administrar tu negocio hoy",
-    "phone": "Crea tu cuenta en ANNIE y comienza a organizar tu negocio",
+    "phone": "Crea tu cuenta en Annie y comienza a organizar tu negocio",
     "email": "info@annie.com",
     "facebook": "fb.com/annie",
     "twitter": "twitter.com/annie",
@@ -111,7 +116,7 @@
     {
       "icon": "fa fa-lightbulb-o",
       "title": "Nuestra Solución",
-      "text": "ANNIE es accesible, moderna y diseñada específicamente para emprendedores que desean profesionalizar su negocio."
+      "text": "Annie es accesible, moderna y diseñada específicamente para emprendedores que desean profesionalizar su negocio."
     }
   ]
 }

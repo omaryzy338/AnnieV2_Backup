@@ -208,8 +208,8 @@ a:focus,
   display: table;
   width: 100%;
   padding: 0;
-  background: url(../img/intro-bg.jpg) center center no-repeat;
-  background-color: #e5e5e5;
+  background: none;
+  background-color: transparent;
   -webkit-background-size: cover;
   -moz-background-size: cover;
   background-size: cover;
@@ -239,11 +239,7 @@ a:focus,
   margin: 0 auto;
   margin-bottom: 60px;
 }
-header .intro-text {
-  padding-top: 350px;
-  padding-bottom: 200px;
-  text-align: center;
-}
+/* Legacy header spacing removed to preserve app styles */
 /* Features Section */
 #features {
   background: #f6f6f6;
@@ -292,15 +288,13 @@ header .intro-text {
   padding: 0;
 }
 #about .about-text li:before {
-  content: "\f00c";
-  font-family: "FontAwesome";
-  color: #5ca9fb;
-  font-size: 11px;
-  font-weight: 300;
-  padding-right: 8px;
+  display: none;
+  content: none;
 }
 #about img {
-  width: 5200px;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
   margin-top: 10px;
   background: #fff;
   border-right: 0;
