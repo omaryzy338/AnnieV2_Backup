@@ -9,7 +9,9 @@ export const Header = (props) => {
       id="header"
       style={{
         backgroundColor: "#0b162a",
-        backgroundImage: `linear-gradient(rgba(11, 22, 42, 0.35), rgba(11, 22, 42, 0.35)), url(${heroImageUrl})`,
+        // El degradado va aquí (no en .overlay) para que cubra TODO el header
+        // de forma pareja; si no, se marca una costura donde termina el padding.
+        backgroundImage: `linear-gradient(rgba(11, 22, 42, 0.55), rgba(11, 22, 42, 0.55)), url(${heroImageUrl})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",

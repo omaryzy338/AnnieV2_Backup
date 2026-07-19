@@ -12,6 +12,9 @@ import "./App.css";
 export const scroll = new SmoothScroll('a[href*="#"]', {
   speed: 1000,
   speedAsDuration: true,
+  // La barra de navegación es fija (~130px); sin este offset la librería
+  // deja el título de la sección escondido detrás de ella.
+  offset: 140,
 });
 
 const App = () => {

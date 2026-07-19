@@ -21,21 +21,28 @@ export const Features = (props) => {
                       height: "100%",
                       textAlign: "center",
                       display: "flex",
+                      flexDirection: "column",
                       alignItems: "center",
-                      justifyContent: "center"
+                      justifyContent: "flex-start"
                     }}
                   >
-                    <i 
+                    <i
                       className={d.icon}
                       title={d.title}
                       aria-label={d.title}
-                      style={{ 
-                        fontSize: "clamp(44px, 10vw, 72px)", 
+                      style={{
+                        fontSize: "clamp(40px, 8vw, 56px)",
                         color: "#6372ff",
-                        display: "block"
+                        display: "block",
+                        marginBottom: "16px"
                       }}
                     ></i>
-                    <span className="sr-only">{d.title}</span>
+                    <h3 style={{ marginTop: 0, marginBottom: "10px", fontSize: "clamp(14px, 3.5vw, 16px)", fontWeight: "600", color: "#1a1a2e" }}>
+                      {d.title}
+                    </h3>
+                    <p style={{ color: "#666", fontSize: "clamp(12px, 2.5vw, 14px)", lineHeight: "1.5", margin: 0 }}>
+                      {d.text}
+                    </p>
                   </div>
                 </div>
               ))

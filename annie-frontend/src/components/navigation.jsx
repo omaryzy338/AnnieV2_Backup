@@ -19,7 +19,9 @@ export const Navigation = (props) => {
 
   const navItems = [
     { href: "/", icon: "fa fa-home", label: "Inicio", external: false },
-    { href: "#about", icon: "fa fa-lightbulb-o", label: "Propuesta", external: true },
+    // "Propuesta" apunta a #features, que es la sección titulada "Propuesta"
+    // (#about, "¿Qué es Annie?", queda justo debajo al seguir bajando)
+    { href: "#features", icon: "fa fa-lightbulb-o", label: "Propuesta", external: true },
     { href: "#services", icon: "fa fa-cogs", label: "Funciones", external: true },
     { href: "#portfolio", icon: "fa fa-code", label: "Tecnología", external: true },
     { href: "#testimonials", icon: "fa fa-comments", label: "Testimonios", external: true },

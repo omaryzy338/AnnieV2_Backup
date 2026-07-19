@@ -26,6 +26,13 @@ html, body, #root {
 #footer {
   padding-top: 80px !important;
   padding-bottom: 80px !important;
+  /* La barra de navegación es fija (~130px con la fila del logo); sin esto,
+     al llegar a una sección desde el menú la barra tapa el título */
+  scroll-margin-top: 140px;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 /* Section Titles */
@@ -83,12 +90,14 @@ html, body, #root {
   display: block;
 }
 
-/* En escritorio el menú es una sola fila horizontal */
+/* En escritorio el menú es una sola fila horizontal. Son 8 elementos, así
+   que el espaciado va justo: sin esto "Inicio" se sale del contenedor. */
 @media screen and (min-width: 768px) {
   .annie-nav__links {
     display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: flex-end;
+    gap: 0;
   }
 }
 
@@ -122,13 +131,14 @@ html, body, #root {
 .annie-nav__link,
 #menu .navbar-nav li a {
   color: #38407f !important;
+  font-size: 14px;
   font-weight: 500;
   text-transform: capitalize;
-  letter-spacing: 0.02em;
-  padding: 12px 10px;
+  letter-spacing: 0;
+  padding: 12px 5px;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   white-space: nowrap;
   flex-shrink: 0;
   text-decoration: none !important;
@@ -140,42 +150,31 @@ html, body, #root {
   color: #4d66ff !important;
 }
 
+/* "Crear cuenta" se ve igual que el resto de los links del menú
+   (sin píldora azul), solo un poco más marcado por ser la acción principal */
 .annie-nav__cta-link {
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
-  padding: 10px 18px;
-  min-height: 42px;
-  min-width: 130px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #6372ff, #5ca9fb) !important;
-  background-color: #6372ff !important;
-  background-image: linear-gradient(135deg, #6372ff, #5ca9fb) !important;
-  border: 1px solid rgba(99, 114, 255, 0.24) !important;
-  color: #fff !important;
-  box-shadow: 0 10px 24px rgba(99, 114, 255, 0.18) !important;
   font-weight: 700;
   text-transform: none;
   text-decoration: none !important;
-  transition: background 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
   outline: none !important;
 }
 
 #menu .navbar-nav > li > a.annie-nav__cta-link,
-#menu .navbar-nav > li > a.annie-nav__cta-link:hover,
 #menu .navbar-nav > li > a.annie-nav__cta-link:focus,
 #menu .navbar-nav > li > a.annie-nav__cta-link:active {
-  background: linear-gradient(135deg, #6372ff, #5ca9fb) !important;
-  color: #fff !important;
+  background: transparent !important;
+  box-shadow: none !important;
   outline: none !important;
-  box-shadow: 0 10px 24px rgba(99, 114, 255, 0.18) !important;
   text-decoration: none !important;
 }
 
+#menu .navbar-nav > li > a.annie-nav__cta-link:hover,
 .annie-nav__cta-link:hover {
-  color: #fff !important;
-  background: linear-gradient(135deg, #4d5df0, #68b1ff) !important;
-  transform: translateY(-1px);
+  background: transparent !important;
+  color: #4d66ff !important;
 }
 
 .sr-only {
@@ -220,8 +219,12 @@ html, body, #root {
   align-items: center;
 }
 
+/* El degradado oscuro ya viene aplicado sobre TODO el header (en el
+   background-image de header.jsx). Si además oscurecemos .overlay se
+   nota una costura horizontal, porque .overlay empieza después del
+   padding-top del header y solo cubre la parte de abajo. */
 #header .overlay {
-  background: rgba(11, 22, 42, 0.28);
+  background: transparent;
 }
 
 .intro-text {
@@ -884,10 +887,6 @@ html, body, #root {
 }
 
 
-
-#header .overlay {
-  background: rgba(0, 0, 0, 0.38);
-}
 
 .header-title {
   color: #ffffff !important;
