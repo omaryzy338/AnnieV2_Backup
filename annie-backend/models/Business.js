@@ -11,7 +11,12 @@ const businessSchema = new mongoose.Schema({
   logo:     { type: String, trim: true },
   country:  { type: String, trim: true },
   state:    { type: String, trim: true },
-  city:     { type: String, trim: true }
+  city:     { type: String, trim: true },
+  // RFC del negocio (para poder facturar). Si el dueño no da uno al
+  // registrarse se le asigna el RFC genérico oficial del SAT para público
+  // en general ("XAXX010101000"); mientras tenga ese RFC genérico, no puede
+  // facturar de verdad y por lo tanto no puede dar crédito a clientes.
+  rfc:      { type: String, trim: true, uppercase: true, default: '' }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Business', businessSchema);

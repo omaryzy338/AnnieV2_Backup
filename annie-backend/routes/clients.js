@@ -2,11 +2,15 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
 const Client = require('../models/Client');
-const { validarRFC } = require('../utils/rfc');
+const Business = require('../models/Business');
+const { validarRFC, esRFCGenerico } = require('../utils/rfc');
 
 // Construye/valida los datos fiscales y de crédito a partir del body.
 // Devuelve { data, error }. Si error !== null, responde 400 con ese mensaje.
-function construirDatosCredito(body, actual = {}) {
+// ownerId se usa solo si se está activando el mayoreo, para checar que el
+// negocio tenga un RFC real (sin RFC no se puede facturar, y por lo tanto
+// tampoco dar crédito).
+async function construirDatosCredito(body, actual = {}, ownerId) {
   const data = {};
 
   // esMayoreo (booleano tolerante a strings "true"/"false")
@@ -68,6 +72,17 @@ function construirDatosCredito(body, actual = {}) {
     }
     const v = validarRFC(rfcFinal, tipoFinal);
     if (!v.ok) return { error: v.message };
+
+    // El negocio necesita un RFC real (no el genérico) para poder facturar,
+    // y sin poder facturar no tiene sentido ofrecer crédito.
+    if (body.esMayoreo !== undefined && ownerId) {
+      const business = await Business.findOne({ owner: ownerId });
+      if (!business?.rfc || esRFCGenerico(business.rfc)) {
+        return {
+          error: 'Para dar crédito a clientes primero configura el RFC de tu negocio en "Mi Negocio" (sin RFC no puedes facturar)',
+        };
+      }
+    }
   }
 
   return { data };
@@ -104,7 +119,7 @@ router.post('/', authMiddleware, async (req, res) => {
     if (!name)
       return res.status(400).json({ message: 'El nombre del cliente es obligatorio' });
 
-    const { data, error } = construirDatosCredito(req.body);
+    const { data, error } = await construirDatosCredito(req.body, {}, req.user.id);
     if (error) return res.status(400).json({ message: error });
 
     const client = new Client({
@@ -130,7 +145,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
 
     const { name, lastName, email, phone, address, notes } = req.body;
 
-    const { data, error } = construirDatosCredito(req.body, actual);
+    const { data, error } = await construirDatosCredito(req.body, actual, req.user.id);
     if (error) return res.status(400).json({ message: error });
 
     // Solo actualizamos los campos básicos que vengan definidos

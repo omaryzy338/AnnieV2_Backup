@@ -6,6 +6,7 @@ const multer = require('multer');
 const authMiddleware = require('../middleware/authMiddleware');
 const User = require('../models/User');
 const Business = require('../models/Business');
+const { validarRFC, esRFCGenerico } = require('../utils/rfc');
 
 // Multer para logo del negocio
 const uploadsDir = path.join(__dirname, '../uploads');
@@ -36,8 +37,11 @@ router.get('/', authMiddleware, async (req, res) => {
     if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
 
     const business = await Business.findOne({ owner: req.user.id });
+    const businessData = business
+      ? { ...business.toObject(), rfcGenerico: esRFCGenerico(business.rfc) }
+      : null;
 
-    res.json({ user, business });
+    res.json({ user, business: businessData });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error al obtener perfil' });
@@ -74,16 +78,29 @@ router.put('/user', authMiddleware, async (req, res) => {
 // ── PUT /profile/business — actualizar datos del negocio ─────────
 router.put('/business', authMiddleware, async (req, res) => {
   try {
-    const { name, address, phone, category, description, country, state, city } = req.body;
+    const { name, address, phone, category, description, country, state, city, rfc } = req.body;
+
+    const update = { name, address, phone, category, description, country, state, city };
+
+    // RFC opcional: si lo mandan y no está vacío, debe ser válido (física u moral)
+    if (rfc !== undefined) {
+      if (rfc && rfc.trim()) {
+        const v = validarRFC(rfc);
+        if (!v.ok) return res.status(400).json({ message: v.message });
+        update.rfc = v.rfc;
+      } else {
+        update.rfc = '';
+      }
+    }
 
     const business = await Business.findOneAndUpdate(
       { owner: req.user.id },
-      { name, address, phone, category, description, country, state, city },
+      update,
       { new: true, runValidators: true }
     );
 
     if (!business) return res.status(404).json({ message: 'Negocio no encontrado' });
-    res.json(business);
+    res.json({ ...business.toObject(), rfcGenerico: esRFCGenerico(business.rfc) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error al actualizar negocio' });

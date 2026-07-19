@@ -4,9 +4,17 @@
 const RFC_FISICA = /^[A-ZÑ&]{4}[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[A-Z0-9]{2}[0-9A]$/;
 const RFC_MORAL  = /^[A-ZÑ&]{3}[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[A-Z0-9]{2}[0-9A]$/;
 
+// RFC genérico oficial del SAT para "público en general" (cuando no se
+// cuenta con un RFC real). Con este RFC no se puede facturar de verdad.
+const GENERIC_RFC = 'XAXX010101000';
+
 // Normaliza: quita espacios/guiones y pasa a mayúsculas
 function limpiarRFC(rfc) {
   return String(rfc || '').toUpperCase().replace(/[\s-]/g, '');
+}
+
+function esRFCGenerico(rfc) {
+  return limpiarRFC(rfc) === GENERIC_RFC;
 }
 
 // Deduce el tipo de persona por longitud (13 = física, 12 = moral)
@@ -61,4 +69,4 @@ function validarRFC(rfc, tipoPersona) {
   };
 }
 
-module.exports = { validarRFC, limpiarRFC, tipoPorLongitud, RFC_FISICA, RFC_MORAL };
+module.exports = { validarRFC, limpiarRFC, tipoPorLongitud, esRFCGenerico, GENERIC_RFC, RFC_FISICA, RFC_MORAL };

@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Business = require('../models/Business');
+const { validarRFC, GENERIC_RFC } = require('../utils/rfc');
 
 // ── Validadores ──────────────────────────────────────────────
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -13,7 +14,7 @@ const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<
 // ── REGISTRO ─────────────────────────────────────────────────
 router.post('/register', async (req, res) => {
   try {
-    const { name, lastName, email, password, businessName, address, phone, category, description } = req.body || {};
+    const { name, lastName, email, password, businessName, address, phone, category, description, rfc } = req.body || {};
 
     // Campos obligatorios
     if (!name || !lastName || !email || !password || !businessName)
@@ -28,6 +29,16 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({
         message: 'La contraseña debe tener mínimo 8 caracteres, una mayúscula, un número y un carácter especial (!@#$%...)'
       });
+
+    // RFC del negocio: opcional. Si no lo dan, se asigna el genérico del SAT
+    // (con ese RFC no se puede facturar, así que tampoco se puede dar crédito
+    // a clientes hasta que se registre un RFC real desde Mi Negocio).
+    let businessRfc = GENERIC_RFC;
+    if (rfc && rfc.trim()) {
+      const v = validarRFC(rfc);
+      if (!v.ok) return res.status(400).json({ message: v.message });
+      businessRfc = v.rfc;
+    }
 
     // Comprobar si ya existe
     let user = await User.findOne({ email: email.toLowerCase() });
@@ -46,7 +57,7 @@ router.post('/register', async (req, res) => {
       .replace(/\s+/g, '-')
       .replace(/[^a-z0-9-]/g, '') + '-' + user._id.toString().slice(-4);
 
-    const business = new Business({ name: businessName, owner: user._id, slug, address, phone, category, description });
+    const business = new Business({ name: businessName, owner: user._id, slug, address, phone, category, description, rfc: businessRfc });
     await business.save();
 
     const payload = {
