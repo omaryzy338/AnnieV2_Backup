@@ -18,7 +18,7 @@ export const Navigation = (props) => {
   };
 
   const navItems = [
-    { href: "/", icon: "logo", label: "Inicio", external: false },
+    { href: "/", icon: "fa fa-home", label: "Inicio", external: false },
     { href: "#about", icon: "fa fa-lightbulb-o", label: "Propuesta", external: true },
     { href: "#services", icon: "fa fa-cogs", label: "Funciones", external: true },
     { href: "#portfolio", icon: "fa fa-code", label: "Tecnología", external: true },
@@ -41,6 +41,10 @@ export const Navigation = (props) => {
             <span className="icon-bar"></span>
             <span className="icon-bar"></span>
           </button>
+          <Link to="/" className="navbar-brand annie-nav__brand">
+            <img src="/favicon.png" alt="ANNIE" className="annie-nav__logo" />
+            <span>ANNIE</span>
+          </Link>
         </div>
 
         <div className="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
@@ -86,6 +90,7 @@ export const Navigation = (props) => {
                 </li>
                 <li>
                   <Link to="/register" className="annie-nav__link annie-nav__cta-link">
+                    <i className="fa fa-user-plus" aria-hidden="true" />
                     <span>Crear cuenta</span>
                   </Link>
                 </li>

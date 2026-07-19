@@ -8,10 +8,10 @@ export const Testimonials = (props) => {
           <h2>Testimonios e Insights</h2>
           <p>Descubre los principales desafíos que enfrenta el ecosistema emprendedor actual</p>
         </div>
-        <div className="row" style={{ marginTop: "40px" }}>
+        <div className="row" style={{ marginTop: "40px", display: "flex", flexWrap: "wrap" }}>
           {props.data
             ? props.data.map((d, i) => (
-                <div key={`${d.name}-${i}`} className="col-xs-12 col-sm-6 col-md-4" style={{ marginBottom: "30px" }}>
+                <div key={`${d.name}-${i}`} className="col-xs-12 col-sm-6 col-md-4" style={{ marginBottom: "30px", display: "flex" }}>
                   <div 
                     className="testimonial"
                     style={{

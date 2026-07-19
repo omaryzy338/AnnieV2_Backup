@@ -16,13 +16,13 @@ export const Image = ({ title, largeImage, smallImage }) => {
           >
             <h4 style={{ color: "#fff", margin: 0, fontWeight: "600" }}>{title}</h4>
           </div>
-          <img 
-            src={smallImage} 
-            className="img-responsive" 
+          <img
+            src={smallImage}
+            className="img-responsive"
             alt={title}
-            style={{ 
-              maxHeight: "120px", 
-              width: "auto", 
+            style={{
+              width: "90px",
+              height: "90px",
               objectFit: "contain",
               filter: "grayscale(20%)",
               transition: "all 0.3s ease"

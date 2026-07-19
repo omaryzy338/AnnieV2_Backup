@@ -83,10 +83,40 @@ html, body, #root {
   display: block;
 }
 
-.annie-nav__links {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+/* En escritorio el menú es una sola fila horizontal */
+@media screen and (min-width: 768px) {
+  .annie-nav__links {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+/* En móvil se apila verticalmente dentro del menú desplegable
+   (comportamiento normal de Bootstrap al abrir el hamburger) */
+@media screen and (max-width: 767px) {
+  .annie-nav__links {
+    display: block;
+  }
+  .annie-nav__links li {
+    width: 100%;
+  }
+  .annie-nav__link {
+    width: 100%;
+  }
+
+  /* Fondo sólido (no translúcido) para que el menú abierto no deje ver
+     el texto del hero detrás de los links */
+  #menu .navbar-collapse.in,
+  #menu .navbar-collapse.collapsing {
+    background: #ffffff;
+  }
+
+  /* Bootstrap limita el desplegable a 340px de alto con scroll interno;
+     con 8 links eso corta "Crear cuenta" fuera de la vista sin avisar */
+  #menu.navbar-fixed-top .navbar-collapse {
+    max-height: calc(100vh - 60px);
+  }
 }
 
 .annie-nav__link,
@@ -99,6 +129,8 @@ html, body, #root {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .annie-nav__link:hover,
@@ -268,9 +300,16 @@ html, body, #root {
   gap: 16px;
 }
 
-.contact-card__title {
+/* Más específico que la regla legacy "#contact h3" (pensada para texto
+   directo sobre el fondo azul), que si no deja el título blanco e
+   invisible sobre estas tarjetas blancas */
+#contact .contact-card__title {
+  color: #1a1a2e;
   font-size: 1.4rem;
+  font-weight: 700;
+  margin-top: 0;
   margin-bottom: 14px;
+  padding-bottom: 0;
 }
 
 .contact-card__text {
@@ -318,6 +357,11 @@ html, body, #root {
 .contact-card__item strong {
   display: block;
   margin-bottom: 6px;
+  color: #1a1a2e;
+}
+
+.contact-card__value {
+  color: #5a5a78;
 }
 
 .social-links {
@@ -434,6 +478,13 @@ html, body, #root {
 }
 
 /* Galería/Portfolio */
+/* Centra la última fila cuando no se completa (ej. 5 items en grid de 3) */
+.portfolio-items {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
 .portfolio-item {
   margin-bottom: 20px;
   margin: auto;

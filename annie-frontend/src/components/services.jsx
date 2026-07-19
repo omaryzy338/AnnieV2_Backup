@@ -10,16 +10,17 @@ export const Services = (props) => {
             Herramientas esenciales diseñadas para ayudarte a gestionar tu negocio de manera eficiente, organizada y profesional.
           </p>
         </div>
-        <div className="row" style={{ marginTop: "40px" }}>
+        <div className="row" style={{ marginTop: "40px", display: "flex", flexWrap: "wrap" }}>
           {props.data
             ? props.data.map((d, i) => (
-                <div key={`${d.name}-${i}`} className="col-xs-12 col-sm-6 col-md-3" style={{ marginBottom: "30px" }}>
-                  <div 
+                <div key={`${d.name}-${i}`} className="col-xs-12 col-sm-6 col-md-3" style={{ marginBottom: "30px", display: "flex" }}>
+                  <div
                     style={{
                       padding: "20px",
                       borderRadius: "8px",
                       backgroundColor: "#f8f9fa",
                       minHeight: "clamp(240px, 50vh, 280px)",
+                      width: "100%",
                       display: "flex",
                       flexDirection: "column",
                       alignItems: "center",
@@ -35,7 +36,7 @@ export const Services = (props) => {
                         display: "block"
                       }}
                     ></i>
-                    <h3 style={{ marginTop: "12px", marginBottom: "12px", fontSize: "clamp(14px, 3.5vw, 16px)", fontWeight: "600" }}>
+                    <h3 style={{ marginTop: "12px", marginBottom: "12px", fontSize: "clamp(14px, 3.5vw, 16px)", fontWeight: "600", color: "#1a1a2e" }}>
                       {d.name}
                     </h3>
                     <p style={{ color: "#666", fontSize: "clamp(12px, 2.5vw, 14px)", lineHeight: "1.5", marginBottom: 0 }}>

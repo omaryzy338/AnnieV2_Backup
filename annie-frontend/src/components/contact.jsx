@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 export const Contact = (props) => {
   const data = props.data || {};
@@ -13,6 +14,9 @@ export const Contact = (props) => {
             <p className="annie-section__desc contact-intro">
               Crea tu cuenta en ANNIE y organiza tus ventas, clientes e inventario desde una sola plataforma.
             </p>
+            <Link to="/register" className="contact-btn">
+              <i className="fa fa-user-plus" style={{ marginRight: 8 }} />Crear cuenta gratis
+            </Link>
           </div>
           <div className="contact-highlight">
             <span className="contact-highlight__label">Soporte de crecimiento</span>
@@ -35,7 +39,7 @@ export const Contact = (props) => {
                 </span>
                 <div>
                   <strong>Email</strong>
-                  <div>{data.email || "info@annie.com"}</div>
+                  <div className="contact-card__value">{data.email || "info@annie.com"}</div>
                 </div>
               </div>
               <div className="contact-card__item">
@@ -44,7 +48,7 @@ export const Contact = (props) => {
                 </span>
                 <div>
                   <strong>Teléfono</strong>
-                  <div>{data.phone || "+52 55 1234 5678"}</div>
+                  <div className="contact-card__value">{data.phone || "+52 55 1234 5678"}</div>
                 </div>
               </div>
             </div>
