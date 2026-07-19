@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import axios from "../../api/axiosConfig";
 import useWindowWidth from "../../hooks/useWindowWidth";
 
@@ -20,6 +21,7 @@ const camposIniciales = {
 const Clientes = () => {
   const [clientes, setClientes]       = useState([]);
   const [ventas,   setVentas]         = useState([]);
+  const [rfcGenerico, setRfcGenerico] = useState(false);
   const [loading, setLoading]         = useState(true);
   const [showForm, setShowForm]       = useState(false);
   const [form, setForm]               = useState(camposIniciales);
@@ -34,9 +36,10 @@ const Clientes = () => {
 
   const cargar = async () => {
     try {
-      const [rc, rv] = await Promise.all([axios.get("/clients"), axios.get("/sales")]);
+      const [rc, rv, rp] = await Promise.all([axios.get("/clients"), axios.get("/sales"), axios.get("/profile")]);
       setClientes(rc.data);
       setVentas(rv.data);
+      setRfcGenerico(!!rp.data.business?.rfcGenerico);
     } catch { setError("Error al cargar clientes"); }
     finally { setLoading(false); }
   };
@@ -268,15 +271,25 @@ const Clientes = () => {
 
             {/* ── Mayoreo / crédito ──────────────────────────────── */}
             <div style={{ marginTop: 16, padding: 16, background: "#f8f9ff", border: "1.5px solid #eef0ff", borderRadius: 10 }}>
-              <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none" }}>
-                <input type="checkbox" checked={form.esMayoreo}
+              <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: rfcGenerico ? "not-allowed" : "pointer", userSelect: "none", opacity: rfcGenerico ? 0.6 : 1 }}>
+                <input type="checkbox" checked={form.esMayoreo} disabled={rfcGenerico}
                   onChange={(e) => setForm((p) => ({ ...p, esMayoreo: e.target.checked }))}
-                  style={{ width: 18, height: 18, accentColor: "#6372ff", cursor: "pointer" }} />
+                  style={{ width: 18, height: 18, accentColor: "#6372ff", cursor: rfcGenerico ? "not-allowed" : "pointer" }} />
                 <span style={{ fontWeight: 700, color: "#1a1a2e", fontSize: 14 }}>
                   <i className="fa fa-credit-card" style={{ color: "#6372ff", marginRight: 8 }} />
                   Cliente de mayoreo (con línea de crédito)
                 </span>
               </label>
+
+              {rfcGenerico && (
+                <div style={{ marginTop: 10, fontSize: 12, color: "#c0392b", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                  <i className="fa fa-exclamation-circle" />
+                  Necesitas configurar el RFC real de tu negocio para poder dar crédito.
+                  <Link to="/dashboard/mi-negocio" style={{ color: "#c0392b", fontWeight: 700, textDecoration: "underline" }}>
+                    Configurar RFC →
+                  </Link>
+                </div>
+              )}
 
               {form.esMayoreo && (
                 <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 16 }}>

@@ -1,6 +1,14 @@
 import React, { useEffect, useState, useRef } from "react";
 import axios from "../../api/axiosConfig";
 import useWindowWidth from "../../hooks/useWindowWidth";
+import { resolveMediaUrl } from "../../utils/media";
+
+const RFC_FISICA = /^[A-ZÑ&]{4}[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[A-Z0-9]{2}[0-9A]$/;
+const RFC_MORAL  = /^[A-ZÑ&]{3}[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[A-Z0-9]{2}[0-9A]$/;
+const rfcValido = (rfc) => {
+  const c = String(rfc || "").toUpperCase().replace(/[\s-]/g, "");
+  return RFC_FISICA.test(c) || RFC_MORAL.test(c);
+};
 
 const estadosMexico = [
   "Aguascalientes","Baja California","Baja California Sur","Campeche","Chiapas","Chihuahua","Ciudad de Mexico","Coahuila","Colima","Durango","Estado de Mexico","Guanajuato","Guerrero","Hidalgo","Jalisco","Michoacan","Morelos","Nayarit","Nuevo Leon","Oaxaca","Puebla","Queretaro","Quintana Roo","San Luis Potosi","Sinaloa","Sonora","Tabasco","Tamaulipas","Tlaxcala","Veracruz","Yucatan","Zacatecas"
@@ -20,7 +28,7 @@ const MiNegocio = () => {
   const isMobile = w < 768;
 
   const [formNegocio, setFormNegocio] = useState({
-    name: "", address: "", phone: "", category: "", description: "",
+    name: "", address: "", phone: "", category: "", description: "", rfc: "",
     country: defaultCountry, state: "", city: "",
   });
   const [formUsuario, setFormUsuario] = useState({
@@ -40,6 +48,7 @@ const MiNegocio = () => {
         phone: business?.phone || "",
         category: business?.category || "",
         description: business?.description || "",
+        rfc: business?.rfcGenerico ? "" : (business?.rfc || ""),
         country: business?.country || defaultCountry,
         state: business?.state || "",
         city: business?.city || "",
@@ -66,6 +75,8 @@ const MiNegocio = () => {
     if (!formNegocio.state.trim()) return setError("Estado es requerido");
     if (!formNegocio.city.trim()) return setError("Ciudad es requerida");
     if (!formNegocio.address.trim()) return setError("Dirección es requerida");
+    if (formNegocio.rfc.trim() && !rfcValido(formNegocio.rfc))
+      return setError("El RFC no tiene un formato válido (física=13, moral=12 caracteres)");
 
     try {
       await axios.put("/profile/business", formNegocio);
@@ -135,10 +146,7 @@ const MiNegocio = () => {
   if (loading) return <div style={{ padding: 30 }}>Cargando...</div>;
 
   const { user, business } = data || {};
-  const apiBase = process.env.REACT_APP_API_URL || "http://localhost:5000";
-  const logoUrl = business?.logo && !logoBroken
-    ? (business.logo.startsWith("http") ? business.logo : `${apiBase}${business.logo}`)
-    : null;
+  const logoUrl = !logoBroken ? resolveMediaUrl(business?.logo) : null;
 
   const estadosNegocio = estadosMexico;
   const estadosUsuario = estadosMexico;
@@ -183,6 +191,14 @@ const MiNegocio = () => {
         </div>
       )}
 
+      {business?.rfcGenerico && (
+        <div style={{ background: "#fff0f3", border: "1px solid #ffd0d8", padding: "10px 14px", borderRadius: 10, color: "#c0392b", fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
+          <i className="fa fa-exclamation-circle" />
+          Tu negocio tiene un RFC genérico. Sin un RFC real no puedes facturar, y por lo tanto tampoco puedes
+          dar crédito a tus clientes. Agrégalo abajo en "Información del negocio".
+        </div>
+      )}
+
       {/* TARJETA NEGOCIO */}
       <div style={styles.card}>
         <div style={{ ...styles.cardHeader, flexDirection: isMobile ? "column" : "row", gap: isMobile ? 12 : 0 }}>
@@ -216,8 +232,8 @@ const MiNegocio = () => {
             </div>
             <input type="file" ref={logoRef} accept="image/jpeg,image/png,image/webp" style={{ display: "none" }} onChange={handleLogoUpload} />
             <div>
-              <div style={{ fontWeight: 700, color: "#1a1a2e", fontSize: 15 }}>Informacion del negocio</div>
-              <div style={{ fontSize: 12, color: "#9599b3" }}>{business?.category || "Sin categoria"}</div>
+              <div style={{ fontWeight: 700, color: "#1a1a2e", fontSize: 15 }}>Información del negocio</div>
+              <div style={{ fontSize: 12, color: "#9599b3" }}>{business?.category || "Sin categoría"}</div>
             </div>
           </div>
           {editMode !== "negocio" && (
@@ -236,7 +252,7 @@ const MiNegocio = () => {
                   onChange={(e) => setFormNegocio({ ...formNegocio, name: e.target.value })} required placeholder="Tienda El Sol" />
               </div>
               <div style={styles.fieldWrap}>
-                <label style={styles.label}><i className="fa fa-list" style={styles.labelIcon} />Categoria</label>
+                <label style={styles.label}><i className="fa fa-list" style={styles.labelIcon} />Categoría</label>
                 <input style={styles.input} placeholder="Abarrotes, Ropa, Electronica..."
                   value={formNegocio.category}
                   onChange={(e) => setFormNegocio({ ...formNegocio, category: e.target.value })} />
@@ -255,21 +271,33 @@ const MiNegocio = () => {
                   onChange={(e) => setFormNegocio({ ...formNegocio, city: e.target.value })} />
               </div>
               <div style={styles.fieldWrap}>
-                <label style={styles.label}><i className="fa fa-map-marker" style={styles.labelIcon} />Direccion</label>
+                <label style={styles.label}><i className="fa fa-map-marker" style={styles.labelIcon} />Dirección</label>
                 <input style={styles.input} placeholder="Calle 5 de Mayo #10, Col. Centro"
                   value={formNegocio.address}
                   onChange={(e) => setFormNegocio({ ...formNegocio, address: e.target.value })} />
               </div>
               <div style={styles.fieldWrap}>
-                <label style={styles.label}><i className="fa fa-phone" style={styles.labelIcon} />Telefono</label>
+                <label style={styles.label}><i className="fa fa-phone" style={styles.labelIcon} />Teléfono</label>
                 <input style={styles.input} placeholder="555-123-4567"
                   value={formNegocio.phone}
                   onChange={(e) => setFormNegocio({ ...formNegocio, phone: e.target.value })} />
               </div>
+              <div style={styles.fieldWrap}>
+                <label style={styles.label}><i className="fa fa-id-card-o" style={styles.labelIcon} />RFC del negocio</label>
+                <input
+                  style={{ ...styles.input, textTransform: "uppercase",
+                    borderColor: formNegocio.rfc && !rfcValido(formNegocio.rfc) ? "#e05555" : "#e8e8e8" }}
+                  placeholder="Ej: XAXX010101000" maxLength={13}
+                  value={formNegocio.rfc}
+                  onChange={(e) => setFormNegocio({ ...formNegocio, rfc: e.target.value.toUpperCase() })} />
+                <span style={{ fontSize: 11, color: "#aaa", marginTop: 4 }}>
+                  Necesario para poder ofrecer crédito a tus clientes.
+                </span>
+              </div>
               <div style={{ ...styles.fieldWrap, gridColumn: "1 / -1" }}>
-                <label style={styles.label}><i className="fa fa-align-left" style={styles.labelIcon} />Descripcion</label>
+                <label style={styles.label}><i className="fa fa-align-left" style={styles.labelIcon} />Descripción</label>
                 <textarea style={{ ...styles.input, resize: "vertical", minHeight: 70 }} rows={3}
-                  placeholder="A que se dedica tu negocio?"
+                  placeholder="¿A qué se dedica tu negocio?"
                   value={formNegocio.description}
                   onChange={(e) => setFormNegocio({ ...formNegocio, description: e.target.value })} />
               </div>
@@ -286,13 +314,15 @@ const MiNegocio = () => {
         ) : (
           <div style={{ ...styles.infoGrid, gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr" }}>
             <InfoRow icon="fa-tag"         label="Nombre"      value={business?.name} />
-            <InfoRow icon="fa-list"        label="Categoria"   value={business?.category} />
-            <InfoRow icon="fa-flag"        label="Pais"        value={business?.country} />
+            <InfoRow icon="fa-list"        label="Categoría"   value={business?.category} />
+            <InfoRow icon="fa-flag"        label="País"        value={business?.country} />
             <InfoRow icon="fa-map"         label="Estado"      value={business?.state} />
             <InfoRow icon="fa-map-pin"     label="Ciudad"      value={business?.city} />
-            <InfoRow icon="fa-map-marker"  label="Direccion"   value={business?.address} />
-            <InfoRow icon="fa-phone"       label="Telefono"    value={business?.phone} />
-            <InfoRow icon="fa-align-left"  label="Descripcion" value={business?.description} span />
+            <InfoRow icon="fa-map-marker"  label="Dirección"   value={business?.address} />
+            <InfoRow icon="fa-phone"       label="Teléfono"    value={business?.phone} />
+            <InfoRow icon="fa-id-card-o"   label="RFC"         value={business?.rfcGenerico ? null : business?.rfc}
+              note={business?.rfcGenerico ? "Sin RFC real registrado" : undefined} />
+            <InfoRow icon="fa-align-left"  label="Descripción" value={business?.description} span />
             <InfoRow icon="fa-link"        label="Slug"        value={business?.slug} note="Identificador unico" />
           </div>
         )}
@@ -364,7 +394,7 @@ const MiNegocio = () => {
             <InfoRow icon="fa-user"     label="Nombre"     value={user?.name} />
             <InfoRow icon="fa-user"     label="Apellido"   value={user?.lastName} />
             <InfoRow icon="fa-calendar" label="Nacimiento" value={user?.birthDate ? new Date(user.birthDate).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" }) : null} />
-            <InfoRow icon="fa-flag"     label="Pais"       value={user?.country} />
+            <InfoRow icon="fa-flag"     label="País"       value={user?.country} />
             <InfoRow icon="fa-map"      label="Estado"     value={user?.state} />
             <InfoRow icon="fa-map-pin"  label="Ciudad"     value={user?.city} />
             <InfoRow icon="fa-envelope" label="Email"      value={user?.email} note="El email no se puede cambiar" />

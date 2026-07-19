@@ -12,6 +12,7 @@ const Reportes = () => {
   const [productos, setProductos] = useState([]);
   const [clientes,  setClientes]  = useState([]);
   const [loading,   setLoading]   = useState(true);
+  const [error,     setError]     = useState("");
   const [periodo,   setPeriodo]   = useState(30); // días a mostrar en el gráfico de línea
 
   useEffect(() => {
@@ -25,8 +26,11 @@ const Reportes = () => {
         setVentas(rv.data);
         setProductos(rp.data);
         setClientes(rc.data);
-      } catch {}
-      finally { setLoading(false); }
+      } catch {
+        setError("Error al cargar los reportes");
+      } finally {
+        setLoading(false);
+      }
     };
     cargar();
   }, []);
@@ -172,6 +176,12 @@ const Reportes = () => {
           </p>
         </div>
       </div>
+
+      {error && (
+        <div style={{ background: "#fff0f3", color: "#c00", padding: "10px 16px", borderRadius: 8, border: "1px solid #ffd0d8", display: "flex", alignItems: "center" }}>
+          <i className="fa fa-exclamation-circle" style={{ marginRight: 8 }} />{error}
+        </div>
+      )}
 
       {/* Tarjetas resumen */}
       <div className="dash-kpi-grid" style={styles.cardsGrid}>

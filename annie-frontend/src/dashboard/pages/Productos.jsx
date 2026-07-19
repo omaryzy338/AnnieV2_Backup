@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "../../api/axiosConfig";
 import useWindowWidth from "../../hooks/useWindowWidth";
+import { resolveMediaUrl } from "../../utils/media";
 
 const CATEGORIAS = [
   { label: "Bebidas",            icon: "fa-tint",      color: "#4fc3f7", bg: "#e1f5fe" },
@@ -369,7 +370,7 @@ const Productos = () => {
                 {form.image && (
                   <div style={{ marginTop: 12 }}>
                     <img
-                      src={form.image.startsWith("/uploads") ? `http://localhost:5000${form.image}` : form.image}
+                      src={resolveMediaUrl(form.image)}
                       alt="preview"
                       style={{
                         width: "100%", maxWidth: 340, height: 200,
@@ -531,7 +532,7 @@ const Productos = () => {
                 {/* Imagen */}
                 <div style={styles.gridImg}>
                   {p.image ? (
-                    <img src={p.image.startsWith("/uploads") ? `http://localhost:5000${p.image}` : p.image}
+                    <img src={resolveMediaUrl(p.image)}
                       alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   ) : (
                     <i className="fa fa-cube" style={{ color: "#d0d4ff", fontSize: 30 }} />
@@ -606,7 +607,7 @@ const Productos = () => {
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       {p.image ? (
                         <img
-                          src={p.image.startsWith("/uploads") ? `http://localhost:5000${p.image}` : p.image}
+                          src={resolveMediaUrl(p.image)}
                           alt=""
                           style={{ width: 38, height: 38, objectFit: "cover", borderRadius: 8,
                             border: "1.5px solid #e8eaff", flexShrink: 0 }}

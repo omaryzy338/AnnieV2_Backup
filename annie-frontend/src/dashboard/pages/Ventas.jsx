@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useState, useRef } from "react";
 import axios from "../../api/axiosConfig";
 import useWindowWidth from "../../hooks/useWindowWidth";
+import { resolveMediaUrl } from "../../utils/media";
 
 const formInicial = { productId: "", clientId: "", quantity: 1, discount: 0, discountType: "porcentaje", saleDate: new Date().toISOString().split("T")[0] };
 
@@ -20,18 +21,21 @@ const Ventas = () => {
   const ww = useWindowWidth();
   const isMobile = ww < 768;
   const [productoSel, setProductoSel] = useState(null);
+  const [negocio, setNegocio]         = useState(null);
   const successTimer                  = useRef(null);
 
   const cargar = async () => {
     try {
-      const [v, p, c] = await Promise.all([
+      const [v, p, c, perfil] = await Promise.all([
         axios.get("/sales"),
         axios.get("/products"),
         axios.get("/clients"),
+        axios.get("/profile"),
       ]);
       setVentas(v.data);
       setProductos(p.data);
       setClientes(c.data);
+      setNegocio(perfil.data.business);
     } catch { setError("Error al cargar datos"); }
     finally { setLoading(false); }
   };
@@ -158,6 +162,68 @@ const Ventas = () => {
     return new Date(iso).toLocaleString("es-MX", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
   };
 
+  // Genera un recibo/orden de venta imprimible (el usuario puede "Guardar
+  // como PDF" desde el diálogo de impresión del navegador)
+  const imprimirRecibo = (v) => {
+    const nombreNegocio = negocio?.name || "Mi negocio";
+    const clienteTxt = v.client ? `${v.client.name} ${v.client.lastName || ""}`.trim() : "Cliente general";
+    const descTxt = v.discount > 0
+      ? (v.discountType === "fijo" ? `-$${v.discount}` : `-${v.discount}%`)
+      : "—";
+
+    const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Recibo - ${nombreNegocio}</title>
+<style>
+  body { font-family: 'Segoe UI', Roboto, Arial, sans-serif; color: #1a1a2e; padding: 32px; max-width: 480px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: #888; font-size: 12px; margin-bottom: 20px; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+  th { text-align: left; font-size: 11px; text-transform: uppercase; color: #888; padding: 6px 4px; border-bottom: 2px solid #eee; }
+  td { padding: 8px 4px; font-size: 13px; border-bottom: 1px solid #f0f0f0; }
+  .total-row td { font-weight: 800; font-size: 16px; color: #27ae60; border-top: 2px solid #1a1a2e; border-bottom: none; }
+  .meta { display: flex; justify-content: space-between; font-size: 12px; color: #555; margin-bottom: 4px; }
+  .footer { margin-top: 30px; text-align: center; color: #aaa; font-size: 11px; }
+  @media print { body { padding: 0; } }
+</style>
+</head>
+<body>
+  <h1>${nombreNegocio}</h1>
+  <div class="sub">Recibo de venta ${negocio?.rfc && !negocio?.rfcGenerico ? `· RFC: ${negocio.rfc}` : ""}</div>
+  <div class="meta"><span>Fecha</span><strong>${formatFecha(v.saleDate || v.createdAt)}</strong></div>
+  <div class="meta"><span>Cliente</span><strong>${clienteTxt}</strong></div>
+  <table>
+    <thead>
+      <tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Desc.</th><th>Importe</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>${v.product?.name || "—"}</td>
+        <td>${v.quantity}</td>
+        <td>$${v.price}</td>
+        <td>${descTxt}</td>
+        <td>$${v.total}</td>
+      </tr>
+      <tr class="total-row">
+        <td colspan="4">Total</td>
+        <td>$${v.total}</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="footer">Gracias por su compra · Generado con Annie</div>
+</body>
+</html>`;
+
+    const ventana = window.open("", "_blank", "width=520,height=700");
+    if (!ventana) { setError("Habilita las ventanas emergentes para ver el recibo"); return; }
+    ventana.document.write(html);
+    ventana.document.close();
+    ventana.focus();
+    setTimeout(() => ventana.print(), 300);
+  };
+
   if (loading) return <div style={{ padding: 30 }}>Cargando...</div>;
 
   return (
@@ -272,7 +338,7 @@ const Ventas = () => {
                         {/* Thumbnail */}
                         {p.image ? (
                           <img
-                            src={p.image.startsWith("/uploads") ? `http://localhost:5000${p.image}` : p.image}
+                            src={resolveMediaUrl(p.image)}
                             alt=""
                             style={{ width: 26, height: 26, objectFit: "cover", borderRadius: 6,
                               border: sel ? "1.5px solid #6372ff" : "1.5px solid #e0e0e0", flexShrink: 0 }}
@@ -305,7 +371,7 @@ const Ventas = () => {
                     background: "#f8f9ff", border: "1.5px solid #e8eaff", borderRadius: 10, padding: "10px 14px" }}>
                     {productoSel.image ? (
                       <img
-                        src={productoSel.image.startsWith("/uploads") ? `http://localhost:5000${productoSel.image}` : productoSel.image}
+                        src={resolveMediaUrl(productoSel.image)}
                         alt="" style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 8, border: "1.5px solid #e8eaff" }} />
                     ) : (
                       <div style={{ width: 48, height: 48, borderRadius: 8, background: "#e8eaff",
@@ -586,7 +652,7 @@ const Ventas = () => {
             <div key={v._id} style={{ background: "#fff", borderRadius: 12, padding: 16, boxShadow: "0 2px 8px rgba(0,0,0,0.07)", border: "1.5px solid #f0f2ff" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                 {v.product?.image ? (
-                  <img src={v.product.image.startsWith("/uploads") ? `http://localhost:5000${v.product.image}` : v.product.image}
+                  <img src={resolveMediaUrl(v.product.image)}
                     alt="" style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 8, border: "1.5px solid #e8eaff", flexShrink: 0 }} />
                 ) : (
                   <div style={{ width: 40, height: 40, borderRadius: 8, background: "#f0f2ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -612,7 +678,10 @@ const Ventas = () => {
                     {v.discountType === "fijo" ? `$${v.discount}` : `${v.discount}%`}
                   </span>
                 )}
-                <button style={{ ...styles.btnDelete, marginLeft: "auto", padding: "4px 10px" }} onClick={() => setConfirmId(v._id)}>
+                <button style={{ ...styles.btnGhost, marginLeft: "auto", padding: "4px 10px" }} onClick={() => imprimirRecibo(v)}>
+                  <i className="fa fa-file-text-o" style={{ fontSize: 11 }} />
+                </button>
+                <button style={{ ...styles.btnDelete, padding: "4px 10px" }} onClick={() => setConfirmId(v._id)}>
                   <i className="fa fa-trash" style={{ fontSize: 11 }} />
                 </button>
               </div>
@@ -655,7 +724,7 @@ const Ventas = () => {
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       {v.product?.image ? (
                         <img
-                          src={v.product.image.startsWith("/uploads") ? `http://localhost:5000${v.product.image}` : v.product.image}
+                          src={resolveMediaUrl(v.product.image)}
                           alt="" style={{ width: 38, height: 38, objectFit: "cover", borderRadius: 8,
                             border: "1.5px solid #e8eaff", flexShrink: 0 }} />
                       ) : (
@@ -701,6 +770,9 @@ const Ventas = () => {
                     <span style={{ color: "#27ae60", fontSize: 15, fontWeight: 800 }}>${v.total}</span>
                   </td>
                   <td style={styles.td}>
+                    <button style={styles.btnGhost} onClick={() => imprimirRecibo(v)}>
+                      <i className="fa fa-file-text-o" style={{ marginRight: 5 }} />Recibo
+                    </button>
                     <button style={styles.btnDelete} onClick={() => setConfirmId(v._id)}>
                       <i className="fa fa-trash" style={{ marginRight: 5 }} />Eliminar
                     </button>
@@ -736,6 +808,11 @@ const styles = {
     borderRadius: 6, padding: "5px 12px", cursor: "pointer", fontSize: 12,
     fontWeight: 600, display: "inline-flex", alignItems: "center",
   },
+  btnGhost: {
+    background: "#f4f6ff", color: "#6372ff", border: "1px solid #c8ccff",
+    borderRadius: 6, padding: "5px 12px", cursor: "pointer", fontSize: 12,
+    fontWeight: 600, marginRight: 6, display: "inline-flex", alignItems: "center",
+  },
   btnModalCancel: {
     background: "#f4f6ff", color: "#555", border: "1.5px solid #e0e0e0",
     borderRadius: 8, padding: "10px 20px", cursor: "pointer", fontWeight: 600, fontSize: 14,
@@ -747,9 +824,8 @@ const styles = {
   },
   kpiGrid: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 },
   kpiCard: {
-    background: "#fff", borderRadius: 12, padding: "16px 18px",
-    boxShadow: "0 2px 10px rgba(99,114,255,0.07)", border: "1.5px solid #f0f2ff",
-    display: "flex", alignItems: "center", gap: 14,
+    background: "#fff", borderRadius: 12, padding: "14px 16px",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.07)", display: "flex", alignItems: "center", gap: 12,
   },
   kpiIcon: {
     width: 44, height: 44, borderRadius: 12,
@@ -782,7 +858,7 @@ const styles = {
   },
   tableCard: {
     background: "#fff", borderRadius: 12, overflow: "hidden",
-    boxShadow: "0 2px 10px rgba(99,114,255,0.07)", border: "1.5px solid #f0f2ff",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
   },
   th: {
     padding: "12px 16px", fontSize: 11, color: "#9599b3",

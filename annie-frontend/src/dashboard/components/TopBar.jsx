@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "../../api/axiosConfig";
+import { resolveMediaUrl } from "../../utils/media";
 
 const TopBar = ({ isMobile, onMenuToggle }) => {
   const [busqueda, setBusqueda]   = useState("");
@@ -27,11 +28,7 @@ const TopBar = ({ isMobile, onMenuToggle }) => {
         setProductos(rP.data);
         setClientes(rC.data);
 
-        const businessLogo = rPerfil.data.business?.logo;
-        if (businessLogo) {
-          const base = process.env.REACT_APP_API_URL || "http://localhost:5000";
-          setLogoUrl(businessLogo.startsWith("http") ? businessLogo : `${base}${businessLogo}`);
-        }
+        setLogoUrl(resolveMediaUrl(rPerfil.data.business?.logo));
       } catch {
         // ignore
       }
@@ -116,7 +113,7 @@ const TopBar = ({ isMobile, onMenuToggle }) => {
                   <button key={p._id} style={styles.dropItem}
                     onClick={() => handleSelect("/dashboard/productos")}>
                     {p.image ? (
-                      <img src={p.image.startsWith("/uploads") ? `http://localhost:5000${p.image}` : p.image}
+                      <img src={resolveMediaUrl(p.image)}
                         alt="" style={{ width: 28, height: 28, objectFit: "cover", borderRadius: 6,
                           border: "1px solid #e8eaff", flexShrink: 0 }} />
                     ) : (

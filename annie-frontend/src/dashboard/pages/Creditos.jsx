@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import axios from "../../api/axiosConfig";
 import useWindowWidth from "../../hooks/useWindowWidth";
 
@@ -24,6 +25,7 @@ const formInicial = {
 const Creditos = () => {
   const [clientes, setClientes] = useState([]);
   const [resumen, setResumen]   = useState(null);
+  const [rfcGenerico, setRfcGenerico] = useState(false);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState("");
   const [success, setSuccess]   = useState("");
@@ -46,12 +48,14 @@ const Creditos = () => {
 
   const cargar = async () => {
     try {
-      const [rc, rr] = await Promise.all([
+      const [rc, rr, rp] = await Promise.all([
         axios.get("/credits"),
         axios.get("/credits/resumen"),
+        axios.get("/profile"),
       ]);
       setClientes(rc.data);
       setResumen(rr.data);
+      setRfcGenerico(!!rp.data.business?.rfcGenerico);
     } catch {
       setError("Error al cargar los créditos");
     } finally {
@@ -331,11 +335,24 @@ const Creditos = () => {
             <i className="fa fa-times" style={{ marginRight: 8 }} />Cancelar
           </button>
         ) : (
-          <button style={styles.btnPrimary} onClick={abrirNuevo}>
+          <button style={{ ...styles.btnPrimary, opacity: rfcGenerico ? 0.5 : 1, cursor: rfcGenerico ? "not-allowed" : "pointer" }}
+            onClick={abrirNuevo} disabled={rfcGenerico}
+            title={rfcGenerico ? "Configura el RFC de tu negocio primero" : ""}>
             <i className="fa fa-plus" style={{ marginRight: 8 }} />Nuevo cliente de crédito
           </button>
         )}
       </div>
+
+      {rfcGenerico && (
+        <div style={{ ...styles.alertError, justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+          <span><i className="fa fa-exclamation-circle" style={{ marginRight: 8 }} />
+            Tu negocio no tiene un RFC real configurado, así que no puedes dar crédito a clientes (sin RFC no puedes facturar).
+          </span>
+          <Link to="/dashboard/mi-negocio" style={{ color: "#c00", fontWeight: 700, textDecoration: "underline", whiteSpace: "nowrap" }}>
+            Configurar RFC →
+          </Link>
+        </div>
+      )}
 
       {error   && <div style={styles.alertError}><i className="fa fa-exclamation-circle" style={{ marginRight: 8 }} />{error}</div>}
       {success && <div style={styles.alertSuccess}><i className="fa fa-check-circle" style={{ marginRight: 8 }} />{success}</div>}

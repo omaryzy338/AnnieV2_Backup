@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import axios from "../../api/axiosConfig";
+import { resolveMediaUrl } from "../../utils/media";
 
 const links = [
   { to: "/dashboard",           icon: "fa-home",          label: "Inicio" },
@@ -27,11 +28,7 @@ const Sidebar = ({ isMobile, isOpen, onClose }) => {
     if (!stored.businessName || !stored.businessLogo) {
       axios.get("/profile").then((res) => {
         const name = res.data.business?.name || "Mi Tienda";
-        let logo = res.data.business?.logo || null;
-        if (logo && !logo.startsWith("http")) {
-          const base = process.env.REACT_APP_API_URL || "http://localhost:5000";
-          logo = `${base}${logo}`;
-        }
+        const logo = resolveMediaUrl(res.data.business?.logo);
 
         setBusinessName(name);
         setBusinessLogo(logo);

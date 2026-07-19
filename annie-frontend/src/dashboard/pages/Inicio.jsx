@@ -56,9 +56,6 @@ const Inicio = () => {
 
   if (loading) return <div style={{ padding: 30 }}>Cargando...</div>;
 
-  // eslint-disable-next-line no-unused-vars
-  const stockBajo = productos.filter((p) => p.quantity < 5);
-
   // Top productos: #1 más vendido por cantidad, #2 mayor ganancia generada (sin duplicar)
   const topMapProductos = Object.values(
     ventas.reduce((acc, v) => {
@@ -72,6 +69,22 @@ const Inicio = () => {
   );
 
   const topProductos = [...topMapProductos].sort((a, b) => b.total - a.total);
+
+  // Para la gráfica de pastel: máximo 5 rebanadas + "Otros" agrupado, para
+  // que no se amontonen las etiquetas cuando hay muchos productos distintos
+  const topProductosPie = (() => {
+    if (topProductos.length <= 5) return topProductos;
+    const top5 = topProductos.slice(0, 5);
+    const resto = topProductos.slice(5);
+    const otros = {
+      nombre: "Otros",
+      total: resto.reduce((a, p) => a + p.total, 0),
+      ventas: resto.reduce((a, p) => a + p.ventas, 0),
+      unit: "uds.",
+    };
+    return [...top5, otros];
+  })();
+
   const masVendido  = [...topMapProductos].sort((a, b) => b.ventas - a.ventas)[0]  || null;
   const masGanancia = [...topMapProductos].sort((a, b) => b.total  - a.total)[0]   || null;
   const topProductosDuo = masVendido && masGanancia && masVendido.nombre === masGanancia.nombre
@@ -99,9 +112,6 @@ const Inicio = () => {
         <StatCard icon="fa-cube"          label="Productos"    value={productos.length}                color="#FF9800" />
         <StatCard icon="fa-users"         label="Clientes"     value={clientes.length}                 color="#27ae60" />
       </div>
-
-
-
       {/* Grid principal: 3 columnas */}
       <div style={{ ...styles.mainGrid, gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 300px" }}>
 
@@ -130,17 +140,23 @@ const Inicio = () => {
             <span style={{ ...styles.dot, background: "#5ca9fb" }} />
             <span style={styles.sectionTitle}>Distribución de ventas</span>
           </div>
-          {topProductos.length > 0 ? (
-            <ResponsiveContainer width="100%" height={190}>
+          {topProductosPie.length > 0 ? (
+            <ResponsiveContainer width="100%" height={210}>
               <PieChart>
-                <Pie data={topProductos} dataKey="total" nameKey="nombre" cx="50%" cy="46%"
-                  outerRadius={60} innerRadius={30} paddingAngle={2}
-                  label={({ percent }) => percent > 0.06 ? `${(percent * 100).toFixed(0)}%` : ""}
-                  labelLine={{ stroke: "#bbb", strokeWidth: 1 }}>
-                  {topProductos.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
+                <Pie data={topProductosPie} dataKey="total" nameKey="nombre" cx="50%" cy="42%"
+                  outerRadius={65} innerRadius={34} paddingAngle={2}>
+                  {topProductosPie.map((_, i) => (
+                    <Cell key={i} fill={i === topProductosPie.length - 1 && topProductosPie[i].nombre === "Otros" ? "#d6d9e6" : PALETTE[i % PALETTE.length]} />
+                  ))}
                 </Pie>
-                <Tooltip formatter={(v, name) => [`$${v}`, name]} contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 2px 12px rgba(0,0,0,0.1)" }} />
-                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+                <Tooltip
+                  formatter={(v, name) => [`$${Number(v).toFixed(2)}`, name]}
+                  contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 2px 12px rgba(0,0,0,0.1)" }}
+                />
+                <Legend
+                  iconType="circle" iconSize={8}
+                  wrapperStyle={{ fontSize: 11, lineHeight: "18px", paddingTop: 8 }}
+                />
               </PieChart>
             </ResponsiveContainer>
           ) : (
@@ -216,8 +232,6 @@ const Inicio = () => {
                 });
             })()}
           </div>
-
-
         </div>
       </div>
 
@@ -241,7 +255,10 @@ const Inicio = () => {
               </tr>
             </thead>
             <tbody>
-              {ventas.slice(0, 1).map((v) => (
+              {[...ventas]
+                .sort((a, b) => new Date(b.saleDate || b.createdAt) - new Date(a.saleDate || a.createdAt))
+                .slice(0, 5)
+                .map((v) => (
                 <tr key={v._id} style={{ borderBottom: "1px solid #f0f0f0" }}>
                   <td style={styles.td}>{v.product?.name || "—"}</td>
                   <td style={styles.td}><span style={{ color: v.client ? "#1a1a2e" : "#bbb", fontWeight: 600 }}>{v.client?.name || "Sin cliente"}</span></td>
@@ -397,19 +414,6 @@ const styles = {
     gap: 10,
     padding: "7px 0",
     borderBottom: "1px solid #f5f5f5",
-  },
-  rank: {
-    width: 22,
-    height: 22,
-    borderRadius: "50%",
-    background: "#f4f6f9",
-    color: "#1a1a2e",
-    fontWeight: 700,
-    fontSize: 10,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
   },
   barBg: {
     background: "#f0f0f0",

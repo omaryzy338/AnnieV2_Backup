@@ -4,11 +4,13 @@ import { useNavigate, Link } from "react-router-dom";
 import useWindowWidth from "../hooks/useWindowWidth";
 
 const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
+const RFC_FISICA = /^[A-ZÑ&]{4}[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[A-Z0-9]{2}[0-9A]$/;
+const RFC_MORAL  = /^[A-ZÑ&]{3}[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[A-Z0-9]{2}[0-9A]$/;
 
 const Register = () => {
   const [form, setForm] = useState({
     name: "", lastName: "", businessName: "",
-    email: "", password: "", confirmPassword: "",
+    email: "", password: "", confirmPassword: "", rfc: "",
   });
   const [logoFile, setLogoFile]   = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
@@ -43,6 +45,10 @@ const Register = () => {
       setError("La contraseña debe tener mínimo 8 caracteres, una mayúscula, un número y un carácter especial");
       return;
     }
+    if (form.rfc.trim() && !RFC_FISICA.test(form.rfc.trim().toUpperCase()) && !RFC_MORAL.test(form.rfc.trim().toUpperCase())) {
+      setError("El RFC no tiene un formato válido (física=13, moral=12 caracteres)");
+      return;
+    }
     setLoading(true);
     try {
       const res = await axios.post("/auth/register", {
@@ -51,6 +57,7 @@ const Register = () => {
         businessName: form.businessName,
         email:        form.email,
         password:     form.password,
+        rfc:          form.rfc.trim() || undefined,
       });
       const { token, user } = res.data;
       localStorage.setItem("token", token);
@@ -200,6 +207,25 @@ const Register = () => {
 
             <div style={styles.fieldWrap}>
               <label style={styles.label}>
+                <i className="fa fa-id-card-o" style={styles.labelIcon} />RFC de tu negocio
+                <span style={{ fontWeight: 400, textTransform: "none", color: "#bbb", marginLeft: 4 }}>(opcional)</span>
+              </label>
+              <input
+                style={styles.input}
+                type="text" name="rfc"
+                placeholder="Ej: XAXX010101000"
+                value={form.rfc}
+                onChange={(e) => setForm((p) => ({ ...p, rfc: e.target.value.toUpperCase() }))}
+                maxLength={13}
+              />
+              <span style={{ fontSize: 11, color: "#aaa", marginTop: 4 }}>
+                Si lo dejas vacío, se te asigna un RFC genérico. Podrás cambiarlo después en
+                "Mi Negocio", pero necesitas uno real para poder ofrecer crédito a tus clientes.
+              </span>
+            </div>
+
+            <div style={styles.fieldWrap}>
+              <label style={styles.label}>
                 <i className="fa fa-envelope" style={styles.labelIcon} />Correo electrónico *
               </label>
               <input
@@ -254,6 +280,11 @@ const Register = () => {
                 required
                 autoComplete="new-password"
               />
+            </div>
+
+            <div style={styles.securityNote}>
+              <i className="fa fa-lock" style={{ color: "#27ae60", marginRight: 8 }} />
+              Tus datos están seguros y protegidos. Usamos contraseñas cifradas y nunca compartimos tu información.
             </div>
 
             <button type="submit" style={styles.btnSubmit} disabled={loading}>
@@ -359,6 +390,11 @@ const styles = {
     background: "#fff0f3", color: "#c0392b", padding: "10px 14px",
     borderRadius: 8, border: "1px solid #ffd0d8",
     fontSize: 13, display: "flex", alignItems: "center", marginBottom: 4,
+  },
+  securityNote: {
+    background: "#f0fff4", color: "#1a7c40", padding: "10px 14px",
+    borderRadius: 8, border: "1px solid #b7f0cc",
+    fontSize: 12, display: "flex", alignItems: "center", lineHeight: 1.4,
   },
   switchText: { textAlign: "center", marginTop: 20, color: "#aaa", fontSize: 13 },
   switchLink: { color: "#6372ff", fontWeight: 700, textDecoration: "none" },
