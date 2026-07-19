@@ -5,9 +5,9 @@ export const Features = (props) => {
     <div id="features" className="text-center">
       <div className="container">
         <div className="col-xs-12 col-md-10 col-md-offset-1 section-title">
-          <h2>El Problema y Nuestra Solución</h2>
+          <h2>Propuesta</h2>
           <p>
-            ANNIE nace como respuesta a los desafíos que enfrentan miles de emprendedores en Latinoamérica.
+            Annie nace como respuesta a los desafíos que enfrentan miles de emprendedores en Latinoamérica.
           </p>
         </div>
         <div className="row" style={{ marginTop: "40px" }}>
@@ -16,27 +16,26 @@ export const Features = (props) => {
                 <div key={`${d.title}-${i}`} className="col-xs-12 col-sm-6 col-md-3" style={{ marginBottom: "20px" }}>
                   <div
                     style={{
-                      padding: "16px",
+                      padding: "28px 16px",
                       borderRadius: "8px",
                       height: "100%",
-                      textAlign: "center"
+                      textAlign: "center",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center"
                     }}
                   >
                     <i 
                       className={d.icon}
+                      title={d.title}
+                      aria-label={d.title}
                       style={{ 
-                        fontSize: "clamp(32px, 6vw, 40px)", 
+                        fontSize: "clamp(44px, 10vw, 72px)", 
                         color: "#6372ff",
-                        marginBottom: "12px",
                         display: "block"
                       }}
                     ></i>
-                    <h3 style={{ fontSize: "clamp(13px, 3vw, 16px)", fontWeight: "600", margin: "10px 0", minHeight: "auto" }}>
-                      {d.title}
-                    </h3>
-                    <p style={{ fontSize: "clamp(11px, 2.2vw, 13px)", color: "#666", lineHeight: "1.5", margin: 0 }}>
-                      {d.text}
-                    </p>
+                    <span className="sr-only">{d.title}</span>
                   </div>
                 </div>
               ))

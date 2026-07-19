@@ -8,7 +8,7 @@ export const Gallery = (props) => {
         <div className="section-title">
           <h2>Tecnologías Utilizadas</h2>
           <p>
-            ANNIE está construido con el stack tecnológico más moderno y fiable para garantizar rendimiento, seguridad y escalabilidad.
+            Annie está construido con el stack tecnológico más moderno y fiable para garantizar rendimiento, seguridad y escalabilidad.
           </p>
         </div>
         <div className="row" style={{ marginTop: "40px" }}>
@@ -20,11 +20,14 @@ export const Gallery = (props) => {
                     className="col-xs-12 col-sm-6 col-md-4 col-lg-4"
                     style={{ paddingTop: "20px", paddingBottom: "20px" }}
                   >
-                    <Image
-                      title={d.title}
-                      largeImage={d.largeImage}
-                      smallImage={d.smallImage}
-                    />
+                    <a href={d.url || d.largeImage} target="_blank" rel="noreferrer" aria-label={`Abrir ${d.title}`}> 
+                      <Image
+                        title={d.title}
+                        largeImage={d.largeImage}
+                        smallImage={d.smallImage}
+                      />
+                      <div className="portfolio-label">{d.title}</div>
+                    </a>
                   </div>
                 ))
               : "Loading..."}

@@ -16,7 +16,7 @@ export const Services = (props) => {
                 <div key={`${d.name}-${i}`} className="col-xs-12 col-sm-6 col-md-3" style={{ marginBottom: "30px", display: "flex" }}>
                   <div
                     style={{
-                      padding: "20px",
+                      padding: "28px 16px",
                       borderRadius: "8px",
                       backgroundColor: "#f8f9fa",
                       minHeight: "clamp(240px, 50vh, 280px)",
@@ -24,19 +24,21 @@ export const Services = (props) => {
                       display: "flex",
                       flexDirection: "column",
                       alignItems: "center",
-                      justifyContent: "flex-start"
+                      justifyContent: "center"
                     }}
                   >
-                    <i 
+                    <i
                       className={d.icon}
-                      style={{ 
-                        fontSize: "clamp(36px, 8vw, 48px)", 
+                      title={d.name}
+                      aria-label={d.name}
+                      style={{
+                        fontSize: "clamp(44px, 10vw, 72px)",
                         color: "#6372ff",
-                        marginBottom: "16px",
-                        display: "block"
+                        display: "block",
+                        marginBottom: "16px"
                       }}
                     ></i>
-                    <h3 style={{ marginTop: "12px", marginBottom: "12px", fontSize: "clamp(14px, 3.5vw, 16px)", fontWeight: "600", color: "#1a1a2e" }}>
+                    <h3 style={{ marginTop: 0, marginBottom: "12px", fontSize: "clamp(14px, 3.5vw, 16px)", fontWeight: "600", color: "#1a1a2e" }}>
                       {d.name}
                     </h3>
                     <p style={{ color: "#666", fontSize: "clamp(12px, 2.5vw, 14px)", lineHeight: "1.5", marginBottom: 0 }}>

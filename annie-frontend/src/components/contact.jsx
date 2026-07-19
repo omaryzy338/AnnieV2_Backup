@@ -10,9 +10,9 @@ export const Contact = (props) => {
         <div className="contact-head">
           <div>
             <span className="annie-section__eyebrow">Comienza hoy</span>
-            <h2 className="annie-section__title">Empieza a administrar tu negocio con ANNIE</h2>
+            <h2 className="annie-section__title">Empieza a administrar tu negocio con <strong>Annie</strong></h2>
             <p className="annie-section__desc contact-intro">
-              Crea tu cuenta en ANNIE y organiza tus ventas, clientes e inventario desde una sola plataforma.
+              Crea tu cuenta en <strong>Annie</strong> y organiza tus ventas, clientes e inventario desde una sola plataforma.
             </p>
             <Link to="/register" className="contact-btn">
               <i className="fa fa-user-plus" style={{ marginRight: 8 }} />Crear cuenta gratis
@@ -26,6 +26,13 @@ export const Contact = (props) => {
 
         <div className="contact-grid">
           <div className="contact-card contact-card--info">
+            <div className="contact-card__media">
+              <img
+                src="/img/about.jpg"
+                alt="Emprendedores usando Annie"
+                className="contact-card__media-img"
+              />
+            </div>
             <h3 className="contact-card__title">Información</h3>
             <p className="contact-card__text">{data.address || "Empieza a administrar tu negocio hoy."}</p>
             <ul className="contact-card__points">
@@ -57,7 +64,7 @@ export const Contact = (props) => {
           <div className="contact-card contact-card--social">
             <h3 className="contact-card__title">Síguenos</h3>
             <p className="contact-card__text">
-              Mantente al día con las novedades de ANNIE y el ecosistema emprendedor.
+              Mantente al día con las novedades de <strong>Annie</strong> y el ecosistema emprendedor.
             </p>
             <ul className="contact-card__points">
               <li>Consejos para negocios locales y ventas recurrentes.</li>
@@ -82,7 +89,7 @@ export const Contact = (props) => {
       </div>
       <div className="footer-bar">
         <div className="footer-bar__content">
-          <span className="footer-brand">© 2026 ANNIE</span>
+          <span className="footer-brand">© 2026 Annie</span>
           <span className="footer-separator" aria-hidden="true">•</span>
           <span>Plataforma de gestión para pequeños negocios</span>
         </div>

@@ -22,7 +22,7 @@ export const Navigation = (props) => {
     { href: "#about", icon: "fa fa-lightbulb-o", label: "Propuesta", external: true },
     { href: "#services", icon: "fa fa-cogs", label: "Funciones", external: true },
     { href: "#portfolio", icon: "fa fa-code", label: "Tecnología", external: true },
-    { href: "#testimonials", icon: "fa fa-comments", label: "Voces", external: true },
+    { href: "#testimonials", icon: "fa fa-comments", label: "Testimonios", external: true },
     { href: "#contact", icon: "fa fa-envelope", label: "Contacto", external: true },
   ];
 
@@ -54,7 +54,7 @@ export const Navigation = (props) => {
                 {item.external ? (
                   <a href={item.href} className="page-scroll annie-nav__link">
                     {item.icon === "logo" ? (
-                      <img src="/favicon.png" alt="ANNIE" className="annie-nav__item-logo" />
+                      <img src="/favicon.png" alt="Annie" className="annie-nav__item-logo" />
                     ) : (
                       <i className={item.icon} aria-hidden="true" />
                     )}
@@ -63,7 +63,7 @@ export const Navigation = (props) => {
                 ) : (
                   <Link to={item.href} className="annie-nav__link">
                     {item.icon === "logo" ? (
-                      <img src="/favicon.png" alt="ANNIE" className="annie-nav__item-logo" />
+                      <img src="/favicon.png" alt="Annie" className="annie-nav__item-logo" />
                     ) : (
                       <i className={item.icon} aria-hidden="true" />
                     )}

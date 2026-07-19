@@ -88,7 +88,7 @@ const Register = () => {
       {!isMobile && (
       <div style={styles.leftPanel}>
         <div style={styles.leftContent}>
-          <div style={styles.brand}>ANNIE</div>
+          <div style={styles.brand}>Annie</div>
           <div style={styles.brandSub}>Gestión empresarial para emprendedores</div>
           <div style={styles.features}>
             {[
@@ -117,7 +117,7 @@ const Register = () => {
             <i className="fa fa-arrow-left" style={{ marginRight: 6 }} />Volver
           </button>
 
-          {isMobile && <div style={{ ...styles.mobileBrand, display: "block" }}>ANNIE</div>}
+          {isMobile && <div style={{ ...styles.mobileBrand, display: "block" }}>Annie</div>}
 
           <div style={styles.cardHeader}>
             <div style={styles.iconWrap}>

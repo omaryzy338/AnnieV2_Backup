@@ -2,13 +2,17 @@ import React from "react";
 import { Link } from "react-router-dom";
 
 export const Header = (props) => {
+  const heroImageUrl = `${process.env.PUBLIC_URL || ""}/img/hero-guided.jpg`;
+
   return (
     <header
       id="header"
       style={{
-        backgroundImage: "url('/img/intro-bg.jpg')",
+        backgroundColor: "#0b162a",
+        backgroundImage: `linear-gradient(rgba(11, 22, 42, 0.35), rgba(11, 22, 42, 0.35)), url(${heroImageUrl})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
         paddingTop: "min(140px, 20vw)",
       }}
     >
@@ -17,8 +21,8 @@ export const Header = (props) => {
           <div className="container">
             <div className="row">
               <div className="col-xs-12 col-md-8 col-md-offset-2 intro-text">
-                <h1 
-                  className="header-title" 
+                <h1
+                  className="header-title"
                   style={{ marginBottom: "20px" }}
                 >
                   {props.data ? props.data.title : "Loading"}
@@ -29,16 +33,12 @@ export const Header = (props) => {
                 >
                   {props.data ? props.data.paragraph : "Loading"}
                 </p>
-                <div style={{ display: "flex", gap: 14, flexWrap: "wrap", justifyContent: "center" }}>
-                  <Link to="/register" className="btn btn-custom btn-lg page-scroll">
-                    Crear cuenta gratis
+                <div className="annie-hero-actions">
+                  <Link to="/register" className="btn-custom annie-hero-btn">
+                    Crear cuenta
                   </Link>
-                  <Link
-                    to="/login"
-                    className="btn btn-custom btn-lg page-scroll"
-                    style={{ background: "transparent", color: "#fff", border: "2px solid #fff" }}
-                  >
-                    Ya tengo cuenta
+                  <Link to="/login" className="btn-custom annie-hero-btn annie-hero-btn--secondary">
+                    Entrar
                   </Link>
                 </div>
               </div>
