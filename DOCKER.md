@@ -17,7 +17,8 @@ Cuando termine:
 
 | Servicio | URL |
 |----------|-----|
-| Frontend | http://localhost:8080 |
+| Frontend (HTTP) | http://localhost:8080 |
+| Frontend (HTTPS) | https://localhost:8443 (certificado local, ver `certs/README.md`) |
 | Backend (API) | http://localhost:5000 |
 | MongoDB | mongodb://localhost:27017/annie_db |
 
@@ -57,6 +58,30 @@ docker compose build frontend
 - **REACT_APP_API_URL**: la URL del backend se hornea al construir el frontend
   (`http://localhost:5000`). Si cambias el puerto del backend, ajústalo en `docker-compose.yml`
   y reconstruye el frontend.
+
+## HTTPS local
+
+```bash
+sh certs/generate-self-signed.sh
+docker compose up -d --build frontend
+```
+
+Abre https://localhost:8443 — el navegador va a avisar que el certificado no es de
+confianza (es autofirmado, normal en desarrollo). Detalles y cómo usar un certificado
+real en producción: ver `certs/README.md`.
+
+## Datos de demostración
+
+Para llenar la base con productos (con fotos reales), clientes de mayoreo con RFC
+válido, ventas de los últimos 30 días y un ejemplo de solicitud de aumento de
+crédito pendiente:
+
+```bash
+cd annie-backend
+npm run seed:demo
+```
+
+Crea una cuenta nueva (no toca tus datos reales): `demo@annie.app` / `Demo2026!`
 
 ## Notas
 

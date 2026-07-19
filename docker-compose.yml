@@ -4,9 +4,10 @@
 # Apagar + borrar datos: docker compose down -v
 #
 # URLs una vez arriba:
-#   Frontend  -> http://localhost:8080
-#   Backend   -> http://localhost:5000
-#   MongoDB   -> mongodb://localhost:27017/annie_db
+#   Frontend (HTTP)  -> http://localhost:8080
+#   Frontend (HTTPS) -> https://localhost:8443  (certificado autofirmado, ver certs/README.md)
+#   Backend          -> http://localhost:5000
+#   MongoDB          -> mongodb://localhost:27017/annie_db
 
 services:
   # ── Base de datos ──────────────────────────────────────────────
@@ -56,6 +57,9 @@ services:
       - backend
     ports:
       - "8080:80"
+      - "8443:443"
+    volumes:
+      - ./certs:/etc/nginx/certs:ro
 
 volumes:
   mongo_data:
