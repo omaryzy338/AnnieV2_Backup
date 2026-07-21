@@ -18,10 +18,6 @@ export const Contact = (props) => {
               <i className="fa fa-user-plus" style={{ marginRight: 8 }} />Crear cuenta gratis
             </Link>
           </div>
-          <div className="contact-highlight">
-            <span className="contact-highlight__label">Soporte de crecimiento</span>
-            <p className="contact-highlight__text">Muy pronto añadiremos soporte directo y chat en vivo para emprendedores.</p>
-          </div>
         </div>
 
         <div className="contact-grid">
@@ -33,57 +29,32 @@ export const Contact = (props) => {
                 className="contact-card__media-img"
               />
             </div>
-            <h3 className="contact-card__title">Información</h3>
-            <p className="contact-card__text">{data.address || "Empieza a administrar tu negocio hoy."}</p>
-            <ul className="contact-card__points">
-              <li>Organiza ventas, clientes e inventarios desde un solo panel.</li>
-              <li>Recibe reportes y alertas diseñadas para emprendedores.</li>
+            <ul className="contact-card__support-list">
+              <li>
+                <span className="contact-card__icon"><i className="fa fa-envelope-o" aria-hidden="true" /></span>
+                <span>{data.email || "info@annie.com"}</span>
+              </li>
+              <li>
+                <span className="contact-card__icon"><i className="fa fa-phone" aria-hidden="true" /></span>
+                <span>{data.phone || "+52 55 1234 5678"}</span>
+              </li>
+              <li>
+                <span className="contact-card__icon"><i className="fa fa-facebook" aria-hidden="true" /></span>
+                <span>Facebook</span>
+              </li>
+              <li>
+                <span className="contact-card__icon"><i className="fa fa-twitter" aria-hidden="true" /></span>
+                <span>Twitter</span>
+              </li>
+              <li>
+                <span className="contact-card__icon"><i className="fa fa-youtube" aria-hidden="true" /></span>
+                <span>YouTube</span>
+              </li>
+              <li>
+                <span className="contact-card__icon"><i className="fa fa-instagram" aria-hidden="true" /></span>
+                <span>Instagram</span>
+              </li>
             </ul>
-            <div className="contact-card__list">
-              <div className="contact-card__item">
-                <span className="contact-card__icon">
-                  <i className="fa fa-envelope-o" />
-                </span>
-                <div>
-                  <strong>Email</strong>
-                  <div className="contact-card__value">{data.email || "info@annie.com"}</div>
-                </div>
-              </div>
-              <div className="contact-card__item">
-                <span className="contact-card__icon">
-                  <i className="fa fa-phone" />
-                </span>
-                <div>
-                  <strong>Teléfono</strong>
-                  <div className="contact-card__value">{data.phone || "+52 55 1234 5678"}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="contact-card contact-card--social">
-            <h3 className="contact-card__title">Síguenos</h3>
-            <p className="contact-card__text">
-              Mantente al día con las novedades de <strong>Annie</strong> y el ecosistema emprendedor.
-            </p>
-            <ul className="contact-card__points">
-              <li>Consejos para negocios locales y ventas recurrentes.</li>
-              <li>Actualizaciones de producto, eventos y recursos gratis.</li>
-            </ul>
-            <div className="social-links">
-              <a href={data.facebook || "/"} target="_blank" rel="noreferrer" aria-label="Facebook">
-                <i className="fa fa-facebook" />
-              </a>
-              <a href={data.twitter || "/"} target="_blank" rel="noreferrer" aria-label="Twitter">
-                <i className="fa fa-twitter" />
-              </a>
-              <a href={data.youtube || "/"} target="_blank" rel="noreferrer" aria-label="YouTube">
-                <i className="fa fa-youtube" />
-              </a>
-              <a href={data.instagram || "/"} target="_blank" rel="noreferrer" aria-label="Instagram">
-                <i className="fa fa-instagram" />
-              </a>
-            </div>
           </div>
         </div>
       </div>
