@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import axios from "../../api/axiosConfig";
 import useWindowWidth from "../../hooks/useWindowWidth";
 import { resolveMediaUrl } from "../../utils/media";
