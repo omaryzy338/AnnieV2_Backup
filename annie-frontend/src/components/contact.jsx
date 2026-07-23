@@ -63,6 +63,7 @@ export const Contact = (props) => {
           <span className="footer-brand">© 2026 Annie</span>
           <span className="footer-separator" aria-hidden="true">•</span>
           <span>Plataforma de gestión para pequeños negocios</span>
+    | <a href="/AVISO DE PRIVACIDAD.pdf" target="_blank">Aviso de Privacidad</a>
         </div>
       </div>
     </section>
