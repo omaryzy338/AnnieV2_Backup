@@ -1,26 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
-const fs = require('fs');
 const multer = require('multer');
 const authMiddleware = require('../middleware/authMiddleware');
 const User = require('../models/User');
 const Business = require('../models/Business');
+const Upload = require('../models/Upload');
 const { validarRFC, esRFCGenerico } = require('../utils/rfc');
 
-// Multer para logo del negocio
-const uploadsDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadsDir),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, `logo_${req.user.id}_${Date.now()}${ext}`);
-  },
-});
+// El logo se recibe en memoria y se guarda en MongoDB (en Vercel el disco es
+// de solo lectura y efímero, no se puede escribir en /uploads).
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 3 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowed = ['.jpg', '.jpeg', '.png', '.webp'];
@@ -112,7 +103,16 @@ router.post('/business/logo', authMiddleware, upload.single('logo'), async (req,
   try {
     if (!req.file) return res.status(400).json({ message: 'No se recibió imagen' });
 
-    const url = `/uploads/${req.file.filename}`;
+    const doc = await Upload.create({
+      data: req.file.buffer,
+      contentType: req.file.mimetype,
+      filename: req.file.originalname,
+      size: req.file.size,
+      owner: req.user.id,
+    });
+
+    // Misma forma de URL que antes, para no cambiar nada en el frontend
+    const url = `/uploads/${doc._id}`;
     const business = await Business.findOneAndUpdate(
       { owner: req.user.id },
       { logo: url },

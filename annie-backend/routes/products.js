@@ -1,25 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
-const fs = require('fs');
 const multer = require('multer');
 const authMiddleware = require('../middleware/authMiddleware');
 const Product = require('../models/Product');
+const Upload = require('../models/Upload');
 
-// Asegurar que la carpeta uploads existe
-const uploadsDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-
-// Configurar multer — guarda en /uploads con nombre único
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadsDir),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, `prod_${Date.now()}${ext}`);
-  },
-});
+// La imagen se recibe en memoria y se guarda en MongoDB: en Vercel el disco
+// es de solo lectura y efímero, así que no se puede escribir en /uploads.
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB máximo
   fileFilter: (req, file, cb) => {
     const allowed = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
@@ -30,10 +20,24 @@ const upload = multer({
 });
 
 // ── POST /products/upload-image — subir imagen ───────────────────
-router.post('/upload-image', authMiddleware, upload.single('image'), (req, res) => {
-  if (!req.file) return res.status(400).json({ message: 'No se recibió ningún archivo' });
-  const url = `/uploads/${req.file.filename}`;
-  res.json({ url });
+router.post('/upload-image', authMiddleware, upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: 'No se recibió ningún archivo' });
+
+    const doc = await Upload.create({
+      data: req.file.buffer,
+      contentType: req.file.mimetype,
+      filename: req.file.originalname,
+      size: req.file.size,
+      owner: req.user.id,
+    });
+
+    // Misma forma de URL que antes, para no cambiar nada en el frontend
+    res.json({ url: `/uploads/${doc._id}` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al subir la imagen' });
+  }
 });
 
 // ── GET /products — listar todos los productos del usuario ────────
