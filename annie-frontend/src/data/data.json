@@ -74,17 +74,17 @@
   ],
   "Testimonials": [
     {
-      "img": "img/testimonials/01.jpg",
+      "img": "/img/testimonials/01.jpg",
       "text": "\"Muchos emprendedores no tienen acceso a herramientas digitales para administrar su negocio debido al costo de los sistemas de gestión empresarial.\"",
       "name": "El Problema"
     },
     {
-      "img": "img/testimonials/02.jpg",
+      "img": "/img/testimonials/02.jpg",
       "text": "\"Los sistemas de punto de venta pueden tener costos elevados que dificultan su adopción por parte de pequeños negocios.\"",
       "name": "Barrera Económica"
     },
     {
-      "img": "img/testimonials/03.jpg",
+      "img": "/img/testimonials/03.jpg",
       "text": "\"Esto limita la organización interna de muchos emprendimientos.\"",
       "name": "Limitación Actual"
     }

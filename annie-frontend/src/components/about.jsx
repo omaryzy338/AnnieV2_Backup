@@ -7,7 +7,7 @@ export const About = (props) => {
         <div className="row">
           <div className="col-xs-12 col-md-6" style={{ marginBottom: "30px" }}>
             <img 
-              src="img/about.jpg" 
+              src="/img/about.jpg"
               className="img-responsive" 
               alt="Annie 2.0"
               style={{ borderRadius: "8px", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}

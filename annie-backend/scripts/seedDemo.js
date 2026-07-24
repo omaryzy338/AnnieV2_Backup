@@ -7,13 +7,19 @@
 //   node scripts/seedDemo.js
 //   API_URL=http://localhost:5000 node scripts/seedDemo.js
 //
-// Es seguro correrlo varias veces: si el email de demo ya existe, se
-// detiene con un mensaje en vez de duplicar datos.
+// Se puede sembrar cualquier cuenta pasando estas variables:
+//   SEED_EMAIL, SEED_PASSWORD, SEED_BUSINESS, SEED_NAME, SEED_LASTNAME
+//
+// Es seguro correrlo varias veces: si el email ya existe, inicia sesión con
+// esa cuenta en vez de duplicarla.
 
 const API_URL = process.env.API_URL || 'http://localhost:5000';
 
-const DEMO_EMAIL = 'demo@annie.app';
-const DEMO_PASSWORD = 'Demo2026!';
+const DEMO_EMAIL    = process.env.SEED_EMAIL    || 'demo@annie.app';
+const DEMO_PASSWORD = process.env.SEED_PASSWORD || 'Demo2026!';
+const DEMO_BUSINESS = process.env.SEED_BUSINESS || 'Abarrotes Demo Annie';
+const DEMO_NAME     = process.env.SEED_NAME     || 'Demo';
+const DEMO_LASTNAME = process.env.SEED_LASTNAME || 'Annie';
 
 let token = '';
 
@@ -114,8 +120,8 @@ async function main() {
   let auth;
   try {
     auth = await api('POST', '/auth/register', {
-      name: 'Demo', lastName: 'Annie', email: DEMO_EMAIL, password: DEMO_PASSWORD,
-      businessName: 'Abarrotes Demo Annie',
+      name: DEMO_NAME, lastName: DEMO_LASTNAME, email: DEMO_EMAIL, password: DEMO_PASSWORD,
+      businessName: DEMO_BUSINESS,
       address: 'Av. Reforma 123, Col. Centro', phone: '555-000-1234',
       category: 'Abarrotes', description: 'Tienda de abarrotes de demostración para Annie',
     });
@@ -132,7 +138,7 @@ async function main() {
 
   console.log('\n2. Completando el perfil del negocio (estado/ciudad/RFC)...');
   await api('PUT', '/profile/business', {
-    name: 'Abarrotes Demo Annie', address: 'Av. Reforma 123, Col. Centro',
+    name: DEMO_BUSINESS, address: 'Av. Reforma 123, Col. Centro',
     phone: '555-000-1234', category: 'Abarrotes',
     description: 'Tienda de abarrotes de demostración para Annie',
     country: 'Mexico', state: 'Jalisco', city: 'Guadalajara',
