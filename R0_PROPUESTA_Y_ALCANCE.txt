@@ -1,0 +1,180 @@
+===============================================================================
+  ANNIE - R0: PROPUESTA Y ALCANCE
+  Semana: 21-25 de septiembre   |   Ponderación: 5%
+===============================================================================
+
+1. INTEGRANTES Y ROLES
+-------------------------------------------------------------------------------
+  (Completar con nombre completo y matrícula de cada integrante)
+
+  | Integrante         | Rol                                   | Responsabilidades principales                                  |
+  |--------------------|---------------------------------------|----------------------------------------------------------------|
+  | [Nombre 1]         | Líder de proyecto / Scrum Master      | Planeación, seguimiento de revisiones, integración a main      |
+  | [Nombre 2]         | Desarrollador Frontend / PWA          | React, manifest, service worker, experiencia offline, UI       |
+  | [Nombre 3]         | Desarrollador Backend                 | API REST (Express), MongoDB, autenticación JWT, sincronización |
+  | [Nombre 4]         | QA / DevOps                           | Pruebas, despliegue (Vercel / Render), Lighthouse, documentación|
+
+
+2. PROBLEMA QUE RESUELVE
+-------------------------------------------------------------------------------
+  Muchos pequeños negocios en México (tienditas, papelerías, puestos de
+  mercado, estéticas, negocios familiares) llevan su inventario, sus ventas y
+  sus "fiados" en libreta o de memoria. Los sistemas de punto de venta
+  comerciales son caros, requieren equipo dedicado y conocimientos técnicos,
+  por lo que la mayoría de los emprendedores no los adopta.
+
+  Consecuencias:
+    - No saben cuánto venden ni cuánto ganan realmente.
+    - Se quedan sin producto porque no controlan el stock.
+    - Pierden dinero en créditos a clientes que no se registran bien.
+
+  Annie es una aplicación web gratuita/accesible para que el dueño del negocio
+  registre productos, ventas, clientes y créditos desde su celular, y vea
+  reportes simples de su operación.
+
+
+3. JUSTIFICACIÓN: ¿POR QUÉ AMERITA SER PWA?
+-------------------------------------------------------------------------------
+  a) Conectividad poco confiable: los negocios objetivo suelen estar en
+     zonas con mala señal o dependen de datos móviles prepagados. Una venta
+     no puede esperar a que haya internet; la app debe permitir registrar
+     ventas, consultar inventario y anotar abonos SIN conexión, guardarlos
+     localmente (IndexedDB) y sincronizarlos con el servidor al recuperar
+     la red (Background Sync / cola de sincronización).
+
+  b) El dispositivo es el celular: el comerciante no tiene computadora en el
+     mostrador. La PWA se instala en la pantalla de inicio como una app
+     nativa, sin pasar por tiendas de aplicaciones ni ocupar mucho espacio.
+
+  c) Costo cero de distribución y actualización: una sola base de código
+     (React) sirve para Android, iOS y escritorio; las actualizaciones llegan
+     automáticamente vía service worker.
+
+  d) Rapidez: el app shell y los catálogos quedan en caché, por lo que la app
+     abre al instante incluso con red lenta (3G).
+
+  e) Notificaciones: avisos de inventario bajo y recordatorios de cobro de
+     créditos pendientes (Push API).
+
+  Conclusión: el caso de uso central (registrar ventas en el mostrador en
+  cualquier momento) EXIGE trabajo offline; por eso Annie debe ser PWA.
+
+
+4. HISTORIAS DE USUARIO
+-------------------------------------------------------------------------------
+  HU-01  Registrar venta sin conexión
+    Como dueño de una tienda, quiero registrar una venta aunque no tenga
+    internet, para no perder ventas ni hacer esperar al cliente.
+    Criterios de aceptación:
+      - Con el dispositivo en modo avión puedo capturar una venta completa.
+      - La venta se guarda localmente y se marca como "pendiente de sincronizar".
+      - Al volver la conexión, la venta se envía al servidor automáticamente
+        y el stock se actualiza sin duplicados.
+
+  HU-02  Consultar inventario offline
+    Como dueño, quiero ver mis productos, precios y existencias sin
+    conexión, para contestarle a un cliente si tengo un artículo.
+    Criterios de aceptación:
+      - El catálogo se guarda en caché/IndexedDB tras la última sincronización.
+      - Se muestra la fecha/hora de la última actualización.
+      - Los productos con stock bajo se resaltan.
+
+  HU-03  Instalar la app en el celular
+    Como dueño, quiero instalar Annie en la pantalla de inicio de mi
+    celular, para abrirla rápido como cualquier otra app.
+    Criterios de aceptación:
+      - La app tiene manifest válido (nombre, íconos, colores, display
+        standalone) y service worker registrado.
+      - El navegador ofrece la opción "Agregar a pantalla de inicio".
+      - Al abrirla, arranca sin barra del navegador y carga sin conexión.
+
+  HU-04  Registrar abonos de clientes a crédito
+    Como dueño, quiero anotar cuando un cliente me paga parte de lo que me
+    debe (fiado), incluso sin internet, para llevar su saldo al día.
+    Criterios de aceptación:
+      - Puedo registrar un abono offline y ver el saldo actualizado localmente.
+      - El abono se sincroniza al recuperar la conexión y queda en el
+        historial de movimientos del cliente.
+
+  HU-05  Ver reporte de ventas del día
+    Como dueño, quiero ver cuánto vendí hoy y cuáles productos se venden más,
+    para tomar decisiones de compra.
+    Criterios de aceptación:
+      - El reporte muestra total vendido, número de ventas y top de productos.
+      - Funciona con los datos locales si no hay conexión (indicando que
+        pueden faltar datos no sincronizados de otros dispositivos).
+
+
+5. STACK ELEGIDO
+-------------------------------------------------------------------------------
+  Frontend (PWA)
+    - React 19 + React Router 7 (Create React App)
+    - Service Worker con Workbox (precache del app shell, estrategias
+      cache-first para estáticos y network-first para la API)
+    - Web App Manifest (manifest.json) con íconos 192/512
+    - IndexedDB (librería Dexie o idb) para datos offline y cola de
+      sincronización
+    - Axios (consumo de la API), Recharts (gráficas), SheetJS/xlsx (exportar)
+
+  Backend
+    - Node.js + Express 5 (API REST)
+    - MongoDB Atlas + Mongoose
+    - Autenticación con JWT y contraseñas con bcryptjs
+    - Seguridad: Helmet, CORS restringido
+
+  Infraestructura y herramientas
+    - Frontend en Vercel (HTTPS, requisito para service workers)
+    - Backend en Render
+    - Docker / docker-compose para entorno local
+    - Git + GitHub, Lighthouse para auditoría PWA
+
+
+6. ALCANCE DEL CUATRIMESTRE
+-------------------------------------------------------------------------------
+  Incluido:
+    - Registro / inicio de sesión de usuarios (dueños de negocio).
+    - CRUD de productos, clientes y ventas.
+    - Créditos (cargos y abonos) por cliente.
+    - Reportes básicos del día / semana.
+    - PWA instalable con modo offline para ventas, inventario y abonos, y
+      sincronización al reconectar.
+    - Notificación de inventario bajo.
+
+  Fuera de alcance:
+    - Facturación electrónica (CFDI / timbrado SAT).
+    - Pagos con tarjeta o integración con terminales.
+    - Múltiples sucursales y roles de empleados.
+    - Apps nativas en tiendas (Play Store / App Store).
+
+  Viabilidad: el backend (API, modelos, autenticación) y la mayor parte del
+  frontend ya existen como base; el trabajo del cuatrimestre se concentra en
+  la capa PWA (service worker, IndexedDB, sincronización e instalación), lo
+  que hace el alcance realizable en el periodo.
+
+
+7. REPOSITORIO Y ESTRATEGIA DE RAMAS
+-------------------------------------------------------------------------------
+  Repositorio: GitHub (este repositorio), con README.md que describe el
+  proyecto, el stack y cómo ejecutarlo.
+
+  Estrategia: Git Flow simplificado
+
+    main        -> Código estable y desplegado. Solo recibe merges desde
+                   develop mediante Pull Request aprobado. Cada revisión se
+                   marca con un tag (R0, R1, R2, ...).
+    develop     -> Rama de integración. Aquí se juntan las funcionalidades
+                   terminadas y se prueban antes de pasar a main.
+    feature/*   -> Una rama por historia de usuario o tarea,
+                   p. ej. feature/HU-01-venta-offline. Sale de develop y
+                   regresa a develop por Pull Request.
+    fix/*       -> Corrección de errores, p. ej. fix/sync-duplicados.
+    hotfix/*    -> Corrección urgente en producción; sale de main y se
+                   integra a main y develop.
+
+  Reglas:
+    - No se hace push directo a main.
+    - Todo Pull Request requiere al menos 1 revisión de otro integrante.
+    - Mensajes de commit con Conventional Commits:
+      feat:, fix:, docs:, chore:, refactor:, test:
+    - Entrega de cada revisión: tag en main (git tag R0 && git push origin R0).
+===============================================================================
