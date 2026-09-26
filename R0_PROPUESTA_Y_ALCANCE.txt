@@ -7,12 +7,13 @@
 -------------------------------------------------------------------------------
   (Completar con nombre completo y matrícula de cada integrante)
 
-  | Integrante         | Rol                                   | Responsabilidades principales                                  |
-  |--------------------|---------------------------------------|----------------------------------------------------------------|
-  | [Nombre 1]         | Líder de proyecto / Scrum Master      | Planeación, seguimiento de revisiones, integración a main      |
-  | [Nombre 2]         | Desarrollador Frontend / PWA          | React, manifest, service worker, experiencia offline, UI       |
-  | [Nombre 3]         | Desarrollador Backend                 | API REST (Express), MongoDB, autenticación JWT, sincronización |
-  | [Nombre 4]         | QA / DevOps                           | Pruebas, despliegue (Vercel / Render), Lighthouse, documentación|
+  | Integrante                           | Rol                                   | Responsabilidades principales                                  |
+  |--------------------------------------|---------------------------------------|----------------------------------------------------------------|
+  | Omar Alejandro Ramirez Olmos         | Líder de proyecto / Scrum Master      | Planeación, seguimiento de revisiones, integración a main      |
+  | Angel Eduardo Reyes Sauceda          | Desarrollador Frontend / PWA          | React, manifest, service worker, experiencia offline, UI       |
+  | Jared Josafat Ruiz Macias            | Desarrollador Frontend / PWA          | React, manifest, service worker, experiencia offline, UI       |
+  | Francisco Sebastian Perez Rivas      | Desarrollador Backend                 | API REST (Express), MongoDB, autenticación JWT, sincronización |
+  | Axel Armando Ramirez Cerda           | QA / DevOps                           | Pruebas, despliegue (Vercel / Render), Lighthouse, documentación|
 
 
 2. PROBLEMA QUE RESUELVE
