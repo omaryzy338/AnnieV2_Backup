@@ -7,13 +7,13 @@
 -------------------------------------------------------------------------------
   (Completar con nombre completo y matrícula de cada integrante)
 
-  | Integrante                           | Rol                                   | Responsabilidades principales                                  |
-  |--------------------------------------|---------------------------------------|----------------------------------------------------------------|
-  | Omar Alejandro Ramirez Olmos         | Líder de proyecto / Scrum Master      | Planeación, seguimiento de revisiones, integración a main      |
-  | Angel Eduardo Reyes Sauceda          | Desarrollador Frontend / PWA          | React, manifest, service worker, experiencia offline, UI       |
-  | Jared Josafat Ruiz Macias            | Desarrollador Frontend / PWA          | React, manifest, service worker, experiencia offline, UI       |
-  | Francisco Sebastian Perez Rivas      | Desarrollador Backend                 | API REST (Express), MongoDB, autenticación JWT, sincronización |
-  | Axel Armando Ramirez Cerda           | QA / DevOps                           | Pruebas, despliegue (Vercel / Render), Lighthouse, documentación|
+  | Integrante                      | Rol                                   | Responsabilidades principales                                    |
+  |---------------------------------|---------------------------------------|------------------------------------------------------------------|
+  | Omar Alejandro Ramírez Olmos    | Líder de proyecto / Scrum Master      | Planeación, seguimiento de revisiones, integración a main        |
+  | Ángel Eduardo Reyes Sauceda     | Desarrollador Frontend / PWA          | React, manifest, service worker, experiencia offline, UI         |
+  | Jared Josafat Macias Ruiz       | Desarrollador Frontend / PWA          | React, manifest, service worker, experiencia offline, UI         |
+  | Francisco Sebastián Pérez Rivas | Desarrollador Backend                 | API REST (Express), MongoDB, autenticación JWT, sincronización   |
+  | Axel Armando Ramírez Cerda      | QA / DevOps                           | Pruebas, despliegue (Vercel / Render), Lighthouse, documentación |
 
 
 2. PROBLEMA QUE RESUELVE
