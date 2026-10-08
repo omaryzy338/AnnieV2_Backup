@@ -44,8 +44,7 @@ export const Navigation = (props) => {
             <span className="icon-bar"></span>
           </button>
           <Link to="/" className="navbar-brand annie-nav__brand">
-            <img src="/favicon.png" alt="ANNIE" className="annie-nav__logo" />
-            <span>ANNIE</span>
+            <img src="/logo-horizontal-azul.png" alt="Annie" className="annie-nav__logo" />
           </Link>
         </div>
 

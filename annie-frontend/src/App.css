@@ -113,6 +113,34 @@ html {
   }
 }
 
+@media screen and (min-width: 992px) {
+  #menu > .container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  #menu .navbar-header {
+    display: flex;
+    float: none;
+    justify-content: center;
+    width: 100%;
+  }
+
+  #menu .annie-nav__brand {
+    float: none;
+  }
+
+  #menu .navbar-collapse {
+    width: 100%;
+  }
+
+  #menu .annie-nav__links {
+    float: none !important;
+    justify-content: center;
+  }
+}
+
 /* En móvil se apila verticalmente dentro del menú desplegable
    (comportamiento normal de Bootstrap al abrir el hamburger) */
 @media screen and (max-width: 767px) {
