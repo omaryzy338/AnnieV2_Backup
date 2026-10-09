@@ -3,7 +3,29 @@ import axios from "../../api/axiosConfig";
 import useWindowWidth from "../../hooks/useWindowWidth";
 import { resolveMediaUrl } from "../../utils/media";
 
-const formInicial = { productId: "", clientId: "", quantity: 1, discount: 0, discountType: "porcentaje", saleDate: new Date().toISOString().split("T")[0] };
+// Fecha local YYYY-MM-DD (toISOString usa UTC y en la noche ya marca el día siguiente)
+const hoyLocal = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+const nuevoForm = () => ({ productId: "", clientId: "", quantity: 1, discount: 0, discountType: "porcentaje", saleDate: hoyLocal(), paymentMethod: "efectivo", amountPaid: "" });
+const money = (n) => Number(n || 0).toFixed(2);
+const metodoTxt = (m) => (m === "credito" ? "Crédito" : "Efectivo");
+const folioTxt = (f) => (f ? String(f).padStart(6, "0") : "—");
+
+// Fecha y hora de la venta en la zona horaria local del dispositivo.
+// Las ventas antiguas guardaban solo el día (a las 12:00:00 UTC exactas);
+// para esas se usa la hora real de registro (createdAt).
+const fechaVenta = (v) => {
+  if (!v.saleDate) return v.createdAt;
+  const d = new Date(v.saleDate);
+  const soloDia = d.getUTCHours() === 12 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0 && d.getUTCMilliseconds() === 0;
+  if (!soloDia) return v.saleDate;
+  const c = new Date(v.createdAt);
+  return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), c.getHours(), c.getMinutes()).toISOString();
+};
+const formatFecha = (iso) =>
+  new Date(iso).toLocaleString("es-MX", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
 
 const Ventas = () => {
   const [ventas, setVentas]           = useState([]);
@@ -17,12 +39,17 @@ const Ventas = () => {
   const [busqueda, setBusqueda]       = useState("");
   const [periodo, setPeriodo]         = useState("mes");
   const [hoveredRow, setHoveredRow]   = useState(null);
-  const [form, setForm]               = useState(formInicial);
+  const [form, setForm]               = useState(nuevoForm);
   const ww = useWindowWidth();
   const isMobile = ww < 768;
   const [productoSel, setProductoSel] = useState(null);
   const [negocio, setNegocio]         = useState(null);
   const successTimer                  = useRef(null);
+  const [ventaHecha, setVentaHecha]   = useState(null);
+  const clienteSel = clientes.find((c) => c._id === form.clientId) || null;
+  const creditoDisp = clienteSel?.esMayoreo
+    ? Math.max(0, (clienteSel.limiteCredito || 0) - (clienteSel.saldo || 0))
+    : 0;
 
   const cargar = async () => {
     try {
@@ -90,17 +117,31 @@ const Ventas = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    const total = parseFloat(calcTotal());
+    if (form.paymentMethod === "efectivo" && form.amountPaid !== "" && Number(form.amountPaid) < total) {
+      setError(`El pago ($${money(form.amountPaid)}) es menor al total ($${money(total)})`);
+      return;
+    }
+    // Fecha elegida + hora local actual, enviada como ISO para conservar la hora real
+    const [y, m, d] = form.saleDate.split("-").map(Number);
+    const ahoraLocal = new Date();
+    const fecha = form.saleDate === hoyLocal()
+      ? ahoraLocal
+      : new Date(y, m - 1, d, ahoraLocal.getHours(), ahoraLocal.getMinutes(), ahoraLocal.getSeconds());
     try {
-      await axios.post("/sales", {
+      const res = await axios.post("/sales", {
         productId:    form.productId,
         clientId:     form.clientId || undefined,
         quantity:     Number(form.quantity),
         discount:     Number(form.discount) || 0,
         discountType: form.discountType,
-        saleDate:     form.saleDate || undefined,
+        saleDate:     fecha.toISOString(),
+        paymentMethod: form.paymentMethod,
+        amountPaid:   form.paymentMethod === "efectivo" && form.amountPaid !== "" ? Number(form.amountPaid) : undefined,
       });
-      mostrarExito("Venta registrada correctamente");
-      setForm(formInicial);
+      setVentaHecha(res.data.sale);
+      mostrarExito(`Venta folio ${res.data.sale?.folio} registrada correctamente`);
+      setForm(nuevoForm());
       setProductoSel(null);
       setShowForm(false);
       cargar();
@@ -126,11 +167,12 @@ const Ventas = () => {
   const ventasFiltradas = ventas
     .filter((v) => {
       if (!busqueda) return true;
+      if (v.folio && busqueda.trim() && String(v.folio) === busqueda.trim().replace(/^0+/, "")) return true;
       return (v.product?.name || "").toLowerCase().includes(busqueda.toLowerCase()) ||
              (v.client?.name  || "").toLowerCase().includes(busqueda.toLowerCase());
     })
     .filter((v) => {
-      const f = new Date(v.saleDate || v.createdAt);
+      const f = new Date(fechaVenta(v));
       if (periodo === "hoy")    return f.toDateString() === ahora.toDateString();
       if (periodo === "semana") { const h = new Date(ahora); h.setDate(ahora.getDate() - 7); return f >= h; }
       if (periodo === "mes")    return f.getMonth() === ahora.getMonth() && f.getFullYear() === ahora.getFullYear();
@@ -138,29 +180,15 @@ const Ventas = () => {
     });
 
   // KPIs
-  const ventasHoy = ventas.filter((v) => new Date(v.saleDate || v.createdAt).toDateString() === ahora.toDateString());
+  const ventasHoy = ventas.filter((v) => new Date(fechaVenta(v)).toDateString() === ahora.toDateString());
   const ventasMes = ventas.filter((v) => {
-    const f = new Date(v.saleDate || v.createdAt);
+    const f = new Date(fechaVenta(v));
     return f.getMonth() === ahora.getMonth() && f.getFullYear() === ahora.getFullYear();
   });
   const totalMes       = ventasMes.reduce((a, v) => a + v.total, 0);
   const ticketPromedio = ventasMes.length ? (totalMes / ventasMes.length).toFixed(2) : "0.00";
   const clientesUnicos = new Set(ventasMes.filter((v) => v.client).map((v) => v.client._id)).size;
 
-  // Muestra la fecha de la venta respetando el día UTC (sin desfase de zona horaria)
-  const formatFecha = (iso) => {
-    const d = new Date(iso);
-    // Si tiene hora guardada (saleDate guardado a T12:00), mostrar solo fecha
-    // Usamos UTC para evitar que medianoche UTC => día anterior en MX
-    const day   = d.getUTCDate().toString().padStart(2, "0");
-    const month = d.toLocaleDateString("es-MX", { month: "short", timeZone: "UTC" });
-    const year  = d.getUTCFullYear();
-    const hour  = d.getUTCHours();
-    // Si fue guardado como saleDate (T12:00 = mediodía UTC), solo mostrar fecha
-    if (hour >= 11 && hour <= 13) return `${day} ${month} ${year}`;
-    // Si es createdAt o un saleDate antiguo (T00:00), mostrar fecha con hora local
-    return new Date(iso).toLocaleString("es-MX", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
-  };
 
   // Genera un recibo/orden de venta imprimible (el usuario puede "Guardar
   // como PDF" desde el diálogo de impresión del navegador)
@@ -175,7 +203,7 @@ const Ventas = () => {
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Recibo - ${nombreNegocio}</title>
+<title>Ticket ${folioTxt(v.folio)} - ${nombreNegocio}</title>
 <style>
   body { font-family: 'Segoe UI', Roboto, Arial, sans-serif; color: #1a1a2e; padding: 32px; max-width: 480px; margin: 0 auto; }
   h1 { font-size: 20px; margin: 0 0 4px; }
@@ -191,8 +219,9 @@ const Ventas = () => {
 </head>
 <body>
   <h1>${nombreNegocio}</h1>
-  <div class="sub">Recibo de venta ${negocio?.rfc && !negocio?.rfcGenerico ? `· RFC: ${negocio.rfc}` : ""}</div>
-  <div class="meta"><span>Fecha</span><strong>${formatFecha(v.saleDate || v.createdAt)}</strong></div>
+  <div class="sub">Ticket de venta ${negocio?.rfc && !negocio?.rfcGenerico ? `· RFC: ${negocio.rfc}` : ""}</div>
+  <div class="meta"><span>Folio</span><strong>${folioTxt(v.folio)}</strong></div>
+  <div class="meta"><span>Fecha</span><strong>${formatFecha(fechaVenta(v))}</strong></div>
   <div class="meta"><span>Cliente</span><strong>${clienteTxt}</strong></div>
   <table>
     <thead>
@@ -208,10 +237,16 @@ const Ventas = () => {
       </tr>
       <tr class="total-row">
         <td colspan="4">Total</td>
-        <td>$${v.total}</td>
+        <td>$${money(v.total)}</td>
       </tr>
     </tbody>
   </table>
+  <div class="meta"><span>Método de pago</span><strong>${metodoTxt(v.paymentMethod)}</strong></div>
+  ${v.paymentMethod === "credito"
+    ? `<div class="meta"><span>Cargado a crédito</span><strong>$${money(v.total)}</strong></div>`
+    : `<div class="meta"><span>Paga con</span><strong>$${money(v.amountPaid ?? v.total)}</strong></div>
+       <div class="meta"><span>Cambio</span><strong>$${money(v.change)}</strong></div>`}
+  <div class="meta" style="margin-top:10px"><span>Impreso</span><span>${formatFecha(new Date().toISOString())}</span></div>
   <div class="footer">Gracias por su compra · Generado con Annie</div>
 </body>
 </html>`;
@@ -248,6 +283,36 @@ const Ventas = () => {
         </div>
       )}
 
+      {/* Modal venta realizada */}
+      {ventaHecha && (
+        <div style={styles.overlay}>
+          <div style={{ ...styles.modal, maxWidth: 360 }}>
+            <div style={{ ...styles.modalIcon, background: "#e8f5e9" }}>
+              <i className="fa fa-check" style={{ color: "#27ae60", fontSize: 24 }} />
+            </div>
+            <h5 style={{ margin: "0 0 4px", color: "#1a1a2e", fontSize: 16 }}>Venta registrada</h5>
+            <div style={{ color: "#6372ff", fontWeight: 800, fontSize: 18, marginBottom: 14 }}>Folio {folioTxt(ventaHecha.folio)}</div>
+            <div style={{ textAlign: "left", fontSize: 14, display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
+              <div style={styles.filaTicket}><span style={{ color: "#888" }}>Fecha</span><strong>{formatFecha(fechaVenta(ventaHecha))}</strong></div>
+              <div style={styles.filaTicket}><span style={{ color: "#888" }}>Método de pago</span><strong>{metodoTxt(ventaHecha.paymentMethod)}</strong></div>
+              <div style={styles.filaTicket}><span style={{ color: "#888" }}>Total</span><strong style={{ color: "#27ae60" }}>${money(ventaHecha.total)}</strong></div>
+              {ventaHecha.paymentMethod === "efectivo" && (
+                <>
+                  <div style={styles.filaTicket}><span style={{ color: "#888" }}>Paga con</span><strong>${money(ventaHecha.amountPaid ?? ventaHecha.total)}</strong></div>
+                  <div style={{ ...styles.filaTicket, fontSize: 16 }}><span style={{ color: "#888" }}>Cambio</span><strong>${money(ventaHecha.change)}</strong></div>
+                </>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <button style={styles.btnModalCancel} onClick={() => setVentaHecha(null)}>Cerrar</button>
+              <button style={styles.btnSuccess} onClick={() => imprimirRecibo(ventaHecha)}>
+                <i className="fa fa-print" style={{ marginRight: 7 }} />Imprimir ticket
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
         <div>
@@ -261,7 +326,7 @@ const Ventas = () => {
         </div>
         {showForm ? (
           <button style={styles.btnCancel} onClick={() => {
-            setShowForm(false); setForm(formInicial); setProductoSel(null);
+            setShowForm(false); setForm(nuevoForm()); setProductoSel(null);
           }}>
             <i className="fa fa-times" style={{ marginRight: 8 }} />Cancelar
           </button>
@@ -401,7 +466,7 @@ const Ventas = () => {
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   {/* Sin cliente */}
                   <button type="button"
-                    onClick={() => setForm((p) => ({ ...p, clientId: "" }))}
+                    onClick={() => setForm((p) => ({ ...p, clientId: "", paymentMethod: "efectivo" }))}
                     style={{
                       display: "inline-flex", alignItems: "center", gap: 7,
                       padding: "8px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600,
@@ -418,7 +483,7 @@ const Ventas = () => {
                     const ini = ((c.name || "?").charAt(0) + (c.lastName || "").charAt(0)).toUpperCase();
                     return (
                       <button key={c._id} type="button"
-                        onClick={() => setForm((p) => ({ ...p, clientId: c._id }))}
+                        onClick={() => setForm((p) => ({ ...p, clientId: c._id, paymentMethod: c.esMayoreo ? p.paymentMethod : "efectivo" }))}
                         style={{
                           display: "inline-flex", alignItems: "center", gap: 8,
                           padding: "6px 14px 6px 6px", borderRadius: 8, fontSize: 13, fontWeight: 600,
@@ -459,7 +524,7 @@ const Ventas = () => {
                 </label>
                 <input style={styles.input} name="saleDate" type="date"
                   value={form.saleDate} onChange={handleChange}
-                  max={new Date().toISOString().split("T")[0]} />
+                  max={hoyLocal()} />
               </div>
 
               {/* Descuento (ancho completo) */}
@@ -510,6 +575,53 @@ const Ventas = () => {
               </div>
             </div>
 
+            {/* Método de pago */}
+            <div style={{ ...styles.fieldWrap, marginTop: 16 }}>
+              <label style={styles.label}>
+                <i className="fa fa-money" style={styles.labelIcon} />Método de pago
+              </label>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                {[
+                  { v: "efectivo", l: "Efectivo", icon: "fa-money" },
+                  ...(clienteSel?.esMayoreo ? [{ v: "credito", l: "Crédito", icon: "fa-credit-card" }] : []),
+                ].map(({ v, l, icon }) => (
+                  <button key={v} type="button"
+                    onClick={() => setForm((p) => ({ ...p, paymentMethod: v, amountPaid: "" }))}
+                    style={{
+                      padding: "9px 18px", borderRadius: 8, fontSize: 13, fontWeight: 600,
+                      cursor: "pointer", lineHeight: 1, minWidth: 120,
+                      border: form.paymentMethod === v ? "1.5px solid transparent" : "1.5px solid #e0e0e0",
+                      background: form.paymentMethod === v ? "linear-gradient(to right,#6372ff,#5ca9fb)" : "#fff",
+                      color: form.paymentMethod === v ? "#fff" : "#666",
+                    }}>
+                    <i className={`fa ${icon}`} style={{ marginRight: 6 }} />{l}
+                  </button>
+                ))}
+                {form.paymentMethod === "efectivo" ? (
+                  <div style={{ display: "flex", alignItems: "center", border: "1.5px solid #e8eaff",
+                    borderRadius: 8, overflow: "hidden", background: "#fafbff" }}>
+                    <span style={{ padding: "9px 10px", background: "#f0f2ff", color: "#6372ff",
+                      fontSize: 13, fontWeight: 700, borderRight: "1px solid #e8eaff" }}>Paga con $</span>
+                    <input
+                      style={{ border: "none", outline: "none", padding: "9px 12px",
+                        fontSize: 13, color: "#1a1a2e", background: "transparent", width: 100 }}
+                      name="amountPaid" type="number" min="0" step="0.01"
+                      placeholder={calcTotal()}
+                      value={form.amountPaid} onChange={handleChange} />
+                  </div>
+                ) : (
+                  <span style={{ fontSize: 12, fontWeight: 700, color: parseFloat(calcTotal()) > creditoDisp ? "#e05555" : "#27ae60" }}>
+                    Crédito disponible: ${money(creditoDisp)}
+                  </span>
+                )}
+              </div>
+              {clienteSel && !clienteSel.esMayoreo && (
+                <span style={{ fontSize: 11, color: "#9599b3", marginTop: 6 }}>
+                  Este cliente no tiene crédito habilitado; solo puede pagar en efectivo.
+                </span>
+              )}
+            </div>
+
             {/* Resumen */}
             {productoSel && (
               <div style={styles.resumen}>
@@ -537,6 +649,25 @@ const Ventas = () => {
                     <div style={{ fontSize: 11, color: "#9599b3", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Total</div>
                     <div style={{ fontSize: isMobile ? 20 : 24, fontWeight: 800, color: "#27ae60" }}>${calcTotal()}</div>
                   </div>
+                  {form.paymentMethod === "efectivo" && (() => {
+                    const total  = parseFloat(calcTotal());
+                    const pagado = form.amountPaid === "" ? total : Number(form.amountPaid);
+                    const cambio = pagado - total;
+                    return (
+                      <>
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{ fontSize: 11, color: "#9599b3", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Paga con</div>
+                          <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a2e" }}>${money(pagado)}</div>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{ fontSize: 11, color: "#9599b3", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Cambio</div>
+                          <div style={{ fontSize: 16, fontWeight: 800, color: cambio < 0 ? "#e05555" : "#1a1a2e" }}>
+                            {cambio < 0 ? `Faltan $${money(-cambio)}` : `$${money(cambio)}`}
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {/* Ganancia neta */}
@@ -581,7 +712,7 @@ const Ventas = () => {
                 <i className="fa fa-check" style={{ marginRight: 8 }} />Confirmar venta
               </button>
               <button type="button" style={styles.btnCancel}
-                onClick={() => { setShowForm(false); setForm(formInicial); setProductoSel(null); }}>
+                onClick={() => { setShowForm(false); setForm(nuevoForm()); setProductoSel(null); }}>
                 <i className="fa fa-times" style={{ marginRight: 7 }} />Cancelar
               </button>
             </div>
@@ -594,7 +725,7 @@ const Ventas = () => {
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           <div style={{ ...styles.searchBox, width: isMobile ? "100%" : 320 }}>
             <i className="fa fa-search" style={styles.searchIcon} />
-            <input style={styles.searchInput} placeholder="Buscar por producto o cliente..."
+            <input style={styles.searchInput} placeholder="Buscar por folio, producto o cliente..."
               value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
             {busqueda && (
               <button onClick={() => setBusqueda("")} style={styles.searchClear}>
@@ -661,7 +792,7 @@ const Ventas = () => {
                 )}
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, color: "#1a1a2e", fontSize: 14 }}>{v.product?.name || "-"}</div>
-                  <div style={{ fontSize: 11, color: "#9599b3" }}>{formatFecha(v.saleDate || v.createdAt)}</div>
+                  <div style={{ fontSize: 11, color: "#9599b3" }}>Folio {folioTxt(v.folio)} · {formatFecha(fechaVenta(v))}</div>
                 </div>
                 <span style={{ color: "#27ae60", fontSize: 18, fontWeight: 800 }}>${v.total}</span>
               </div>
@@ -693,6 +824,7 @@ const Ventas = () => {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#f8f9ff" }}>
+                <th style={styles.th}>Folio</th>
                 <th style={styles.th}>Fecha</th>
                 <th style={styles.th}>Producto</th>
                 <th style={styles.th}>Cliente</th>
@@ -706,7 +838,7 @@ const Ventas = () => {
             <tbody>
               {ventasFiltradas.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ padding: 30, textAlign: "center", color: "#aaa", fontSize: 13 }}>
+                  <td colSpan={9} style={{ padding: 30, textAlign: "center", color: "#aaa", fontSize: 13 }}>
                     Sin resultados para este periodo
                   </td>
                 </tr>
@@ -717,8 +849,9 @@ const Ventas = () => {
                   style={{ borderBottom: "1px solid #f0f0f0",
                     background: hoveredRow === v._id ? "#f8f9ff" : "transparent",
                     transition: "background 0.12s" }}>
+                  <td style={{ ...styles.td, color: "#6372ff", fontWeight: 800 }}>{folioTxt(v.folio)}</td>
                   <td style={{ ...styles.td, color: "#888", fontSize: 12, whiteSpace: "nowrap" }}>
-                    {formatFecha(v.saleDate || v.createdAt)}
+                    {formatFecha(fechaVenta(v))}
                   </td>
                   <td style={styles.td}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -768,6 +901,7 @@ const Ventas = () => {
                   </td>
                   <td style={styles.td}>
                     <span style={{ color: "#27ae60", fontSize: 15, fontWeight: 800 }}>${v.total}</span>
+                    <div style={{ fontSize: 11, color: "#9599b3" }}>{metodoTxt(v.paymentMethod)}</div>
                   </td>
                   <td style={styles.td}>
                     <button style={styles.btnGhost} onClick={() => imprimirRecibo(v)}>
@@ -822,6 +956,7 @@ const styles = {
     borderRadius: 8, padding: "10px 20px", cursor: "pointer", fontWeight: 600, fontSize: 14,
     display: "inline-flex", alignItems: "center",
   },
+  filaTicket: { display: "flex", justifyContent: "space-between", gap: 12 },
   kpiGrid: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 },
   kpiCard: {
     background: "#fff", borderRadius: 12, padding: "14px 16px",
