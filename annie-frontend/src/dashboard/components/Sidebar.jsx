@@ -4,13 +4,13 @@ import axios from "../../api/axiosConfig";
 import { resolveMediaUrl } from "../../utils/media";
 
 const links = [
-  { to: "/dashboard",           icon: "fa-home",          label: "Inicio" },
-  { to: "/dashboard/productos",  icon: "fa-cube",          label: "Productos" },
-  { to: "/dashboard/ventas",     icon: "fa-shopping-cart", label: "Ventas" },
-  { to: "/dashboard/clientes",   icon: "fa-users",         label: "Clientes" },
-  { to: "/dashboard/creditos",   icon: "fa-credit-card",   label: "Créditos" },
-  { to: "/dashboard/reportes",   icon: "fa-bar-chart",     label: "Reportes" },
-  { to: "/dashboard/mi-negocio", icon: "fa-briefcase",     label: "Mi Negocio" },
+  { to: "/dashboard",           icon: "fa-home",          label: "Inicio", fontFamily: "Poppins, sans-serif" },
+  { to: "/dashboard/productos",  icon: "fa-cube",          label: "Productos", fontFamily: "Poppins, sans-serif" },
+  { to: "/dashboard/ventas",     icon: "fa-shopping-cart", label: "Ventas", fontFamily: "Poppins, sans-serif" },
+  { to: "/dashboard/clientes",   icon: "fa-users",         label: "Clientes", fontFamily: "Poppins, sans-serif" },
+  { to: "/dashboard/creditos",   icon: "fa-credit-card",   label: "Créditos", fontFamily: "Poppins, sans-serif" },
+  { to: "/dashboard/reportes",   icon: "fa-bar-chart",     label: "Reportes", fontFamily: "Poppins, sans-serif" },
+  { to: "/dashboard/mi-negocio", icon: "fa-briefcase",     label: "Mi Negocio", fontFamily: "Poppins, sans-serif" },
 ];
 
 const Sidebar = ({ isMobile, isOpen, onClose }) => {

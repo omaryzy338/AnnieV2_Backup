@@ -61,10 +61,10 @@ const Login = () => {
 
           <div style={styles.cardHeader}>
             <div style={styles.iconWrap}>
-              <i className="fa fa-sign-in" style={{ color: "#fff", fontSize: 22 }} />
+              <i className="fa fa-sign-in" style={{ color: "#fff", fontSize: 20, }} />
             </div>
-            <h2 style={styles.title}>Bienvenido de vuelta</h2>
-            <p style={styles.subtitle}>Inicia sesión en tu cuenta</p>
+            <h2 style={{ ...styles.title, fontFamily: "Poppins, sans-serif", textTransform: "none" }}>Bienvenido de vuelta</h2>
+            <p style={{ ...styles.subtitle, fontFamily: "Poppins, sans-serif" }}>Inicia sesión en tu cuenta</p>
           </div>
 
           {error && (
@@ -76,7 +76,7 @@ const Login = () => {
 
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div style={styles.fieldWrap}>
-              <label style={styles.label}>
+              <label style={{ ...styles.label, fontFamily: "Poppins, sans-serif" }}>
                 <i className="fa fa-envelope" style={styles.labelIcon} />Correo electrónico
               </label>
               <input
@@ -96,7 +96,7 @@ const Login = () => {
         input[type=password]::-webkit-credentials-auto-fill-button { display: none !important; }
       `}</style>
       <div style={styles.fieldWrap}>
-              <label style={styles.label}>
+              <label style={{ ...styles.label, fontFamily: "Poppins, sans-serif" }}>
                 <i className="fa fa-lock" style={styles.labelIcon} />Contraseña
               </label>
               <div style={{ position: "relative" }}>
@@ -126,9 +126,9 @@ const Login = () => {
             </button>
           </form>
 
-          <p style={styles.switchText}>
+          <p style={{ ...styles.switchText, fontFamily: "Poppins, sans-serif" }}>
             ¿No tienes cuenta?{" "}
-            <Link to="/register" style={styles.switchLink}>Regístrate aquí</Link>
+            <Link to="/register" style={{ ...styles.switchLink, fontFamily: "Poppins, sans-serif" }}>Regístrate aquí</Link>
           </p>
         </div>
       </div>
@@ -138,10 +138,10 @@ const Login = () => {
 
 const styles = {
   page: {
-    display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', sans-serif",
+    display: "flex", minHeight: "100vh", fontFamily: "Poppins, sans-serif",
   },
   leftPanel: {
-    flex: 1, background: "linear-gradient(135deg, #6372ff 0%, #5ca9fb 100%)",
+    flex: 1, background: "#3284f7",
     display: "flex", alignItems: "center", justifyContent: "center",
     position: "relative", overflow: "hidden",
     "@media (max-width: 768px)": { display: "none" },
@@ -176,12 +176,12 @@ const styles = {
   },
   mobileBrand: {
     display: "none", textAlign: "center", fontSize: 28, fontWeight: 900,
-    color: "#6372ff", letterSpacing: 3, marginBottom: 20,
+    color: "#3284F7", letterSpacing: 3, marginBottom: 20,
   },
   cardHeader: { textAlign: "center", marginBottom: 28 },
   iconWrap: {
     width: 56, height: 56, borderRadius: 16,
-    background: "linear-gradient(135deg, #6372ff, #5ca9fb)",
+    background: "#3284f7",
     display: "flex", alignItems: "center", justifyContent: "center",
     margin: "0 auto 16px",
     boxShadow: "0 4px 16px rgba(99,114,255,0.35)",
@@ -194,7 +194,7 @@ const styles = {
     textTransform: "uppercase", letterSpacing: 0.5,
     display: "flex", alignItems: "center", gap: 6,
   },
-  labelIcon: { color: "#6372ff", fontSize: 12 },
+  labelIcon: { color: "#3284f7", fontSize: 12 },
   input: {
     width: "100%", padding: "12px 16px", borderRadius: 10,
     border: "1.5px solid #e8e8e8", fontSize: 14, color: "#1a1a2e",
@@ -219,7 +219,7 @@ const styles = {
     fontSize: 13, display: "flex", alignItems: "center", marginBottom: 4,
   },
   switchText: { textAlign: "center", marginTop: 22, color: "#aaa", fontSize: 13 },
-  switchLink: { color: "#6372ff", fontWeight: 700, textDecoration: "none" },
+  switchLink: { color: "#3284f7", fontWeight: 700, textDecoration: "none" },
   btnBack: {
     position: "absolute", top: 16, left: 16,
     background: "none", border: "1.5px solid #e0e0e0", borderRadius: 8,

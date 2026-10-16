@@ -123,8 +123,8 @@ const Register = () => {
             <div style={styles.iconWrap}>
               <i className="fa fa-user-plus" style={{ color: "#fff", fontSize: 20 }} />
             </div>
-            <h2 style={styles.title}>Crear cuenta</h2>
-            <p style={styles.subtitle}>Empieza a gestionar tu negocio hoy</p>
+            <h2 style={{ ...styles.title, fontFamily: "Poppins, sans-serif" , textTransform: "none"}}>Crear cuenta</h2>
+            <p style={{ ...styles.subtitle, fontFamily: "Poppins, sans-serif" }}>Empieza a gestionar tu negocio hoy</p>
           </div>
 
           {error && (
@@ -138,7 +138,7 @@ const Register = () => {
             {/* Fila nombre + apellido */}
             <div style={{ display: "flex", gap: 10, flexDirection: isMobile ? "column" : "row" }}>
               <div style={{ ...styles.fieldWrap, flex: 1 }}>
-                <label style={styles.label}>
+                <label style={{ ...styles.label, fontFamily: "Poppins, sans-serif" }}>
                   <i className="fa fa-user" style={styles.labelIcon} />Nombre *
                 </label>
                 <input
@@ -151,7 +151,7 @@ const Register = () => {
                 />
               </div>
               <div style={{ ...styles.fieldWrap, flex: 1 }}>
-                <label style={styles.label}>
+                <label style={{ ...styles.label, fontFamily: "Poppins, sans-serif" }}>
                   <i className="fa fa-user" style={styles.labelIcon} />Apellido *
                 </label>
                 <input
@@ -166,7 +166,7 @@ const Register = () => {
             </div>
 
             <div style={styles.fieldWrap}>
-              <label style={styles.label}>
+              <label style={{ ...styles.label, fontFamily: "Poppins, sans-serif" }}>
                 <i className="fa fa-building" style={styles.labelIcon} />Nombre del negocio *
               </label>
               <input
@@ -181,7 +181,7 @@ const Register = () => {
 
             {/* Foto del negocio (opcional) */}
             <div style={styles.fieldWrap}>
-              <label style={styles.label}>
+              <label style={{ ...styles.label, fontFamily: "Poppins, sans-serif" }}>
                 <i className="fa fa-camera" style={styles.labelIcon} />Foto de tu negocio
                 <span style={{ fontWeight: 400, textTransform: "none", color: "#bbb", marginLeft: 4 }}>(opcional)</span>
               </label>
@@ -206,7 +206,7 @@ const Register = () => {
             </div>
 
             <div style={styles.fieldWrap}>
-              <label style={styles.label}>
+              <label style={{ ...styles.label, fontFamily: "Poppins, sans-serif" }}>
                 <i className="fa fa-id-card-o" style={styles.labelIcon} />RFC de tu negocio
                 <span style={{ fontWeight: 400, textTransform: "none", color: "#bbb", marginLeft: 4 }}>(opcional)</span>
               </label>
@@ -218,14 +218,14 @@ const Register = () => {
                 onChange={(e) => setForm((p) => ({ ...p, rfc: e.target.value.toUpperCase() }))}
                 maxLength={13}
               />
-              <span style={{ fontSize: 11, color: "#aaa", marginTop: 4 }}>
+              <span style={{ fontSize: 11, color: "#aaa", marginTop: 4, fontFamily: "Poppins, sans-serif" }}>
                 Si lo dejas vacío, se te asigna un RFC genérico. Podrás cambiarlo después en
                 "Mi Negocio", pero necesitas uno real para poder ofrecer crédito a tus clientes.
               </span>
             </div>
 
             <div style={styles.fieldWrap}>
-              <label style={styles.label}>
+              <label style={{ ...styles.label, fontFamily: "Poppins, sans-serif" }}>
                 <i className="fa fa-envelope" style={styles.labelIcon} />Correo electrónico *
               </label>
               <input
@@ -242,7 +242,7 @@ const Register = () => {
 
 
             <div style={styles.fieldWrap}>
-              <label style={styles.label}>
+              <label style={{ ...styles.label, fontFamily: "Poppins, sans-serif" }}>
                 <i className="fa fa-lock" style={styles.labelIcon} />Contraseña *
               </label>
               <div style={{ position: "relative" }}>
@@ -264,7 +264,7 @@ const Register = () => {
             </div>
 
             <div style={styles.fieldWrap}>
-              <label style={styles.label}>
+              <label style={{ ...styles.label, fontFamily: "Poppins, sans-serif" }}>
                 <i className="fa fa-lock" style={styles.labelIcon} />Confirmar contraseña *
               </label>
               <input
@@ -282,7 +282,7 @@ const Register = () => {
               />
             </div>
 
-            <div style={styles.securityNote}>
+            <div style={{ ...styles.securityNote, fontFamily: "Poppins, sans-serif" }}>
               <i className="fa fa-lock" style={{ color: "#27ae60", marginRight: 8 }} />
               Tus datos están seguros y protegidos. Usamos contraseñas cifradas y nunca compartimos tu información.
             </div>
@@ -295,9 +295,9 @@ const Register = () => {
             </button>
           </form>
 
-          <p style={styles.switchText}>
+          <p style={{ ...styles.switchText, fontFamily: "Poppins, sans-serif" }}>
             ¿Ya tienes cuenta?{" "}
-            <Link to="/login" style={styles.switchLink}>Inicia sesión</Link>
+            <Link to="/login" style={{ ...styles.switchLink, fontFamily: "Poppins, sans-serif" }}>Inicia sesión</Link>
           </p>
         </div>
       </div>
@@ -310,7 +310,7 @@ const styles = {
     display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', sans-serif",
   },
   leftPanel: {
-    flex: 1, background: "linear-gradient(135deg, #6372ff 0%, #5ca9fb 100%)",
+    flex: 1, background: "#3284f7",
     display: "flex", alignItems: "center", justifyContent: "center",
     position: "relative", overflow: "hidden",
   },
@@ -349,12 +349,12 @@ const styles = {
   },
   mobileBrand: {
     display: "none", textAlign: "center", fontSize: 28, fontWeight: 900,
-    color: "#6372ff", letterSpacing: 3, marginBottom: 20,
+    color: "#3284f7", letterSpacing: 3, marginBottom: 20,
   },
   cardHeader: { textAlign: "center", marginBottom: 24 },
   iconWrap: {
     width: 56, height: 56, borderRadius: 16,
-    background: "linear-gradient(135deg, #6372ff, #5ca9fb)",
+    background: "#3284f7",
     display: "flex", alignItems: "center", justifyContent: "center",
     margin: "0 auto 16px",
     boxShadow: "0 4px 16px rgba(99,114,255,0.35)",
@@ -367,7 +367,7 @@ const styles = {
     textTransform: "uppercase", letterSpacing: 0.5,
     display: "flex", alignItems: "center", gap: 6,
   },
-  labelIcon: { color: "#6372ff", fontSize: 12 },
+  labelIcon: { color: "#3284f7", fontSize: 12 },
   input: {
     width: "100%", padding: "11px 14px", borderRadius: 10,
     border: "1.5px solid #e8e8e8", fontSize: 13, color: "#1a1a2e",
@@ -380,7 +380,7 @@ const styles = {
   },
   btnSubmit: {
     width: "100%", padding: "13px", borderRadius: 10, border: "none",
-    background: "linear-gradient(to right, #6372ff, #5ca9fb)",
+    background: "#3284f7",
     color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer",
     display: "flex", alignItems: "center", justifyContent: "center",
     boxShadow: "0 4px 16px rgba(99,114,255,0.35)",
@@ -397,7 +397,7 @@ const styles = {
     fontSize: 12, display: "flex", alignItems: "center", lineHeight: 1.4,
   },
   switchText: { textAlign: "center", marginTop: 20, color: "#aaa", fontSize: 13 },
-  switchLink: { color: "#6372ff", fontWeight: 700, textDecoration: "none" },
+  switchLink: { color: "#3284f7", fontWeight: 700, textDecoration: "none" },
   btnBack: {
     position: "absolute", top: 16, left: 16,
     background: "none", border: "1.5px solid #e0e0e0", borderRadius: 8,

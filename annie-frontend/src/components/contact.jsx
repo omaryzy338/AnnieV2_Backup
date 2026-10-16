@@ -6,7 +6,7 @@ export const Contact = (props) => {
 
   return (
     <section id="contact" className="annie-section annie-section--alt contact-section">
-      <div className="annie-section__inner contact-inner">
+      <div className="annie-section__inner contact-inner" style={{fontFamily: "Poppins, sans-serif" }}>
         <div className="contact-head">
           <div>
             <span className="annie-section__eyebrow">Comienza hoy</span>
@@ -15,7 +15,7 @@ export const Contact = (props) => {
               Crea tu cuenta en <strong>Annie</strong> y organiza tus ventas, clientes e inventario desde una sola plataforma.
             </p>
             <Link to="/register" className="contact-btn">
-              <i className="fa fa-user-plus" style={{ marginRight: 8 }} />Crear cuenta gratis
+              <i className="fa fa-user-plus" style={{ marginRight: 8}} />Crear cuenta gratis
             </Link>
           </div>
         </div>
@@ -59,11 +59,11 @@ export const Contact = (props) => {
         </div>
       </div>
       <div className="footer-bar">
-        <div className="footer-bar__content">
+        <div className="footer-bar__content" style={{fontFamily: "Poppins, sans-serif" }}>
           <span className="footer-brand">© 2026 Annie</span>
-          <span className="footer-separator" aria-hidden="true">•</span>
+          <span className="footer-separator" aria-hidden="true">-</span>
           <span>Plataforma de gestión para pequeños negocios</span>
-    | <a href="/AVISOPRIVACIDAD.pdf" target="_blank">Aviso de Privacidad</a>
+          <a href="/AVISOPRIVACIDAD.pdf" target="_blank">Aviso de Privacidad</a>
         </div>
       </div>
     </section>
