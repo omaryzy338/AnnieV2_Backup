@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { responderError } = require('../utils/errores');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
@@ -93,8 +94,9 @@ router.post('/register', async (req, res) => {
 
     res.status(201).json({ token, user: payload });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error del servidor' });
+    // Dos registros simultáneos con el mismo email: el índice único lo detecta
+    if (err?.code === 11000) return res.status(400).json({ message: 'Ya existe una cuenta con ese email' });
+    responderError(res, err, 'Error del servidor');
   }
 });
 
@@ -131,8 +133,7 @@ router.post('/login', async (req, res) => {
 
     res.json({ token, user: payload });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error del servidor' });
+    responderError(res, err, 'Error del servidor');
   }
 });
 

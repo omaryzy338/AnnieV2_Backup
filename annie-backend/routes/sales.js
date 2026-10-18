@@ -1,11 +1,16 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const router = express.Router();
+const { responderError, validarId } = require('../utils/errores');
 const authMiddleware = require('../middleware/authMiddleware');
 const Sale = require('../models/Sale');
 const Product = require('../models/Product');
 const Client = require('../models/Client');
 const CreditMovement = require('../models/CreditMovement');
 const Counter = require('../models/Counter');
+
+// Un id mal formado responde 404 (no 500)
+router.param('id', validarId('Venta no encontrada'));
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 
@@ -57,8 +62,7 @@ router.get('/', authMiddleware, async (req, res) => {
       .sort({ createdAt: -1 });
     res.json(sales);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error al obtener ventas' });
+    responderError(res, err, 'Error al obtener ventas');
   }
 });
 
@@ -75,8 +79,13 @@ router.post('/', authMiddleware, async (req, res) => {
     if (!Number.isInteger(quantity) || quantity < 1)
       return res.status(400).json({ message: 'La cantidad debe ser un número entero mayor o igual a 1' });
 
+    if (!mongoose.Types.ObjectId.isValid(productId))
+      return res.status(404).json({ message: 'Producto no encontrado' });
+    if (clientId && !mongoose.Types.ObjectId.isValid(clientId))
+      return res.status(404).json({ message: 'Cliente no encontrado' });
+
     // Buscar el producto (solo del dueño)
-    const product = await Product.findOne({ _id: productId, owner: req.user.id });
+    const product = await Product.findOne({ _id: productId, owner: req.user.id, activo: { $ne: false } });
     if (!product)
       return res.status(404).json({ message: 'Producto no encontrado' });
 
@@ -98,7 +107,7 @@ router.post('/', authMiddleware, async (req, res) => {
     // Cliente y método de pago
     let cliente = null;
     if (clientId) {
-      cliente = await Client.findOne({ _id: clientId, owner: req.user.id });
+      cliente = await Client.findOne({ _id: clientId, owner: req.user.id, activo: { $ne: false } });
       if (!cliente) return res.status(404).json({ message: 'Cliente no encontrado' });
     }
     let pagado = null;
@@ -218,8 +227,7 @@ router.post('/', authMiddleware, async (req, res) => {
       inventarioRestante: actualizado.quantity,
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error al registrar venta' });
+    responderError(res, err, 'Error al registrar venta');
   }
 });
 
@@ -234,8 +242,7 @@ router.get('/resumen', authMiddleware, async (req, res) => {
       totalVentas: parseFloat(totalVentas.toFixed(2))
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error al obtener resumen' });
+    responderError(res, err, 'Error al obtener resumen');
   }
 });
 
@@ -276,8 +283,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 
     res.json({ message: 'Venta eliminada' });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error al eliminar venta' });
+    responderError(res, err, 'Error al eliminar venta');
   }
 });
 

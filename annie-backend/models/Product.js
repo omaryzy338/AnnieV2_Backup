@@ -11,6 +11,9 @@ const productSchema = new mongoose.Schema({
   unit:        { type: String, default: 'piezas', trim: true },
   image:       { type: String, trim: true },
   cost:        { type: Number, default: 0, min: 0 },  // precio de costo
+  // false = eliminado por el usuario pero con ventas registradas: se oculta
+  // de las listas y no se puede vender, pero sus tickets conservan el nombre
+  activo:      { type: Boolean, default: true },
   owner:       { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
 }, { timestamps: true });
 

@@ -1,11 +1,13 @@
 const express = require('express');
 const router = express.Router();
+const { responderError } = require('../utils/errores');
 const path = require('path');
 const multer = require('multer');
 const authMiddleware = require('../middleware/authMiddleware');
 const User = require('../models/User');
 const Business = require('../models/Business');
 const Upload = require('../models/Upload');
+const { detectarTipoImagen } = require('../utils/imagen');
 const { validarRFC, esRFCGenerico, GENERIC_RFC } = require('../utils/rfc');
 
 // El logo se recibe en memoria y se guarda en MongoDB (en Vercel el disco es
@@ -34,8 +36,7 @@ router.get('/', authMiddleware, async (req, res) => {
 
     res.json({ user, business: businessData });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error al obtener perfil' });
+    responderError(res, err, 'Error al obtener perfil');
   }
 });
 
@@ -61,8 +62,7 @@ router.put('/user', authMiddleware, async (req, res) => {
 
     res.json(user);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error al actualizar usuario' });
+    responderError(res, err, 'Error al actualizar usuario');
   }
 });
 
@@ -93,8 +93,7 @@ router.put('/business', authMiddleware, async (req, res) => {
     if (!business) return res.status(404).json({ message: 'Negocio no encontrado' });
     res.json({ ...business.toObject(), rfcGenerico: esRFCGenerico(business.rfc) });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error al actualizar negocio' });
+    responderError(res, err, 'Error al actualizar negocio');
   }
 });
 
@@ -103,9 +102,13 @@ router.post('/business/logo', authMiddleware, upload.single('logo'), async (req,
   try {
     if (!req.file) return res.status(400).json({ message: 'No se recibió imagen' });
 
+    // Se revisa el contenido real del archivo (no solo la extensión)
+    const tipo = detectarTipoImagen(req.file.buffer);
+    if (!tipo || tipo === 'image/gif') return res.status(400).json({ message: 'El archivo no es una imagen válida (jpg, png o webp)' });
+
     const doc = await Upload.create({
       data: req.file.buffer,
-      contentType: req.file.mimetype,
+      contentType: tipo,
       filename: req.file.originalname,
       size: req.file.size,
       owner: req.user.id,
@@ -122,8 +125,7 @@ router.post('/business/logo', authMiddleware, upload.single('logo'), async (req,
     if (!business) return res.status(404).json({ message: 'Negocio no encontrado' });
     res.json({ logo: business.logo, business });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error al subir logo' });
+    responderError(res, err, 'Error al subir logo');
   }
 });
 

@@ -20,6 +20,10 @@ const clientSchema = new mongoose.Schema({
   // a través de los movimientos de crédito (cargos y abonos).
   saldo:         { type: Number, default: 0, min: 0 },
 
+  // false = eliminado por el usuario pero con historial (ventas o movimientos
+  // de crédito): se oculta de las listas pero su historial se conserva
+  activo:        { type: Boolean, default: true },
+
   owner:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
 }, { timestamps: true });
 

@@ -1,9 +1,15 @@
 const express = require('express');
 const router = express.Router();
+const { responderError, validarId } = require('../utils/errores');
 const authMiddleware = require('../middleware/authMiddleware');
 const Client = require('../models/Client');
 const Business = require('../models/Business');
+const Sale = require('../models/Sale');
+const CreditMovement = require('../models/CreditMovement');
 const { validarRFC, esRFCGenerico } = require('../utils/rfc');
+
+// Un id mal formado responde 404 (no 500)
+router.param('id', validarId('Cliente no encontrado'));
 
 // Construye/valida los datos fiscales y de crédito a partir del body.
 // Devuelve { data, error }. Si error !== null, responde 400 con ese mensaje.
@@ -94,23 +100,21 @@ async function construirDatosCredito(body, actual = {}, ownerId) {
 // ── GET /clients — listar todos los clientes del usuario ──────────
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const clients = await Client.find({ owner: req.user.id }).sort({ createdAt: -1 });
+    const clients = await Client.find({ owner: req.user.id, activo: { $ne: false } }).sort({ createdAt: -1 });
     res.json(clients);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error al obtener clientes' });
+    responderError(res, err, 'Error al obtener clientes');
   }
 });
 
 // ── GET /clients/:id — obtener un cliente ─────────────────────────
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
-    const client = await Client.findOne({ _id: req.params.id, owner: req.user.id });
+    const client = await Client.findOne({ _id: req.params.id, owner: req.user.id, activo: { $ne: false } });
     if (!client) return res.status(404).json({ message: 'Cliente no encontrado' });
     res.json(client);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error al obtener cliente' });
+    responderError(res, err, 'Error al obtener cliente');
   }
 });
 
@@ -135,15 +139,14 @@ router.post('/', authMiddleware, async (req, res) => {
 
     res.status(201).json(client);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error al crear cliente' });
+    responderError(res, err, 'Error al crear cliente');
   }
 });
 
 // ── PUT /clients/:id — actualizar cliente ─────────────────────────
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
-    const actual = await Client.findOne({ _id: req.params.id, owner: req.user.id });
+    const actual = await Client.findOne({ _id: req.params.id, owner: req.user.id, activo: { $ne: false } });
     if (!actual) return res.status(404).json({ message: 'Cliente no encontrado' });
 
     const { name, lastName, email, phone, address, notes } = req.body;
@@ -169,15 +172,14 @@ router.put('/:id', authMiddleware, async (req, res) => {
 
     res.json(client);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error al actualizar cliente' });
+    responderError(res, err, 'Error al actualizar cliente');
   }
 });
 
 // ── DELETE /clients/:id — eliminar cliente ────────────────────────
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
-    const client = await Client.findOne({ _id: req.params.id, owner: req.user.id });
+    const client = await Client.findOne({ _id: req.params.id, owner: req.user.id, activo: { $ne: false } });
     if (!client) return res.status(404).json({ message: 'Cliente no encontrado' });
 
     // No permitir borrar un cliente que aún debe dinero
@@ -187,11 +189,20 @@ router.delete('/:id', authMiddleware, async (req, res) => {
       });
     }
 
-    await client.deleteOne();
+    // Con historial (ventas o movimientos de crédito) solo se oculta, para que
+    // sus tickets y su estado de cuenta se conserven
+    const conHistorial =
+      (await Sale.exists({ client: client._id, owner: req.user.id })) ||
+      (await CreditMovement.exists({ client: client._id, owner: req.user.id }));
+    if (conHistorial) {
+      client.activo = false;
+      await client.save();
+    } else {
+      await client.deleteOne();
+    }
     res.json({ message: 'Cliente eliminado correctamente' });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error al eliminar cliente' });
+    responderError(res, err, 'Error al eliminar cliente');
   }
 });
 

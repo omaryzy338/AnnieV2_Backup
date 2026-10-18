@@ -20,14 +20,6 @@ function esRFCGenerico(rfc) {
   return !clean || clean === GENERIC_RFC;
 }
 
-// Deduce el tipo de persona por longitud (13 = física, 12 = moral)
-function tipoPorLongitud(rfc) {
-  const clean = limpiarRFC(rfc);
-  if (clean.length === 13) return 'fisica';
-  if (clean.length === 12) return 'moral';
-  return '';
-}
-
 // Valida el RFC. Si se pasa tipoPersona ('fisica' | 'moral') se exige ese
 // formato concreto; si no, se acepta cualquiera de los dos.
 // Devuelve { ok, rfc (limpio), tipo, message }
@@ -72,4 +64,4 @@ function validarRFC(rfc, tipoPersona) {
   };
 }
 
-module.exports = { validarRFC, limpiarRFC, tipoPorLongitud, esRFCGenerico, GENERIC_RFC, RFC_FISICA, RFC_MORAL };
+module.exports = { validarRFC, limpiarRFC, esRFCGenerico, GENERIC_RFC, RFC_FISICA, RFC_MORAL };

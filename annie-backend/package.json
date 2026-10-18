@@ -4,7 +4,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js",
+    "dev": "node --watch server.js",
     "seed:demo": "node scripts/seedDemo.js",
     "test": "node --test --test-concurrency=1 \"test/**/*.test.js\"",
     "dev:memoria": "node scripts/servidorMemoria.js",

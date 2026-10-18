@@ -7,7 +7,6 @@ const cors = require('cors');
 const multer = require('multer');
 const helmet = require('helmet');
 const mongoose = require('mongoose');
-const path = require('path');
 const connectDB = require('./config/db');
 const Upload = require('./models/Upload');
 
@@ -55,9 +54,8 @@ app.use(
 // automáticamente los despliegues de Vercel (incluidos los previews, que
 // cambian de subdominio en cada deploy) y los orígenes de desarrollo local.
 const defaultOrigins = [
-  'http://localhost:3000',
-  'http://localhost:8080',
-  'https://localhost:8443',
+  'http://localhost:3000', // web (npm start)
+  'http://localhost:8081', // app móvil abierta en el navegador (expo start --web)
 ];
 const envOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean)
@@ -80,6 +78,12 @@ app.use(cors({
 
 // middleware
 app.use(express.json());
+// Express 5 deja req.body como undefined si la petición no trae JSON; así
+// todas las rutas pueden leerlo sin tronar (y responden 400, no 500)
+app.use((req, res, next) => {
+  if (req.body === undefined) req.body = {};
+  next();
+});
 
 // ── Servir imágenes guardadas en MongoDB ─────────────────────────
 // Antes se servían desde disco con express.static, pero en Vercel el sistema
@@ -100,9 +104,6 @@ app.get('/uploads/:id', async (req, res) => {
     res.status(500).json({ message: 'Error al obtener la imagen' });
   }
 });
-
-// ✅ Servir archivos estáticos (incluye tus íconos y robots.txt en /public)
-app.use(express.static(path.join(__dirname, 'public')));
 
 // ruta raíz — verificar que la API está viva
 app.get('/', (req, res) => {
@@ -143,7 +144,7 @@ app.use((err, req, res, next) => {
 
 // En Vercel la app corre como función serverless: se exporta y la plataforma
 // se encarga de atender las peticiones (no debe llamarse app.listen).
-// En local y en Docker sí levantamos el servidor normalmente.
+// En local (npm start / npm run dev) sí levantamos el servidor normalmente.
 if (require.main === module && !process.env.VERCEL) {
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => {
