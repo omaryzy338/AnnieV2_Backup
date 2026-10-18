@@ -12,7 +12,8 @@ function authMiddleware(req, res, next) {
     req.user = verified; // Guardamos el usuario en la request
     next(); // Continuamos a la ruta
   } catch (err) {
-    res.status(400).json({ message: "Token inválido." });
+    // 401 para que los clientes (web y móvil) cierren la sesión vencida
+    res.status(401).json({ message: "Sesión inválida o vencida. Inicia sesión de nuevo." });
   }
 }
 

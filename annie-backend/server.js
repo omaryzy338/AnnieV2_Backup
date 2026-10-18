@@ -1,4 +1,7 @@
-require('dotenv').config({ path: require('path').join(__dirname, '.env'), override: true });
+// En pruebas (NODE_ENV=test) no se carga .env, para nunca apuntar a la base real.
+if (process.env.NODE_ENV !== 'test') {
+  require('dotenv').config({ path: require('path').join(__dirname, '.env'), override: true });
+}
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
@@ -121,13 +124,15 @@ app.use('/credits',  creditsRoutes);
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ message: 'El archivo debe pesar menos de 3MB' });
+      // Imagen de producto: 5 MB; logo del negocio: 3 MB
+      const limite = err.field === 'image' ? 5 : 3;
+      return res.status(400).json({ message: `El archivo debe pesar menos de ${limite}MB` });
     }
     return res.status(400).json({ message: err.message || 'Error al subir archivo' });
   }
   if (err) {
     console.error(err);
-    return res.status(500).json({ message: err.message || 'Error interno del servidor' });
+    return res.status(err.status || 500).json({ message: err.message || 'Error interno del servidor' });
   }
   next();
 });
@@ -135,7 +140,7 @@ app.use((err, req, res, next) => {
 // En Vercel la app corre como función serverless: se exporta y la plataforma
 // se encarga de atender las peticiones (no debe llamarse app.listen).
 // En local y en Docker sí levantamos el servidor normalmente.
-if (!process.env.VERCEL) {
+if (require.main === module && !process.env.VERCEL) {
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

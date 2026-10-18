@@ -6,6 +6,10 @@ const User = require('../models/User');
 const Business = require('../models/Business');
 const { validarRFC, GENERIC_RFC } = require('../utils/rfc');
 
+// Duración de la sesión: 8 h en la web; 30 días en la app móvil (el token
+// se guarda cifrado en el dispositivo con SecureStore).
+const duracionToken = (body) => (body && body.client === 'mobile' ? '30d' : '8h');
+
 // ── Validadores ──────────────────────────────────────────────
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Mínimo 8 chars, al menos 1 mayúscula, 1 número y 1 carácter especial
@@ -58,7 +62,13 @@ router.post('/register', async (req, res) => {
       .replace(/[^a-z0-9-]/g, '') + '-' + user._id.toString().slice(-4);
 
     const business = new Business({ name: businessName, owner: user._id, slug, address, phone, category, description, rfc: businessRfc });
-    await business.save();
+    try {
+      await business.save();
+    } catch (err) {
+      // No dejar un usuario sin negocio si falla la creación del negocio
+      await User.deleteOne({ _id: user._id }).catch(() => {});
+      throw err;
+    }
 
     const payload = {
       id: user._id,
@@ -69,7 +79,7 @@ router.post('/register', async (req, res) => {
       businessName: business.name,
       slug: business.slug
     };
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '8h' });
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: duracionToken(req.body) });
 
     res.status(201).json({ token, user: payload });
   } catch (err) {
@@ -106,7 +116,7 @@ router.post('/login', async (req, res) => {
       businessName: business ? business.name : null,
       slug: business ? business.slug : null
     };
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '8h' });
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: duracionToken(req.body) });
 
     res.json({ token, user: payload });
   } catch (err) {

@@ -57,6 +57,9 @@ async function construirDatosCredito(body, actual = {}, ownerId) {
     if (Number.isNaN(limite) || limite < 0) {
       return { error: 'El límite de crédito debe ser un número mayor o igual a 0' };
     }
+    if (limite < (actual.saldo || 0)) {
+      return { error: `El límite ($${limite.toFixed(2)}) no puede ser menor al saldo actual ($${actual.saldo.toFixed(2)})` };
+    }
     data.limiteCredito = limite;
   }
 
@@ -75,7 +78,7 @@ async function construirDatosCredito(body, actual = {}, ownerId) {
 
     // El negocio necesita un RFC real (no el genérico) para poder facturar,
     // y sin poder facturar no tiene sentido ofrecer crédito.
-    if (body.esMayoreo !== undefined && ownerId) {
+    if (body.esMayoreo !== undefined && !actual.esMayoreo && ownerId) {
       const business = await Business.findOne({ owner: ownerId });
       if (!business?.rfc || esRFCGenerico(business.rfc)) {
         return {
@@ -161,7 +164,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
     const client = await Client.findOneAndUpdate(
       { _id: req.params.id, owner: req.user.id },
       update,
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
 
     res.json(client);

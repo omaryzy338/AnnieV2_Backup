@@ -15,7 +15,7 @@ const upload = multer({
     const allowed = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
     const ext = path.extname(file.originalname).toLowerCase();
     if (allowed.includes(ext)) cb(null, true);
-    else cb(new Error('Solo se permiten imágenes (jpg, png, webp, gif)'));
+    else cb(Object.assign(new Error('Solo se permiten imágenes (jpg, png, webp, gif)'), { status: 400 }));
   },
 });
 
@@ -104,7 +104,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
     const product = await Product.findOneAndUpdate(
       { _id: req.params.id, owner: req.user.id },
       { name, description, price, quantity, discount, category, brand, unit, image, cost },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
 
     if (!product) return res.status(404).json({ message: 'Producto no encontrado' });

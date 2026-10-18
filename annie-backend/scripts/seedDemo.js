@@ -169,10 +169,15 @@ async function main() {
     const producto = productosCreados[Math.floor(Math.random() * productosCreados.length)];
     const conCliente = Math.random() > 0.4;
     const cliente = conCliente ? clientesRegulares[Math.floor(Math.random() * clientesRegulares.length)] : null;
+    // Fecha y hora realistas (horario de tienda, 9:00 a 20:59) en los últimos
+    // 30 días, sin pasarse del momento actual. Se manda en ISO completo para
+    // que el backend guarde la hora real.
     const diasAtras = Math.floor(Math.random() * 30);
     const fecha = new Date();
     fecha.setDate(fecha.getDate() - diasAtras);
-    const saleDate = fecha.toISOString().split('T')[0];
+    fecha.setHours(9 + Math.floor(Math.random() * 12), Math.floor(Math.random() * 60), 0, 0);
+    if (fecha > new Date()) fecha.setDate(fecha.getDate() - 1);
+    const saleDate = fecha.toISOString();
 
     try {
       await api('POST', '/sales', {

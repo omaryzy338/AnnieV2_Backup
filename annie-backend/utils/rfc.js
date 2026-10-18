@@ -13,8 +13,11 @@ function limpiarRFC(rfc) {
   return String(rfc || '').toUpperCase().replace(/[\s-]/g, '');
 }
 
+// Un negocio "sin RFC real" (vacío o el genérico del SAT) no puede facturar
+// y por lo tanto tampoco puede dar crédito a sus clientes.
 function esRFCGenerico(rfc) {
-  return limpiarRFC(rfc) === GENERIC_RFC;
+  const clean = limpiarRFC(rfc);
+  return !clean || clean === GENERIC_RFC;
 }
 
 // Deduce el tipo de persona por longitud (13 = física, 12 = moral)
@@ -53,7 +56,7 @@ function validarRFC(rfc, tipoPersona) {
       tipo: 'moral',
       message: RFC_MORAL.test(clean)
         ? ''
-        : 'El RFC de persona moral debe tener 12 caracteres con formato válido (ej. ABC010101XYZ)',
+        : 'El RFC de persona moral debe tener 12 caracteres con formato válido (ej. ABC010101XY9)',
     };
   }
 

@@ -6,7 +6,7 @@ const authMiddleware = require('../middleware/authMiddleware');
 const User = require('../models/User');
 const Business = require('../models/Business');
 const Upload = require('../models/Upload');
-const { validarRFC, esRFCGenerico } = require('../utils/rfc');
+const { validarRFC, esRFCGenerico, GENERIC_RFC } = require('../utils/rfc');
 
 // El logo se recibe en memoria y se guarda en MongoDB (en Vercel el disco es
 // de solo lectura y efímero, no se puede escribir en /uploads).
@@ -17,7 +17,7 @@ const upload = multer({
     const allowed = ['.jpg', '.jpeg', '.png', '.webp'];
     const ext = path.extname(file.originalname).toLowerCase();
     if (allowed.includes(ext)) cb(null, true);
-    else cb(new Error('Solo imágenes jpg, png o webp'));
+    else cb(Object.assign(new Error('Solo imágenes jpg, png o webp'), { status: 400 }));
   },
 });
 
@@ -39,7 +39,7 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
-// ── PUT /profile — actualizar datos del usuario ──────────────────
+// ── PUT /profile/user — actualizar datos del usuario ──────────────────
 router.put('/user', authMiddleware, async (req, res) => {
   try {
     const { name, lastName, birthDate, country, state, city } = req.body;
@@ -56,7 +56,7 @@ router.put('/user', authMiddleware, async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.user.id,
       update,
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     ).select('-password');
 
     res.json(user);
@@ -80,14 +80,14 @@ router.put('/business', authMiddleware, async (req, res) => {
         if (!v.ok) return res.status(400).json({ message: v.message });
         update.rfc = v.rfc;
       } else {
-        update.rfc = '';
+        update.rfc = GENERIC_RFC;
       }
     }
 
     const business = await Business.findOneAndUpdate(
       { owner: req.user.id },
       update,
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
 
     if (!business) return res.status(404).json({ message: 'Negocio no encontrado' });
@@ -116,7 +116,7 @@ router.post('/business/logo', authMiddleware, upload.single('logo'), async (req,
     const business = await Business.findOneAndUpdate(
       { owner: req.user.id },
       { logo: url },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     if (!business) return res.status(404).json({ message: 'Negocio no encontrado' });
