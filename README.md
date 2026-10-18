@@ -1,11 +1,16 @@
 # Annie
 
-**Annie** es una aplicación web progresiva (PWA) de gestión para pequeños negocios y emprendedores. Permite al dueño de una tienda, papelería, puesto o negocio familiar administrar su operación diaria desde el celular, sin equipos costosos ni conocimientos técnicos.
+**Annie** es un sistema de gestión para pequeños negocios y emprendedores. Permite al dueño de una tienda, papelería, puesto o negocio familiar administrar su operación diaria sin equipos costosos ni conocimientos técnicos.
+
+Tiene dos clientes que comparten el mismo backend y la misma base de datos:
+
+- **Web** (`annie-frontend`): aplicación React, pensada como PWA.
+- **Móvil** (`annie-mobile`): app nativa para Android y iPhone hecha con **React Native (Expo)**. Ver [annie-mobile/README.md](annie-mobile/README.md).
 
 ## ¿Qué hace?
 
 - **Inventario:** registro de productos con precios, categorías y existencias, con alertas de stock bajo.
-- **Ventas:** captura rápida de ventas con cálculo automático de totales.
+- **Ventas:** captura rápida con folio, método de pago (efectivo o crédito), pago, cambio y ticket imprimible o compartible.
 - **Clientes y créditos:** control de clientes y de sus cuentas a crédito ("fiado"): cargos, abonos y saldo.
 - **Reportes:** gráficas de ventas y productos más vendidos, con exportación a Excel.
 - **Offline:** las ventas, consultas de inventario y abonos funcionan sin internet y se sincronizan al recuperar la conexión.
@@ -19,15 +24,18 @@ Muchos pequeños negocios llevan sus ventas, inventario y créditos en libreta p
 
 | Capa | Tecnologías |
 |------|-------------|
-| Frontend (PWA) | React 19, React Router, Service Worker (Workbox), Web App Manifest, IndexedDB, Axios, Recharts |
+| Frontend web (PWA) | React 19, React Router, Service Worker (Workbox), Web App Manifest, IndexedDB, Axios, Recharts |
+| App móvil | React Native 0.88, Expo SDK 58, Expo Router, TypeScript, React Query, SecureStore, expo-print |
 | Backend | Node.js, Express 5, MongoDB (Mongoose), JWT, bcryptjs, Helmet |
-| Despliegue | Vercel (frontend), Render (backend), Docker para desarrollo local |
+| Despliegue | Vercel (frontend), Render (backend), EAS Build (APK de Android), Docker para desarrollo local |
+| Pruebas | node:test + supertest + mongodb-memory-server (backend), Jest + Testing Library (móvil) |
 
 ## Estructura
 
 ```
-annie-frontend/   Aplicación React (PWA)
-annie-backend/    API REST en Express + MongoDB
+annie-frontend/   Aplicación web React (PWA)
+annie-mobile/     App móvil React Native (Expo)
+annie-backend/    API REST en Express + MongoDB (la usan la web y la app)
 ```
 
 ## Ejecución local
@@ -38,10 +46,24 @@ cd annie-backend
 npm install
 npm run dev
 
-# Frontend
+# Frontend web
 cd annie-frontend
 npm install
 npm start
+
+# App móvil (escanear el QR con Expo Go)
+cd annie-mobile
+npm install
+npx expo start
+```
+
+Para probar sin instalar MongoDB: `npm run dev:memoria` en `annie-backend` levanta el backend con una base de datos en memoria y `npm run seed:demo` crea un negocio de demostración.
+
+## Pruebas
+
+```bash
+cd annie-backend && npm test        # API: ventas, folios, crédito, permisos, archivos
+cd annie-mobile && npm test         # App móvil: reglas de negocio y pantallas
 ```
 
 También puede levantarse todo con Docker: ver [DOCKER.md](DOCKER.md).

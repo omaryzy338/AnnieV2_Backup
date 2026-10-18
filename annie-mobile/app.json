@@ -1,0 +1,59 @@
+{
+  "expo": {
+    "name": "Annie",
+    "slug": "annie",
+    "description": "Gestión de ventas, inventario, clientes y créditos para pequeños negocios.",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "annie",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F5F7FB",
+    "primaryColor": "#3284F7",
+    "ios": {
+      "bundleIdentifier": "mx.annie.app",
+      "supportsTablet": true,
+      "icon": "./assets/images/icon.png"
+    },
+    "android": {
+      "package": "mx.annie.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "softwareKeyboardLayoutMode": "resize",
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "single",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#3284F7",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 120
+        }
+      ],
+      "expo-secure-store",
+      "expo-sharing",
+      "@react-native-community/datetimepicker",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Annie usa tus fotos para la imagen de tus productos y el logo de tu negocio.",
+          "cameraPermission": "Annie usa la cámara para tomar la foto de tus productos."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
