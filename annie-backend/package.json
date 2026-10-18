@@ -7,7 +7,10 @@
     "dev": "nodemon server.js",
     "seed:demo": "node scripts/seedDemo.js",
     "test": "node --test --test-concurrency=1 \"test/**/*.test.js\"",
-    "dev:memoria": "node scripts/servidorMemoria.js"
+    "dev:memoria": "node scripts/servidorMemoria.js",
+    "test:nube": "node --test --test-concurrency=1 \"test/**/*.test.js\"",
+    "probar:conexion": "node scripts/probarConexion.js",
+    "dev:nube-pruebas": "node scripts/servidorPruebasNube.js"
   },
   "keywords": [],
   "author": "",

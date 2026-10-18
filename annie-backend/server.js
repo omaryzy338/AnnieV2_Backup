@@ -14,6 +14,10 @@ const Upload = require('./models/Upload');
 // crear la aplicación express
 const app = express();
 
+if (!process.env.JWT_SECRET) {
+  console.error('❌ Falta la variable de entorno JWT_SECRET: nadie podrá iniciar sesión ni registrarse.');
+}
+
 // conectar base de datos (la conexión se cachea, ver config/db.js)
 connectDB().catch((err) => console.error('Fallo inicial de conexión:', err.message));
 

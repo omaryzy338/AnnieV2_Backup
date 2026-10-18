@@ -10,6 +10,15 @@ const { validarRFC, GENERIC_RFC } = require('../utils/rfc');
 // se guarda cifrado en el dispositivo con SecureStore).
 const duracionToken = (body) => (body && body.client === 'mobile' ? '30d' : '8h');
 
+// Sin JWT_SECRET no se pueden crear sesiones: se valida ANTES de guardar nada
+// para no dejar usuarios registrados que luego no pueden entrar.
+const sinClaveJWT = (res) => {
+  if (process.env.JWT_SECRET) return false;
+  console.error('❌ Falta la variable de entorno JWT_SECRET');
+  res.status(500).json({ message: 'El servidor no está configurado (falta JWT_SECRET). Avisa al administrador.' });
+  return true;
+};
+
 // ── Validadores ──────────────────────────────────────────────
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Mínimo 8 chars, al menos 1 mayúscula, 1 número y 1 carácter especial
@@ -18,6 +27,7 @@ const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<
 // ── REGISTRO ─────────────────────────────────────────────────
 router.post('/register', async (req, res) => {
   try {
+    if (sinClaveJWT(res)) return;
     const { name, lastName, email, password, businessName, address, phone, category, description, rfc } = req.body || {};
 
     // Campos obligatorios
@@ -91,6 +101,7 @@ router.post('/register', async (req, res) => {
 // ── LOGIN ───────────────────────────────────────────────────────────
 router.post('/login', async (req, res) => {
   try {
+    if (sinClaveJWT(res)) return;
     const { email, password } = req.body || {};
 
     if (!email || !password)

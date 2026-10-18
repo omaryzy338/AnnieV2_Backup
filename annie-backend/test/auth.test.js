@@ -62,3 +62,24 @@ test('token inválido o ausente responde 401', async () => {
   const res = await request().get('/products').set('Authorization', `Bearer ${vencido}`);
   assert.equal(res.status, 401);
 });
+
+test('sin JWT_SECRET el registro falla ANTES de guardar al usuario', async () => {
+  const secreto = process.env.JWT_SECRET;
+  delete process.env.JWT_SECRET;
+  try {
+    const email = `sinclave_${Date.now()}@annie.test`;
+    const res = await request().post('/auth/register').send({
+      name: 'A', lastName: 'B', email, password: 'Segura123!', businessName: 'X',
+    });
+    assert.equal(res.status, 500);
+    assert.match(res.body.message, /JWT_SECRET/);
+    process.env.JWT_SECRET = secreto;
+    // Al corregir la configuración, la misma persona sí puede registrarse
+    const otra = await request().post('/auth/register').send({
+      name: 'A', lastName: 'B', email, password: 'Segura123!', businessName: 'X',
+    });
+    assert.equal(otra.status, 201);
+  } finally {
+    process.env.JWT_SECRET = secreto;
+  }
+});

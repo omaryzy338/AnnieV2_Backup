@@ -59,6 +59,18 @@ npx expo start
 
 Para probar sin instalar MongoDB: `npm run dev:memoria` en `annie-backend` levanta el backend con una base de datos en memoria y `npm run seed:demo` crea un negocio de demostración.
 
+## Conectar con MongoDB Atlas (nube)
+
+1. Crea `annie-backend/.env` copiando `annie-backend/.env.example` y pon tu cadena de conexión en `DB_URI` y una clave larga en `JWT_SECRET`. **Nunca subas `.env` a GitHub** (ya está en `.gitignore`).
+2. En Atlas → **Network Access**, permite tu IP (para probar en tu computadora) y `0.0.0.0/0` (para que Render pueda conectarse).
+3. Comandos útiles dentro de `annie-backend`:
+
+```bash
+npm run probar:conexion    # diagnóstico: ¿conecta?, bases y colecciones (solo lectura)
+npm run test:nube          # las pruebas contra Atlas en bases temporales que se borran solas
+npm run dev:nube-pruebas   # backend contra Atlas en la base "annie_pruebas" (no toca los datos reales)
+```
+
 ## Pruebas
 
 ```bash

@@ -22,12 +22,16 @@ const connectDB = async () => {
 
   if (!cached.promise) {
     const isAtlas = uri.includes('mongodb+srv');
-    console.log(`🔌 Conectando a: ${isAtlas ? '☁️  Atlas (cloud)' : '💻 MongoDB local'}`);
+    // DB_NAME (opcional) elige otra base dentro del mismo servidor, p. ej.
+    // "annie_pruebas" para probar en Atlas sin tocar los datos reales.
+    const dbName = process.env.DB_NAME || undefined;
+    console.log(`🔌 Conectando a: ${isAtlas ? '☁️  Atlas (cloud)' : '💻 MongoDB local'}${dbName ? ` (base: ${dbName})` : ''}`);
 
     cached.promise = mongoose
       .connect(uri, {
         // Si Atlas no responde, fallar rápido en vez de colgar la función
         serverSelectionTimeoutMS: 10000,
+        ...(dbName ? { dbName } : {}),
       })
       .then((m) => {
         console.log('✅ MongoDB conectado correctamente');
