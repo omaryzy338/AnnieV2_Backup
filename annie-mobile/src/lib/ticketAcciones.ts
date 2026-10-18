@@ -8,9 +8,6 @@ import { folioTxt } from './format';
 import { ticketHTML } from './ticket';
 import type { Business, Sale } from './types';
 
-// Ancho de ticket (80 mm ≈ 302 pt); el alto se ajusta al contenido en el PDF
-const ANCHO = 320;
-
 function abrirEnWeb(html: string) {
   const ventana = globalThis.open?.('', '_blank', 'width=420,height=720');
   if (!ventana) throw new Error('Habilita las ventanas emergentes para ver el ticket.');
@@ -30,7 +27,10 @@ export async function imprimirTicket(venta: Sale, negocio?: Business | null) {
 export async function compartirTicket(venta: Sale, negocio?: Business | null) {
   const html = ticketHTML(venta, negocio);
   if (Platform.OS === 'web') return abrirEnWeb(html);
-  const { uri } = await Print.printToFileAsync({ html, width: ANCHO, height: 620 });
+  // Página tamaño carta (el tamaño por defecto) con el ticket centrado arriba:
+  // un tamaño fijo más chico podría cortar tickets largos (dirección larga,
+  // nombres de producto de varias líneas)
+  const { uri } = await Print.printToFileAsync({ html });
   if (!(await Sharing.isAvailableAsync())) throw new Error('Este dispositivo no permite compartir archivos.');
   await Sharing.shareAsync(uri, {
     mimeType: 'application/pdf',

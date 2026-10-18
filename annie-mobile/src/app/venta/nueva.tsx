@@ -25,6 +25,7 @@ import {
   TextField,
   type Opcion,
 } from '@/components/ui';
+import { useDesplazamientoTeclado } from '@/hooks/useDesplazamientoTeclado';
 import { mensajeError } from '@/lib/api';
 import { fullName, initials, money, parseAmount } from '@/lib/format';
 import { useClients, useCrearVenta, useProducts, useProfile } from '@/lib/queries';
@@ -54,6 +55,7 @@ export default function NuevaVentaScreen() {
 }
 
 function FormularioVenta({ productos, clientes, productIdInicial }: { productos: Product[]; clientes: Client[]; productIdInicial?: string }) {
+  const desplazamientoTeclado = useDesplazamientoTeclado();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const perfil = useProfile();
@@ -233,7 +235,7 @@ function FormularioVenta({ productos, clientes, productIdInicial }: { productos:
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={desplazamientoTeclado}>
       <Screen bottomSpace={110}>
         {/* Producto */}
         <Card style={{ gap: spacing.md }}>

@@ -5,12 +5,14 @@ import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from 'rea
 
 import { aviso, Banner, Button, Card, Screen, Text, TextField } from '@/components/ui';
 import { useAuth } from '@/context/auth';
+import { useDesplazamientoTeclado } from '@/hooks/useDesplazamientoTeclado';
 import { api, mensajeError, type ArchivoLocal } from '@/lib/api';
 import { elegirImagen } from '@/lib/imagenes';
 import { CAMPOS_REGISTRO_VACIOS, limpiarRFC, reglasPassword, validarRegistro, type CamposRegistro } from '@/lib/validacion';
 import { colors, radius, spacing } from '@/theme';
 
 export default function RegistroScreen() {
+  const desplazamientoTeclado = useDesplazamientoTeclado();
   const { registrarse } = useAuth();
   const [c, setC] = useState<CamposRegistro>(CAMPOS_REGISTRO_VACIOS);
   const [errores, setErrores] = useState<Partial<Record<keyof CamposRegistro, string>>>({});
@@ -58,7 +60,7 @@ export default function RegistroScreen() {
   const reglas = reglasPassword(c.password);
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={desplazamientoTeclado}>
       <Screen>
         <View style={{ gap: 4 }}>
           <Text variant="title">Crear cuenta</Text>

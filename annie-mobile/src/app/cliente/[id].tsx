@@ -18,6 +18,7 @@ import {
   Text,
   TextField,
 } from '@/components/ui';
+import { useDesplazamientoTeclado } from '@/hooks/useDesplazamientoTeclado';
 import { mensajeError } from '@/lib/api';
 import { formatDate, fullName, initials, money, plural } from '@/lib/format';
 import { camposACliente, clienteACampos, clienteVacio, validarCliente, type CamposCliente, type Errores } from '@/lib/formularios';
@@ -41,6 +42,7 @@ export default function ClienteFormScreen() {
 }
 
 function ClienteForm({ id, existente, conCredito = false }: { id: string; existente: Client | null; conCredito?: boolean }) {
+  const desplazamientoTeclado = useDesplazamientoTeclado();
   const esNuevo = !existente;
   const router = useRouter();
   const ventas = useSales();
@@ -106,7 +108,7 @@ function ClienteForm({ id, existente, conCredito = false }: { id: string; existe
   const rfcError = c.esMayoreo && c.rfc.trim() ? validarRFC(c.rfc, c.tipoPersona) : null;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={desplazamientoTeclado}>
       <Stack.Screen options={{ title: esNuevo ? 'Nuevo cliente' : 'Cliente' }} />
       <Screen>
         {existente && (

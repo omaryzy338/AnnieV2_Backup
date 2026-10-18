@@ -18,6 +18,7 @@ import {
   Text,
   TextField,
 } from '@/components/ui';
+import { useDesplazamientoTeclado } from '@/hooks/useDesplazamientoTeclado';
 import { mensajeError } from '@/lib/api';
 import { parseAmount } from '@/lib/format';
 import {
@@ -47,6 +48,7 @@ export default function ProductoFormScreen() {
 }
 
 function ProductoForm({ id, existente }: { id: string; existente: Product | null }) {
+  const desplazamientoTeclado = useDesplazamientoTeclado();
   const esNuevo = !existente;
   const router = useRouter();
   const guardar = useGuardarProducto();
@@ -108,7 +110,7 @@ function ProductoForm({ id, existente }: { id: string; existente: Product | null
   const margen = precio > 0 && costo > 0 ? ((precio - costo) / precio) * 100 : null;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={desplazamientoTeclado}>
       <Stack.Screen options={{ title: esNuevo ? 'Nuevo producto' : 'Editar producto' }} />
       <Screen>
         {error && <Banner tono="error">{error}</Banner>}

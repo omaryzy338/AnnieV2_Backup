@@ -19,6 +19,7 @@ import {
   TextField,
 } from '@/components/ui';
 import { useAuth } from '@/context/auth';
+import { useDesplazamientoTeclado } from '@/hooks/useDesplazamientoTeclado';
 import { mensajeError, resolveMediaUrl } from '@/lib/api';
 import { isoLocalDate } from '@/lib/format';
 import { elegirImagen, type Origen } from '@/lib/imagenes';
@@ -72,6 +73,7 @@ export default function NegocioScreen() {
 }
 
 function NegocioForm({ perfil }: { perfil: Profile }) {
+  const desplazamientoTeclado = useDesplazamientoTeclado();
   const { actualizarUsuario } = useAuth();
   const guardarNegocio = useGuardarNegocio();
   const guardarPropietario = useGuardarPropietario();
@@ -162,7 +164,7 @@ function NegocioForm({ perfil }: { perfil: Profile }) {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={desplazamientoTeclado}>
       <Screen>
         <Card style={{ gap: spacing.md, alignItems: 'center' }}>
           <View>

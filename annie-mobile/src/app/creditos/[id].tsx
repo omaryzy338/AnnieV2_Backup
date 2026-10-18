@@ -19,6 +19,7 @@ import {
   Text,
   TextField,
 } from '@/components/ui';
+import { useDesplazamientoTeclado } from '@/hooks/useDesplazamientoTeclado';
 import { mensajeError } from '@/lib/api';
 import { formatDateTime, fullName, money, parseAmount } from '@/lib/format';
 import { validarMovimiento } from '@/lib/formularios';
@@ -27,6 +28,7 @@ import { creditoDisponible, porcentajeCreditoUsado } from '@/lib/ventas';
 import { colors, spacing } from '@/theme';
 
 export default function EstadoCuentaScreen() {
+  const desplazamientoTeclado = useDesplazamientoTeclado();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const datos = useMovimientos(id);
@@ -62,7 +64,7 @@ export default function EstadoCuentaScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={desplazamientoTeclado}>
       <Stack.Screen options={{ title: fullName(client) || 'Estado de cuenta' }} />
       <Screen
         refreshing={datos.isRefetching}
