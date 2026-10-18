@@ -24,7 +24,11 @@ instance.interceptors.request.use((config) => {
 instance.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Las rutas /auth/ (login, registro) responden 401 por credenciales
+    // incorrectas: no redirigir para no perder el mensaje de error.
+    const url = error.config?.url || '';
+    const esAuth = url.startsWith('/auth/') || url.startsWith('auth/');
+    if (error.response?.status === 401 && !esAuth) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';

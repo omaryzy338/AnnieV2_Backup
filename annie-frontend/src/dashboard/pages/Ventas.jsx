@@ -10,6 +10,8 @@ const hoyLocal = () => {
 };
 const nuevoForm = () => ({ productId: "", clientId: "", quantity: 1, discount: 0, discountType: "porcentaje", saleDate: hoyLocal(), paymentMethod: "efectivo", amountPaid: "" });
 const money = (n) => Number(n || 0).toFixed(2);
+const escaparHTML = (s) =>
+  String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 const metodoTxt = (m) => (m === "credito" ? "Crédito" : "Efectivo");
 const folioTxt = (f) => (f ? String(f).padStart(6, "0") : "—");
 
@@ -153,11 +155,11 @@ const Ventas = () => {
   const handleEliminar = async (id) => {
     try {
       await axios.delete(`/sales/${id}`);
-      mostrarExito("Venta eliminada");
+      mostrarExito("Venta cancelada: el producto regresó al inventario");
       setConfirmId(null);
       cargar();
-    } catch {
-      setError("Error al eliminar la venta");
+    } catch (err) {
+      setError(err.response?.data?.message || "Error al cancelar la venta");
       setConfirmId(null);
     }
   };
@@ -193,8 +195,12 @@ const Ventas = () => {
   // Genera un recibo/orden de venta imprimible (el usuario puede "Guardar
   // como PDF" desde el diálogo de impresión del navegador)
   const imprimirRecibo = (v) => {
-    const nombreNegocio = negocio?.name || "Mi negocio";
-    const clienteTxt = v.client ? `${v.client.name} ${v.client.lastName || ""}`.trim() : "Cliente general";
+    // Los nombres los escribe el usuario: se escapan para que no se ejecute
+    // HTML/JavaScript al abrir el ticket
+    const nombreNegocio = escaparHTML(negocio?.name || "Mi negocio");
+    const clienteTxt = escaparHTML(v.client ? `${v.client.name} ${v.client.lastName || ""}`.trim() : "Cliente general");
+    const productoTxt = escaparHTML(v.product?.name || "—");
+    const rfcTxt = escaparHTML(negocio?.rfc || "");
     const descTxt = v.discount > 0
       ? (v.discountType === "fijo" ? `-$${v.discount}` : `-${v.discount}%`)
       : "—";
@@ -219,7 +225,7 @@ const Ventas = () => {
 </head>
 <body>
   <h1>${nombreNegocio}</h1>
-  <div class="sub">Ticket de venta ${negocio?.rfc && !negocio?.rfcGenerico ? `· RFC: ${negocio.rfc}` : ""}</div>
+  <div class="sub">Ticket de venta ${rfcTxt && !negocio?.rfcGenerico ? `· RFC: ${rfcTxt}` : ""}</div>
   <div class="meta"><span>Folio</span><strong>${folioTxt(v.folio)}</strong></div>
   <div class="meta"><span>Fecha</span><strong>${formatFecha(fechaVenta(v))}</strong></div>
   <div class="meta"><span>Cliente</span><strong>${clienteTxt}</strong></div>
@@ -229,11 +235,11 @@ const Ventas = () => {
     </thead>
     <tbody>
       <tr>
-        <td>${v.product?.name || "—"}</td>
+        <td>${productoTxt}</td>
         <td>${v.quantity}</td>
-        <td>$${v.price}</td>
+        <td>$${money(v.price)}</td>
         <td>${descTxt}</td>
-        <td>$${v.total}</td>
+        <td>$${money(v.total)}</td>
       </tr>
       <tr class="total-row">
         <td colspan="4">Total</td>
@@ -252,6 +258,8 @@ const Ventas = () => {
 </html>`;
 
     const ventana = window.open("", "_blank", "width=520,height=700");
+    // La ventana del ticket no necesita acceso a la app que la abrió
+    if (ventana) ventana.opener = null;
     if (!ventana) { setError("Habilita las ventanas emergentes para ver el recibo"); return; }
     ventana.document.write(html);
     ventana.document.close();
@@ -271,12 +279,14 @@ const Ventas = () => {
             <div style={styles.modalIcon}>
               <i className="fa fa-trash" style={{ color: "#e05555", fontSize: 24 }} />
             </div>
-            <h5 style={{ margin: "0 0 6px", color: "#1a1a2e", fontSize: 16 }}>Eliminar venta?</h5>
-            <p style={{ margin: "0 0 20px", color: "#888", fontSize: 13 }}>Esta accion no se puede deshacer.</p>
+            <h5 style={{ margin: "0 0 6px", color: "#1a1a2e", fontSize: 16 }}>¿Cancelar venta?</h5>
+            <p style={{ margin: "0 0 20px", color: "#888", fontSize: 13 }}>
+              Se eliminará la venta, el producto regresará al inventario y, si fue a crédito, se descontará del saldo del cliente.
+            </p>
             <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-              <button style={styles.btnModalCancel} onClick={() => setConfirmId(null)}>Cancelar</button>
+              <button style={styles.btnModalCancel} onClick={() => setConfirmId(null)}>No</button>
               <button style={styles.btnModalDelete} onClick={() => handleEliminar(confirmId)}>
-                <i className="fa fa-trash" style={{ marginRight: 7 }} />Si, eliminar
+                <i className="fa fa-trash" style={{ marginRight: 7 }} />Sí, cancelar venta
               </button>
             </div>
           </div>

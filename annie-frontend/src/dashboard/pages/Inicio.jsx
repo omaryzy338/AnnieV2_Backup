@@ -210,7 +210,8 @@ const Inicio = () => {
                 .filter((p, i, arr) => arr.findIndex(x => x._id === p._id) === i)
                 .map((p) => {
                   const pct   = Math.min(100, Math.round((p.quantity / maxQ) * 100));
-                  const color = p.quantity < 5 ? "#e94560" : p.quantity < 20 ? "#FF9800" : "#27ae60";
+                  // Mismos umbrales que Productos: < 5 rojo, < 15 naranja
+                  const color = p.quantity < 5 ? "#e94560" : p.quantity < 15 ? "#FF9800" : "#27ae60";
                   const tag   = p._id === menor._id
                     ? { label: "Menor stock", color: "#e94560", bg: "#fff0f3" }
                     : { label: "Mayor stock", color: "#27ae60", bg: "#f0fff4" };

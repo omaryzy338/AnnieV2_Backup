@@ -3,16 +3,18 @@ import { useNavigate } from "react-router-dom";
 import axios from "../../api/axiosConfig";
 import { resolveMediaUrl } from "../../utils/media";
 
+const leerUsuario = () => JSON.parse(localStorage.getItem("user") || "{}");
+
 const TopBar = ({ isMobile, onMenuToggle }) => {
   const [busqueda, setBusqueda]   = useState("");
   const [showDrop, setShowDrop]   = useState(false);
   const [productos, setProductos] = useState([]);
   const [clientes, setClientes]   = useState([]);
   const [logoUrl, setLogoUrl]     = useState(null);
+  const [user, setUser]           = useState(leerUsuario);
   const wrapperRef = useRef(null);
   const navigate   = useNavigate();
 
-  const user         = JSON.parse(localStorage.getItem("user") || "{}");
   const inicial      = user.name ? user.name.charAt(0).toUpperCase() : "?";
   const nombreCompleto = user.name ? `${user.name} ${user.lastName || ""}`.trim() : null;
 
@@ -36,6 +38,22 @@ const TopBar = ({ isMobile, onMenuToggle }) => {
     cargar();
   }, []);
 
+  // Mi Negocio avisa cuando cambian el nombre o el logo: releer la sesión
+  // y volver a pedir el perfil para mostrar el logo nuevo
+  useEffect(() => {
+    const onPerfilActualizado = async () => {
+      setUser(leerUsuario());
+      try {
+        const res = await axios.get("/profile");
+        setLogoUrl(resolveMediaUrl(res.data.business?.logo));
+      } catch {
+        // ignore
+      }
+    };
+    window.addEventListener("annie:perfil-actualizado", onPerfilActualizado);
+    return () => window.removeEventListener("annie:perfil-actualizado", onPerfilActualizado);
+  }, []);
+
   // Cierra el dropdown al hacer clic fuera
   useEffect(() => {
     const handler = (e) => {
@@ -52,8 +70,9 @@ const TopBar = ({ isMobile, onMenuToggle }) => {
     { label: "Productos",   ruta: "/dashboard/productos",   icon: "fa-cube",        keywords: ["productos", "producto", "inventario", "stock", "articulos"] },
     { label: "Ventas",      ruta: "/dashboard/ventas",      icon: "fa-shopping-cart", keywords: ["ventas", "venta", "pedidos", "ordenes", "cobros"] },
     { label: "Clientes",    ruta: "/dashboard/clientes",    icon: "fa-users",       keywords: ["clientes", "cliente", "personas", "compradores"] },
+    { label: "Créditos",    ruta: "/dashboard/creditos",    icon: "fa-credit-card", keywords: ["creditos", "credito", "fiado", "mayoreo", "deudas", "cobrar"] },
     { label: "Reportes",    ruta: "/dashboard/reportes",    icon: "fa-bar-chart",   keywords: ["reportes", "reporte", "estadisticas", "graficas", "analisis"] },
-    { label: "Mi Negocio",  ruta: "/dashboard/mi-negocio", icon: "fa-building",    keywords: ["negocio", "empresa", "mi negocio", "perfil negocio", "configuracion"] },
+    { label: "Mi Negocio",  ruta: "/dashboard/mi-negocio", icon: "fa-briefcase",   keywords: ["negocio", "empresa", "mi negocio", "perfil negocio", "configuracion"] },
   ];
 
   const q         = busqueda.trim().toLowerCase();

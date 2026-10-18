@@ -106,10 +106,14 @@ const Productos = () => {
   };
 
   const handleEditar = (p) => {
-    const esPredefinida = CATEGORIAS.some((c) => c.label === p.category);
+    // Sin categoría → ningún chip seleccionado; categoría propia → chip "Otro" con el texto
+    const cat = p.category || "";
+    const esPredefinida = CATEGORIAS.some((c) => c.label === cat && c.label !== "Otro");
     setForm({ name: p.name, description: p.description || "", price: p.price, cost: p.cost || "", quantity: p.quantity,
-      category: esPredefinida ? p.category : "Otro", unit: p.unit || "piezas", brand: p.brand || "", image: p.image || "" });
-    setCatCustom(!esPredefinida ? p.category || "" : "");
+      category: !cat ? "" : esPredefinida ? cat : "Otro",
+      unit: p.unit ?? "piezas", // conservar "" (Sin unidad) tal cual se guardó
+      brand: p.brand || "", image: p.image || "" });
+    setCatCustom(cat && !esPredefinida ? cat : "");
     setEditId(p._id); setShowForm(true); setError(""); setSuccess("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -178,15 +182,15 @@ const Productos = () => {
             {isMobile ? "Productos" : "Inventario de productos"}
           </h4>
           <p style={{ margin: "4px 0 0", color: "#aaa", fontSize: 13 }}>
-            {productos.length} producto{productos.length !== 1 ? "s" : ""} registrados
+            {productos.length} producto{productos.length !== 1 ? "s" : ""} registrado{productos.length !== 1 ? "s" : ""}
           </p>
         </div>
         {showForm ? (
-          <button style={styles.btnCancel} onClick={() => { setShowForm(false); setEditId(null); setForm(camposIniciales); }}>
+          <button style={styles.btnCancel} onClick={() => { setShowForm(false); setEditId(null); setForm(camposIniciales); setCatCustom(""); }}>
             <i className="fa fa-times" style={{ marginRight: 8 }} />Cancelar
           </button>
         ) : (
-          <button style={styles.btnPrimary} onClick={() => { setShowForm(true); setEditId(null); setForm(camposIniciales); }}>
+          <button style={styles.btnPrimary} onClick={() => { setShowForm(true); setEditId(null); setForm(camposIniciales); setCatCustom(""); }}>
             <i className="fa fa-plus" style={{ marginRight: 8 }} />Agregar producto
           </button>
         )}
@@ -396,7 +400,7 @@ const Productos = () => {
                 {editId ? "Guardar cambios" : "Crear producto"}
               </button>
               <button type="button" style={styles.btnCancel}
-                onClick={() => { setShowForm(false); setEditId(null); setForm(camposIniciales); }}>
+                onClick={() => { setShowForm(false); setEditId(null); setForm(camposIniciales); setCatCustom(""); }}>
                 <i className="fa fa-times" style={{ marginRight: 7 }} />Cancelar
               </button>
             </div>

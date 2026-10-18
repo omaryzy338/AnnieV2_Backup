@@ -55,7 +55,8 @@ const Creditos = () => {
       ]);
       setClientes(rc.data);
       setResumen(rr.data);
-      setRfcGenerico(!!rp.data.business?.rfcGenerico);
+      // Sin RFC real = RFC vacío o el genérico del SAT
+      setRfcGenerico(!!rp.data.business?.rfcGenerico || !rp.data.business?.rfc);
     } catch {
       setError("Error al cargar los créditos");
     } finally {
@@ -122,7 +123,8 @@ const Creditos = () => {
       lastName: form.lastName,
       tipoPersona: form.tipoPersona,
       rfc: limpiarRFC(form.rfc),
-      razonSocial: form.razonSocial,
+      // La razón social solo aplica a persona moral (si cambió a física se limpia)
+      razonSocial: form.tipoPersona === "moral" ? form.razonSocial : "",
       email: form.email,
       phone: form.phone,
       esMayoreo: true,

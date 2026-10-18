@@ -20,33 +20,44 @@ const Sidebar = ({ isMobile, isOpen, onClose }) => {
   const [businessLogo, setBusinessLogo] = useState(null);
 
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("user") || "{}");
-    setUserData(stored);
-    setBusinessLogo(stored.businessLogo || null);
+    // Lee la sesión guardada; si le falta el nombre o logo del negocio (o
+    // se pide refrescar) los trae del backend
+    const cargar = (refrescar) => {
+      const stored = JSON.parse(localStorage.getItem("user") || "{}");
+      setUserData(stored);
+      setBusinessLogo(stored.businessLogo || null);
+      if (stored.businessName) setBusinessName(stored.businessName);
 
-    // Si el token no tiene businessName o logo, lo cargamos del backend
-    if (!stored.businessName || !stored.businessLogo) {
-      axios.get("/profile").then((res) => {
-        const name = res.data.business?.name || "Mi Tienda";
-        const logo = resolveMediaUrl(res.data.business?.logo);
+      if (refrescar || !stored.businessName || !stored.businessLogo) {
+        axios.get("/profile").then((res) => {
+          const name = res.data.business?.name || "Mi Tienda";
+          const logo = resolveMediaUrl(res.data.business?.logo);
 
-        setBusinessName(name);
-        setBusinessLogo(logo);
+          setBusinessName(name);
+          setBusinessLogo(logo);
 
-        // actualizar localStorage con los datos
-        const updated = {
-          ...stored,
-          businessName: name,
-          businessLogo: logo,
-        };
-        localStorage.setItem("user", JSON.stringify(updated));
-        setUserData(updated);
-      }).catch(() => {
-        if (stored.businessName) setBusinessName(stored.businessName);
-      });
-    } else {
-      setBusinessName(stored.businessName);
-    }
+          // actualizar localStorage con los datos
+          const updated = {
+            ...stored,
+            name: res.data.user?.name || stored.name,
+            lastName: res.data.user?.lastName ?? stored.lastName,
+            businessName: name,
+            businessLogo: logo,
+          };
+          localStorage.setItem("user", JSON.stringify(updated));
+          setUserData(updated);
+        }).catch(() => {
+          // sin conexión: se queda lo que había en localStorage
+        });
+      }
+    };
+
+    cargar(false);
+
+    // Mi Negocio avisa cuando cambian el nombre, el logo o el propietario
+    const onPerfilActualizado = () => cargar(true);
+    window.addEventListener("annie:perfil-actualizado", onPerfilActualizado);
+    return () => window.removeEventListener("annie:perfil-actualizado", onPerfilActualizado);
   }, []);
 
   const handleLogout = () => {

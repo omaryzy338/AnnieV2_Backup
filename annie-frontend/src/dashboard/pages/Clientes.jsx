@@ -39,7 +39,8 @@ const Clientes = () => {
       const [rc, rv, rp] = await Promise.all([axios.get("/clients"), axios.get("/sales"), axios.get("/profile")]);
       setClientes(rc.data);
       setVentas(rv.data);
-      setRfcGenerico(!!rp.data.business?.rfcGenerico);
+      // Sin RFC real = RFC vacío o el genérico del SAT
+      setRfcGenerico(!!rp.data.business?.rfcGenerico || !rp.data.business?.rfc);
     } catch { setError("Error al cargar clientes"); }
     finally { setLoading(false); }
   };
@@ -82,7 +83,7 @@ const Clientes = () => {
     if (form.esMayoreo) {
       payload.tipoPersona   = form.tipoPersona;
       payload.rfc           = limpiarRFC(form.rfc);
-      payload.razonSocial   = form.razonSocial;
+      payload.razonSocial   = form.tipoPersona === "moral" ? form.razonSocial : ""; // solo persona moral
       payload.limiteCredito = Number(form.limiteCredito) || 0;
     }
 
@@ -123,7 +124,7 @@ const Clientes = () => {
       await axios.delete(`/clients/${id}`);
       mostrarExito("Cliente eliminado");
       cargar();
-    } catch { setError("Error al eliminar"); }
+    } catch (err) { setError(err.response?.data?.message || "Error al eliminar cliente"); }
     finally { setConfirmId(null); }
   };
 
@@ -167,16 +168,16 @@ const Clientes = () => {
             <div style={styles.modalIcon}>
               <i className="fa fa-user-times" style={{ color: "#e05555", fontSize: 24 }} />
             </div>
-            <h5 style={{ margin: "0 0 6px", color: "#1a1a2e", fontSize: 16 }}>Eliminar cliente?</h5>
+            <h5 style={{ margin: "0 0 6px", color: "#1a1a2e", fontSize: 16 }}>¿Eliminar cliente?</h5>
             <p style={{ margin: "0 0 20px", color: "#888", fontSize: 13 }}>
-              Esta accion no se puede deshacer.
+              Esta acción no se puede deshacer.
             </p>
             <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
               <button style={styles.btnModalCancel} onClick={() => setConfirmId(null)}>
                 Cancelar
               </button>
               <button style={styles.btnModalDelete} onClick={() => handleEliminar(confirmId)}>
-                <i className="fa fa-trash" style={{ marginRight: 7 }} />Si, eliminar
+                <i className="fa fa-trash" style={{ marginRight: 7 }} />Sí, eliminar
               </button>
             </div>
           </div>
@@ -214,7 +215,7 @@ const Clientes = () => {
           {[
             { icon: "fa-users",        bg: "#f0f2ff", color: "#6372ff", val: clientes.length, label: "Total clientes"    },
             { icon: "fa-envelope",     bg: "#e8f5e9", color: "#27ae60", val: conEmail,         label: "Con email"         },
-            { icon: "fa-phone",        bg: "#fff8e1", color: "#f9a825", val: conPhone,         label: "Con telefono"      },
+            { icon: "fa-phone",        bg: "#fff8e1", color: "#f9a825", val: conPhone,         label: "Con teléfono"      },
             { icon: "fa-check-circle", bg: "#e3f2fd", color: "#1976d2", val: completos,        label: "Contacto completo" },
           ].map(({ icon, bg, color, val, label }) => (
             <div key={label} style={styles.kpiCard}>
@@ -262,7 +263,7 @@ const Clientes = () => {
               </div>
               <div style={styles.fieldWrap}>
                 <label style={styles.label}>
-                  <i className="fa fa-phone" style={styles.labelIcon} />Telefono
+                  <i className="fa fa-phone" style={styles.labelIcon} />Teléfono
                 </label>
                 <input style={styles.input} name="phone" value={form.phone}
                   onChange={handleChange} placeholder="Ej: 555-123-4567" />
@@ -372,7 +373,7 @@ const Clientes = () => {
             <i className="fa fa-search" style={styles.searchIcon} />
             <input
               style={styles.searchInput}
-              placeholder="Buscar por nombre, email o telefono..."
+              placeholder="Buscar por nombre, email o teléfono..."
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
             />
@@ -392,8 +393,8 @@ const Clientes = () => {
       {clientes.length === 0 ? (
         <div style={styles.empty}>
           <i className="fa fa-users" style={{ fontSize: 40, color: "#d0d4ff", display: "block", marginBottom: 12 }} />
-          <div style={{ fontWeight: 600, color: "#555", marginBottom: 4 }}>Aun no tienes clientes</div>
-          <div style={{ color: "#aaa", fontSize: 13 }}>Agrega tu primer cliente con el boton de arriba</div>
+          <div style={{ fontWeight: 600, color: "#555", marginBottom: 4 }}>Aún no tienes clientes</div>
+          <div style={{ color: "#aaa", fontSize: 13 }}>Agrega tu primer cliente con el botón de arriba</div>
         </div>
       ) : isMobile ? (
         /* Vista cards en móvil */

@@ -7,6 +7,10 @@ import {
 
 const COLORES = ["#6372ff", "#5ca9fb", "#f06292", "#81c784", "#ffb74d", "#4dd0e1", "#ce93d8", "#a1887f"];
 
+// Clave del día en hora local con año (año-mes-día), para no mezclar
+// ventas del mismo día/mes de años anteriores
+const claveDia = (d) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+
 const Reportes = () => {
   const [ventas,    setVentas]    = useState([]);
   const [productos, setProductos] = useState([]);
@@ -44,12 +48,11 @@ const Reportes = () => {
     for (let i = periodo - 1; i >= 0; i--) {
       const d = new Date(hoy);
       d.setDate(d.getDate() - i);
-      const key = `${d.getDate()}/${d.getMonth() + 1}`;
-      mapa[key] = { dia: key, total: 0, transacciones: 0 };
+      mapa[claveDia(d)] = { dia: `${d.getDate()}/${d.getMonth() + 1}`, total: 0, transacciones: 0 };
     }
+    // Solo cuentan las ventas cuyo día está dentro de la ventana
     ventas.forEach((v) => {
-      const d = new Date(v.saleDate || v.createdAt);
-      const key = `${d.getDate()}/${d.getMonth() + 1}`;
+      const key = claveDia(new Date(v.saleDate || v.createdAt));
       if (mapa[key]) {
         mapa[key].total += v.total;
         mapa[key].transacciones += 1;

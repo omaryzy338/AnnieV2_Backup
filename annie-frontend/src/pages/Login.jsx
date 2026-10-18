@@ -144,7 +144,6 @@ const styles = {
     flex: 1, background: "#3284f7",
     display: "flex", alignItems: "center", justifyContent: "center",
     position: "relative", overflow: "hidden",
-    "@media (max-width: 768px)": { display: "none" },
   },
   leftContent: {
     textAlign: "center", color: "#fff", position: "relative", zIndex: 1, padding: 40,

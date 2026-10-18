@@ -15,6 +15,18 @@ const estadosMexico = [
 ];
 const defaultCountry = "Mexico";
 
+// Mantiene localStorage.user al día (Sidebar y TopBar lo leen) y les avisa
+// para que muestren el nombre y logo nuevos sin volver a iniciar sesión
+const actualizarSesion = (cambios) => {
+  try {
+    const stored = JSON.parse(localStorage.getItem("user") || "{}");
+    localStorage.setItem("user", JSON.stringify({ ...stored, ...cambios }));
+  } catch {
+    // localStorage corrupto o no disponible: solo avisamos
+  }
+  window.dispatchEvent(new Event("annie:perfil-actualizado"));
+};
+
 const MiNegocio = () => {
   const [data, setData]           = useState(null);
   const [loading, setLoading]     = useState(true);
@@ -48,7 +60,7 @@ const MiNegocio = () => {
         phone: business?.phone || "",
         category: business?.category || "",
         description: business?.description || "",
-        rfc: business?.rfcGenerico ? "" : (business?.rfc || ""),
+        rfc: business?.rfcGenerico || !business?.rfc ? "" : business.rfc,
         country: business?.country || defaultCountry,
         state: business?.state || "",
         city: business?.city || "",
@@ -79,8 +91,8 @@ const MiNegocio = () => {
       return setError("El RFC no tiene un formato válido (física=13, moral=12 caracteres)");
 
     try {
-      await axios.put("/profile/business", formNegocio);
-      localStorage.setItem("businessName", formNegocio.name);
+      const res = await axios.put("/profile/business", formNegocio);
+      actualizarSesion({ businessName: res.data?.name || formNegocio.name });
       setSuccess("Datos del negocio actualizados");
       setEditMode(null);
       cargar();
@@ -100,9 +112,13 @@ const MiNegocio = () => {
     if (!formUsuario.city.trim()) return setError("Ciudad es requerida");
 
     try {
-      await axios.put("/profile/user", {
+      const res = await axios.put("/profile/user", {
         ...formUsuario,
         birthDate: formUsuario.birthDate || null,
+      });
+      actualizarSesion({
+        name: res.data?.name || formUsuario.name,
+        lastName: res.data?.lastName ?? formUsuario.lastName,
       });
       setSuccess("Datos del propietario actualizados");
       setEditMode(null);
@@ -131,7 +147,9 @@ const MiNegocio = () => {
     setUploading(true);
     setError("");
     try {
-      await axios.post("/profile/business/logo", fd);
+      const res = await axios.post("/profile/business/logo", fd);
+      // Sidebar guarda el logo ya resuelto (URL completa)
+      actualizarSesion({ businessLogo: resolveMediaUrl(res.data?.logo) });
       setSuccess("Logo actualizado correctamente");
       setLogoBroken(false);
       cargar();
@@ -147,6 +165,8 @@ const MiNegocio = () => {
 
   const { user, business } = data || {};
   const logoUrl = !logoBroken ? resolveMediaUrl(business?.logo) : null;
+  // Sin RFC real = RFC vacío o el genérico del SAT
+  const sinRfcReal = !!(business?.rfcGenerico || !business?.rfc);
 
   const estadosNegocio = estadosMexico;
   const estadosUsuario = estadosMexico;
@@ -191,10 +211,10 @@ const MiNegocio = () => {
         </div>
       )}
 
-      {business?.rfcGenerico && (
+      {sinRfcReal && (
         <div style={{ background: "#fff0f3", border: "1px solid #ffd0d8", padding: "10px 14px", borderRadius: 10, color: "#c0392b", fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
           <i className="fa fa-exclamation-circle" />
-          Tu negocio tiene un RFC genérico. Sin un RFC real no puedes facturar, y por lo tanto tampoco puedes
+          Tu negocio no tiene un RFC real registrado. Sin un RFC real no puedes facturar, y por lo tanto tampoco puedes
           dar crédito a tus clientes. Agrégalo abajo en "Información del negocio".
         </div>
       )}
@@ -320,10 +340,10 @@ const MiNegocio = () => {
             <InfoRow icon="fa-map-pin"     label="Ciudad"      value={business?.city} />
             <InfoRow icon="fa-map-marker"  label="Dirección"   value={business?.address} />
             <InfoRow icon="fa-phone"       label="Teléfono"    value={business?.phone} />
-            <InfoRow icon="fa-id-card-o"   label="RFC"         value={business?.rfcGenerico ? null : business?.rfc}
-              note={business?.rfcGenerico ? "Sin RFC real registrado" : undefined} />
+            <InfoRow icon="fa-id-card-o"   label="RFC"         value={sinRfcReal ? null : business?.rfc}
+              note={sinRfcReal ? "Sin RFC real registrado" : undefined} />
             <InfoRow icon="fa-align-left"  label="Descripción" value={business?.description} span />
-            <InfoRow icon="fa-link"        label="Slug"        value={business?.slug} note="Identificador unico" />
+            <InfoRow icon="fa-link"        label="Slug"        value={business?.slug} note="Identificador único" />
           </div>
         )}
       </div>
@@ -393,7 +413,8 @@ const MiNegocio = () => {
           <div style={{ ...styles.infoGrid, gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr" }}>
             <InfoRow icon="fa-user"     label="Nombre"     value={user?.name} />
             <InfoRow icon="fa-user"     label="Apellido"   value={user?.lastName} />
-            <InfoRow icon="fa-calendar" label="Nacimiento" value={user?.birthDate ? new Date(user.birthDate).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" }) : null} />
+            {/* La fecha se guarda a medianoche UTC: se muestra en UTC para no restar un día */}
+            <InfoRow icon="fa-calendar" label="Nacimiento" value={user?.birthDate ? new Date(user.birthDate).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) : null} />
             <InfoRow icon="fa-flag"     label="País"       value={user?.country} />
             <InfoRow icon="fa-map"      label="Estado"     value={user?.state} />
             <InfoRow icon="fa-map-pin"  label="Ciudad"     value={user?.city} />
@@ -413,7 +434,7 @@ const InfoRow = ({ icon, label, value, note, span }) => (
       {label}
     </div>
     <div style={{ fontWeight: value ? 600 : 400, color: value ? "#1a1a2e" : "#ccc", fontSize: 14 }}>
-      {value || "Sin informacion"}
+      {value || "Sin información"}
     </div>
     {note && <div style={{ fontSize: 11, color: "#aaa" }}>{note}</div>}
   </div>
