@@ -9,12 +9,11 @@ import Clientes   from "../dashboard/pages/Clientes";
 import Creditos   from "../dashboard/pages/Creditos";
 import Reportes   from "../dashboard/pages/Reportes";
 import MiNegocio  from "../dashboard/pages/MiNegocio";
-import useWindowWidth from "../hooks/useWindowWidth";
+import useIsMobile from "../hooks/useIsMobile";
 import "../dashboard/dashboard.css";
 
 const Dashboard = () => {
-  const w = useWindowWidth();
-  const isMobile = w < 768;
+  const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (

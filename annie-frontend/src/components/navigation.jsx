@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-export const Navigation = (props) => {
+export const Navigation = () => {
   const [isLogged, setIsLogged] = useState(false);
   const navigate = useNavigate();
 
@@ -29,7 +29,7 @@ export const Navigation = (props) => {
   ];
 
   return (
-    <nav id="menu" className="navbar navbar-default navbar-fixed-top annie-nav" font-family="Poppins, sans-serif"> 
+    <nav id="menu" className="navbar navbar-default navbar-fixed-top annie-nav">
       <div className="container">
         <div className="navbar-header">
           <button
@@ -54,20 +54,12 @@ export const Navigation = (props) => {
               <li key={item.label}>
                 {item.external ? (
                   <a href={item.href} className="page-scroll annie-nav__link" style={{ fontFamily: item.fontFamily }}>
-                    {item.icon === "logo" ? (
-                      <img src="/favicon.png" alt="Annie" className="annie-nav__item-logo" />
-                    ) : (
-                      <i className={item.icon} aria-hidden="true" />
-                    )}
+                    <i className={item.icon} aria-hidden="true" />
                     <span>{item.label}</span>
                   </a>
                 ) : (
                   <Link to={item.href} className="annie-nav__link">
-                    {item.icon === "logo" ? (
-                      <img src="/favicon.png" alt="Annie" className="annie-nav__item-logo" />
-                    ) : (
-                      <i className={item.icon} aria-hidden="true" />
-                    )}
+                    <i className={item.icon} aria-hidden="true" />
                     <span>{item.label}</span>
                   </Link>
                 )}

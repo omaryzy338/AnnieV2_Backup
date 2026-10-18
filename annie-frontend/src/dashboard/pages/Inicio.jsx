@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
 import axios from "../../api/axiosConfig";
-import useWindowWidth from "../../hooks/useWindowWidth";
+import useIsMobile from "../../hooks/useIsMobile";
+import { formatFechaCorta, fullName, money } from "../../utils/format";
+import { fechaVenta, round2 } from "../../utils/ventas";
+import { STOCK_BAJO, STOCK_MEDIO } from "../../utils/constantes";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -27,8 +30,8 @@ const Inicio = () => {
   const [clientes, setClientes]   = useState([]);
   const [ventas, setVentas]       = useState([]);
   const [loading, setLoading]     = useState(true);
-  const w = useWindowWidth();
-  const isMobile = w < 768;
+  const [error, setError]         = useState("");
+  const isMobile = useIsMobile();
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
@@ -46,7 +49,7 @@ const Inicio = () => {
         setClientes(cliRes.data);
         setVentas(venRes.data);
       } catch (err) {
-        console.error(err);
+        setError(err.response?.data?.message || "Error al cargar el resumen");
       } finally {
         setLoading(false);
       }
@@ -56,14 +59,28 @@ const Inicio = () => {
 
   if (loading) return <div style={{ padding: 30 }}>Cargando...</div>;
 
-  // Top productos: #1 más vendido por cantidad, #2 mayor ganancia generada (sin duplicar)
+  // Costo unitario de cada producto que lo tiene registrado (las ventas no
+  // traen el costo, así que se toma de la lista de productos)
+  const costoPorProducto = productos.reduce((acc, p) => {
+    if (p.cost > 0) acc[p._id] = p.cost;
+    return acc;
+  }, {});
+
+  // Top productos: #1 más vendido por cantidad, #2 mayor ganancia real
+  // (venta − costo × cantidad) o, si ningún producto vendido tiene costo,
+  // el de mayores ingresos (sin duplicar)
   const topMapProductos = Object.values(
     ventas.reduce((acc, v) => {
       const key = v.product?._id;
       if (!key) return acc;
-      if (!acc[key]) acc[key] = { nombre: v.product.name, ventas: 0, total: 0, unit: v.product.unit || "uds." };
+      if (!acc[key]) acc[key] = { id: key, nombre: v.product.name, ventas: 0, total: 0, ganancia: 0, conCosto: false, unit: v.product.unit || "uds." };
       acc[key].ventas += v.quantity;
       acc[key].total  += v.total;
+      const costo = costoPorProducto[key];
+      if (costo !== undefined) {
+        acc[key].ganancia = round2(acc[key].ganancia + v.total - costo * v.quantity);
+        acc[key].conCosto = true;
+      }
       return acc;
     }, {})
   );
@@ -85,17 +102,24 @@ const Inicio = () => {
     return [...top5, otros];
   })();
 
-  const masVendido  = [...topMapProductos].sort((a, b) => b.ventas - a.ventas)[0]  || null;
-  const masGanancia = [...topMapProductos].sort((a, b) => b.total  - a.total)[0]   || null;
-  const topProductosDuo = masVendido && masGanancia && masVendido.nombre === masGanancia.nombre
-    ? [{ ...masVendido, badge: "Más vendido · Más ganancia" }]
+  // Sin costos no se puede calcular la ganancia: se muestra el de más ingresos
+  const hayGanancia = topMapProductos.some((p) => p.conCosto);
+  const etiquetaSegundo = hayGanancia ? "Más ganancia" : "Más ingresos";
+  const masVendido  = [...topMapProductos].sort((a, b) => b.ventas - a.ventas)[0] || null;
+  const masGanancia = hayGanancia
+    ? [...topMapProductos].filter((p) => p.conCosto).sort((a, b) => b.ganancia - a.ganancia)[0] || null
+    : [...topMapProductos].sort((a, b) => b.total - a.total)[0] || null;
+  // Monto que se muestra en la tarjeta: ingresos del más vendido; ganancia
+  // (o ingresos, si no hay costos) del segundo
+  const montoSegundo = (p) => hayGanancia
+    ? { monto: p.ganancia, montoTxt: "ganancia" }
+    : { monto: p.total, montoTxt: "ingresos" };
+  const topProductosDuo = masVendido && masGanancia && masVendido.id === masGanancia.id
+    ? [{ ...masVendido, ...montoSegundo(masVendido), badge: `Más vendido · ${etiquetaSegundo}` }]
     : [
-        masVendido  ? { ...masVendido,  badge: "Más vendido"  } : null,
-        masGanancia ? { ...masGanancia, badge: "Más ganancia" } : null,
+        masVendido  ? { ...masVendido,  monto: masVendido.total, montoTxt: "ingresos", badge: "Más vendido" } : null,
+        masGanancia ? { ...masGanancia, ...montoSegundo(masGanancia), badge: etiquetaSegundo } : null,
       ].filter(Boolean);
-
-  const formatFecha = (iso) =>
-    new Date(iso).toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -105,9 +129,15 @@ const Inicio = () => {
         Hola, <span style={{ color: "#6372ff" }}>{user.name || "👋"}</span> — aquí está el resumen de tu negocio
       </p>
 
+      {error && (
+        <div style={{ background: "#fff0f3", color: "#c00", padding: "10px 16px", borderRadius: 8, border: "1px solid #ffd0d8", display: "flex", alignItems: "center" }}>
+          <i className="fa fa-exclamation-circle" style={{ marginRight: 8 }} />{error}
+        </div>
+      )}
+
       {/* Tarjetas */}
       <div className="dash-stat-row" style={{ ...styles.cardRow, gridTemplateColumns: isMobile ? "1fr 1fr" : undefined }}>
-        <StatCard icon="fa-shopping-cart" label="Total Ventas" value={`$${resumen?.totalVentas ?? 0}`} color="#6372ff" />
+        <StatCard icon="fa-shopping-cart" label="Total Ventas" value={money(resumen?.totalVentas)} color="#6372ff" />
         <StatCard icon="fa-shopping-cart" label="Num. Ventas"  value={resumen?.cantidadVentas ?? 0}    color="#5ca9fb" />
         <StatCard icon="fa-cube"          label="Productos"    value={productos.length}                color="#FF9800" />
         <StatCard icon="fa-users"         label="Clientes"     value={clientes.length}                 color="#27ae60" />
@@ -121,12 +151,16 @@ const Inicio = () => {
             <span style={{ ...styles.dot, background: "#6372ff" }} />
             <span style={styles.sectionTitle}>Ingresos por producto</span>
           </div>
-          <ResponsiveContainer width="100%" height={160}>
+          <ResponsiveContainer width="100%" height={200}>
             <BarChart data={topProductos} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="nombre" tick={{ fontSize: 10, fill: "#888" }} interval={0} />
+              {/* Nombres recortados e inclinados para que no se encimen; el
+                  nombre completo aparece en el tooltip */}
+              <XAxis dataKey="nombre" tick={{ fontSize: 10, fill: "#888" }} interval={0}
+                angle={-30} textAnchor="end" height={50}
+                tickFormatter={(n) => (n.length > 12 ? `${n.slice(0, 11)}…` : n)} />
               <YAxis tick={{ fontSize: 10, fill: "#888" }} />
-              <Tooltip formatter={(v) => [`$${v}`, "Ingresos"]} contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 2px 12px rgba(0,0,0,0.1)" }} />
+              <Tooltip formatter={(v) => [money(v), "Ingresos"]} contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 2px 12px rgba(0,0,0,0.1)" }} />
               <Bar dataKey="total" radius={[4, 4, 0, 0]}>
                 {topProductos.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
               </Bar>
@@ -150,7 +184,7 @@ const Inicio = () => {
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(v, name) => [`$${Number(v).toFixed(2)}`, name]}
+                  formatter={(v, name) => [money(v), name]}
                   contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 2px 12px rgba(0,0,0,0.1)" }}
                 />
                 <Legend
@@ -188,7 +222,10 @@ const Inicio = () => {
                     <div style={{ fontSize: 10, color: "#9599b3", fontWeight: 600 }}>{p.badge}</div>
                     <div style={{ fontSize: 11, color: "#aaa" }}>{p.ventas} {p.unit || "uds."}</div>
                   </div>
-                  <strong style={{ color: "#6372ff", fontSize: 13, fontWeight: 700 }}>${p.total.toFixed(2)}</strong>
+                  <div style={{ textAlign: "right" }}>
+                    <strong style={{ color: p.monto < 0 ? "#e94560" : "#6372ff", fontSize: 13, fontWeight: 700 }}>{money(p.monto)}</strong>
+                    <div style={{ fontSize: 10, color: "#aaa" }}>{p.montoTxt}</div>
+                  </div>
                 </div>
               ))
             )}
@@ -211,7 +248,7 @@ const Inicio = () => {
                 .map((p) => {
                   const pct   = Math.min(100, Math.round((p.quantity / maxQ) * 100));
                   // Mismos umbrales que Productos: < 5 rojo, < 15 naranja
-                  const color = p.quantity < 5 ? "#e94560" : p.quantity < 15 ? "#FF9800" : "#27ae60";
+                  const color = p.quantity < STOCK_BAJO ? "#e94560" : p.quantity < STOCK_MEDIO ? "#FF9800" : "#27ae60";
                   const tag   = p._id === menor._id
                     ? { label: "Menor stock", color: "#e94560", bg: "#fff0f3" }
                     : { label: "Mayor stock", color: "#27ae60", bg: "#f0fff4" };
@@ -257,15 +294,15 @@ const Inicio = () => {
             </thead>
             <tbody>
               {[...ventas]
-                .sort((a, b) => new Date(b.saleDate || b.createdAt) - new Date(a.saleDate || a.createdAt))
+                .sort((a, b) => fechaVenta(b) - fechaVenta(a))
                 .slice(0, 5)
                 .map((v) => (
                 <tr key={v._id} style={{ borderBottom: "1px solid #f0f0f0" }}>
                   <td style={styles.td}>{v.product?.name || "—"}</td>
-                  <td style={styles.td}><span style={{ color: v.client ? "#1a1a2e" : "#bbb", fontWeight: 600 }}>{v.client?.name || "Sin cliente"}</span></td>
+                  <td style={styles.td}><span style={{ color: v.client ? "#1a1a2e" : "#bbb", fontWeight: 600 }}>{fullName(v.client) || "Sin cliente"}</span></td>
                   <td style={{ ...styles.td, fontWeight: 700, color: "#1a1a2e" }}>{v.quantity}</td>
-                  <td style={styles.td}><span style={{ color: "#27ae60", fontWeight: 800 }}>${v.total}</span></td>
-                  <td style={{ ...styles.td, color: "#aaa", fontSize: 12 }}>{formatFecha(v.saleDate || v.createdAt)}</td>
+                  <td style={styles.td}><span style={{ color: "#27ae60", fontWeight: 800 }}>{money(v.total)}</span></td>
+                  <td style={{ ...styles.td, color: "#aaa", fontSize: 12 }}>{formatFechaCorta(fechaVenta(v))}</td>
                 </tr>
               ))}
             </tbody>
@@ -287,10 +324,7 @@ const Inicio = () => {
             d.setDate(hoy.getDate() - (6 - i));
             const label = dias[d.getDay()];
             const total = ventas
-              .filter((v) => {
-                const vd = new Date(v.saleDate || v.createdAt);
-                return vd.toDateString() === d.toDateString();
-              })
+              .filter((v) => fechaVenta(v).toDateString() === d.toDateString())
               .reduce((sum, v) => sum + v.total, 0);
             return { dia: label, total };
           });
@@ -307,7 +341,7 @@ const Inicio = () => {
                 <XAxis dataKey="dia" tick={{ fontSize: 11, fill: "#888" }} />
                 <YAxis tick={{ fontSize: 11, fill: "#888" }} />
                 <Tooltip
-                  formatter={(v) => [`$${v}`, "Ventas"]}
+                  formatter={(v) => [money(v), "Ventas"]}
                   contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 2px 12px rgba(0,0,0,0.1)", fontSize: 12 }}
                 />
                 <Area type="monotone" dataKey="total" stroke="#6372ff" strokeWidth={2} fill="url(#gradVentas)" dot={{ r: 3, fill: "#6372ff" }} />

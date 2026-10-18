@@ -1,33 +1,16 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "../../api/axiosConfig";
-import useWindowWidth from "../../hooks/useWindowWidth";
+import useIsMobile from "../../hooks/useIsMobile";
+import useMensaje from "../../hooks/useMensaje";
 import { resolveMediaUrl } from "../../utils/media";
+import { folioTxt, formatFecha, fullName, initials, isoLocalDate, money } from "../../utils/format";
+import { calcularTotal, creditoDisponible, fechaParaEnviar, fechaVenta, metodoTxt, round2 } from "../../utils/ventas";
+import { avisarDatosActualizados } from "../../utils/eventos";
+import { STOCK_BAJO } from "../../utils/constantes";
 
-// Fecha local YYYY-MM-DD (toISOString usa UTC y en la noche ya marca el día siguiente)
-const hoyLocal = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
-const nuevoForm = () => ({ productId: "", clientId: "", quantity: 1, discount: 0, discountType: "porcentaje", saleDate: hoyLocal(), paymentMethod: "efectivo", amountPaid: "" });
-const money = (n) => Number(n || 0).toFixed(2);
+const nuevoForm = () => ({ productId: "", clientId: "", quantity: 1, discount: 0, discountType: "porcentaje", saleDate: isoLocalDate(), paymentMethod: "efectivo", amountPaid: "" });
 const escaparHTML = (s) =>
   String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-const metodoTxt = (m) => (m === "credito" ? "Crédito" : "Efectivo");
-const folioTxt = (f) => (f ? String(f).padStart(6, "0") : "—");
-
-// Fecha y hora de la venta en la zona horaria local del dispositivo.
-// Las ventas antiguas guardaban solo el día (a las 12:00:00 UTC exactas);
-// para esas se usa la hora real de registro (createdAt).
-const fechaVenta = (v) => {
-  if (!v.saleDate) return v.createdAt;
-  const d = new Date(v.saleDate);
-  const soloDia = d.getUTCHours() === 12 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0 && d.getUTCMilliseconds() === 0;
-  if (!soloDia) return v.saleDate;
-  const c = new Date(v.createdAt);
-  return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), c.getHours(), c.getMinutes()).toISOString();
-};
-const formatFecha = (iso) =>
-  new Date(iso).toLocaleString("es-MX", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
 
 const Ventas = () => {
   const [ventas, setVentas]           = useState([]);
@@ -36,22 +19,20 @@ const Ventas = () => {
   const [loading, setLoading]         = useState(true);
   const [showForm, setShowForm]       = useState(false);
   const [error, setError]             = useState("");
-  const [success, setSuccess]         = useState("");
+  const [success, mostrarExito]       = useMensaje();
   const [confirmId, setConfirmId]     = useState(null);
   const [busqueda, setBusqueda]       = useState("");
   const [periodo, setPeriodo]         = useState("mes");
   const [hoveredRow, setHoveredRow]   = useState(null);
   const [form, setForm]               = useState(nuevoForm);
-  const ww = useWindowWidth();
-  const isMobile = ww < 768;
+  const isMobile = useIsMobile();
   const [productoSel, setProductoSel] = useState(null);
   const [negocio, setNegocio]         = useState(null);
-  const successTimer                  = useRef(null);
   const [ventaHecha, setVentaHecha]   = useState(null);
+  // true mientras se registra o cancela una venta (evita enviarla dos veces)
+  const [guardando, setGuardando]     = useState(false);
   const clienteSel = clientes.find((c) => c._id === form.clientId) || null;
-  const creditoDisp = clienteSel?.esMayoreo
-    ? Math.max(0, (clienteSel.limiteCredito || 0) - (clienteSel.saldo || 0))
-    : 0;
+  const creditoDisp = clienteSel?.esMayoreo ? creditoDisponible(clienteSel) : 0;
 
   const cargar = async () => {
     try {
@@ -71,12 +52,6 @@ const Ventas = () => {
 
   useEffect(() => { cargar(); }, []);
 
-  const mostrarExito = (msg) => {
-    setSuccess(msg);
-    clearTimeout(successTimer.current);
-    successTimer.current = setTimeout(() => setSuccess(""), 3000);
-  };
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -89,24 +64,20 @@ const Ventas = () => {
     }
   };
 
-  const calcTotal = () => {
-    if (!productoSel || !form.quantity) return "0.00";
-    const qty  = Number(form.quantity);
-    const desc = Number(form.discount) || 0;
-    const base = productoSel.price * qty;
-    if (form.discountType === "fijo") return Math.max(0, base - desc).toFixed(2);
-    return Math.max(0, base - base * desc / 100).toFixed(2);
-  };
+  // Mismo cálculo que hace el backend al guardar (ver utils/ventas.js): así
+  // el total que se ve es exactamente el que queda registrado
+  const calcTotal = () =>
+    productoSel ? calcularTotal(productoSel.price, form.quantity, form.discount, form.discountType) : 0;
 
   const calcGanancia = () => {
     if (!productoSel || !form.quantity) return null;
     if (!productoSel.cost || productoSel.cost <= 0) return null;
     const qty        = Number(form.quantity);
-    const totalVenta = parseFloat(calcTotal());
-    const costoTotal = productoSel.cost * qty;
-    const ganancia   = totalVenta - costoTotal;
+    const totalVenta = calcTotal();
+    const costoTotal = round2(productoSel.cost * qty);
+    const ganancia   = round2(totalVenta - costoTotal);
     const pct        = totalVenta > 0 ? (ganancia / totalVenta * 100) : 0;
-    return { ganancia: ganancia.toFixed(2), pct: pct.toFixed(1), costoTotal: costoTotal.toFixed(2) };
+    return { ganancia, pct: pct.toFixed(1), costoTotal };
   };
 
   const calcDescPct = () => {
@@ -118,18 +89,18 @@ const Ventas = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (guardando) return; // ya hay una venta en camino
     setError("");
-    const total = parseFloat(calcTotal());
-    if (form.paymentMethod === "efectivo" && form.amountPaid !== "" && Number(form.amountPaid) < total) {
-      setError(`El pago ($${money(form.amountPaid)}) es menor al total ($${money(total)})`);
+    if (!form.productId || !productoSel) {
+      setError("Selecciona un producto");
       return;
     }
-    // Fecha elegida + hora local actual, enviada como ISO para conservar la hora real
-    const [y, m, d] = form.saleDate.split("-").map(Number);
-    const ahoraLocal = new Date();
-    const fecha = form.saleDate === hoyLocal()
-      ? ahoraLocal
-      : new Date(y, m - 1, d, ahoraLocal.getHours(), ahoraLocal.getMinutes(), ahoraLocal.getSeconds());
+    const total = calcTotal();
+    if (form.paymentMethod === "efectivo" && form.amountPaid !== "" && Number(form.amountPaid) < total) {
+      setError(`El pago (${money(form.amountPaid)}) es menor al total (${money(total)})`);
+      return;
+    }
+    setGuardando(true);
     try {
       const res = await axios.post("/sales", {
         productId:    form.productId,
@@ -137,30 +108,38 @@ const Ventas = () => {
         quantity:     Number(form.quantity),
         discount:     Number(form.discount) || 0,
         discountType: form.discountType,
-        saleDate:     fecha.toISOString(),
+        // Fecha elegida + hora local actual, enviada como ISO para conservar la hora real
+        saleDate:     fechaParaEnviar(form.saleDate),
         paymentMethod: form.paymentMethod,
         amountPaid:   form.paymentMethod === "efectivo" && form.amountPaid !== "" ? Number(form.amountPaid) : undefined,
       });
       setVentaHecha(res.data.sale);
-      mostrarExito(`Venta folio ${res.data.sale?.folio} registrada correctamente`);
+      mostrarExito(`Venta folio ${folioTxt(res.data.sale?.folio)} registrada correctamente`);
       setForm(nuevoForm());
       setProductoSel(null);
       setShowForm(false);
+      avisarDatosActualizados();
       cargar();
     } catch (err) {
       setError(err.response?.data?.message || "Error al registrar venta");
+    } finally {
+      setGuardando(false);
     }
   };
 
   const handleEliminar = async (id) => {
+    if (guardando) return;
+    setGuardando(true);
     try {
       await axios.delete(`/sales/${id}`);
       mostrarExito("Venta cancelada: el producto regresó al inventario");
-      setConfirmId(null);
+      avisarDatosActualizados();
       cargar();
     } catch (err) {
       setError(err.response?.data?.message || "Error al cancelar la venta");
+    } finally {
       setConfirmId(null);
+      setGuardando(false);
     }
   };
 
@@ -171,10 +150,10 @@ const Ventas = () => {
       if (!busqueda) return true;
       if (v.folio && busqueda.trim() && String(v.folio) === busqueda.trim().replace(/^0+/, "")) return true;
       return (v.product?.name || "").toLowerCase().includes(busqueda.toLowerCase()) ||
-             (v.client?.name  || "").toLowerCase().includes(busqueda.toLowerCase());
+             fullName(v.client).toLowerCase().includes(busqueda.toLowerCase());
     })
     .filter((v) => {
-      const f = new Date(fechaVenta(v));
+      const f = fechaVenta(v);
       if (periodo === "hoy")    return f.toDateString() === ahora.toDateString();
       if (periodo === "semana") { const h = new Date(ahora); h.setDate(ahora.getDate() - 7); return f >= h; }
       if (periodo === "mes")    return f.getMonth() === ahora.getMonth() && f.getFullYear() === ahora.getFullYear();
@@ -182,13 +161,13 @@ const Ventas = () => {
     });
 
   // KPIs
-  const ventasHoy = ventas.filter((v) => new Date(fechaVenta(v)).toDateString() === ahora.toDateString());
+  const ventasHoy = ventas.filter((v) => fechaVenta(v).toDateString() === ahora.toDateString());
   const ventasMes = ventas.filter((v) => {
-    const f = new Date(fechaVenta(v));
+    const f = fechaVenta(v);
     return f.getMonth() === ahora.getMonth() && f.getFullYear() === ahora.getFullYear();
   });
   const totalMes       = ventasMes.reduce((a, v) => a + v.total, 0);
-  const ticketPromedio = ventasMes.length ? (totalMes / ventasMes.length).toFixed(2) : "0.00";
+  const ticketPromedio = ventasMes.length ? totalMes / ventasMes.length : 0;
   const clientesUnicos = new Set(ventasMes.filter((v) => v.client).map((v) => v.client._id)).size;
 
 
@@ -198,11 +177,13 @@ const Ventas = () => {
     // Los nombres los escribe el usuario: se escapan para que no se ejecute
     // HTML/JavaScript al abrir el ticket
     const nombreNegocio = escaparHTML(negocio?.name || "Mi negocio");
-    const clienteTxt = escaparHTML(v.client ? `${v.client.name} ${v.client.lastName || ""}`.trim() : "Cliente general");
+    const clienteTxt = escaparHTML(fullName(v.client) || "Cliente general");
     const productoTxt = escaparHTML(v.product?.name || "—");
     const rfcTxt = escaparHTML(negocio?.rfc || "");
+    const direccionTxt = escaparHTML(negocio?.address || "");
+    const telefonoTxt = escaparHTML(negocio?.phone || "");
     const descTxt = v.discount > 0
-      ? (v.discountType === "fijo" ? `-$${v.discount}` : `-${v.discount}%`)
+      ? (v.discountType === "fijo" ? `-${money(v.discount)}` : `-${v.discount}%`)
       : "—";
 
     const html = `<!DOCTYPE html>
@@ -213,7 +194,8 @@ const Ventas = () => {
 <style>
   body { font-family: 'Segoe UI', Roboto, Arial, sans-serif; color: #1a1a2e; padding: 32px; max-width: 480px; margin: 0 auto; }
   h1 { font-size: 20px; margin: 0 0 4px; }
-  .sub { color: #888; font-size: 12px; margin-bottom: 20px; }
+  .encabezado { margin-bottom: 20px; }
+  .sub { color: #888; font-size: 12px; margin-bottom: 2px; }
   table { width: 100%; border-collapse: collapse; margin: 16px 0; }
   th { text-align: left; font-size: 11px; text-transform: uppercase; color: #888; padding: 6px 4px; border-bottom: 2px solid #eee; }
   td { padding: 8px 4px; font-size: 13px; border-bottom: 1px solid #f0f0f0; }
@@ -224,8 +206,12 @@ const Ventas = () => {
 </style>
 </head>
 <body>
-  <h1>${nombreNegocio}</h1>
-  <div class="sub">Ticket de venta ${rfcTxt && !negocio?.rfcGenerico ? `· RFC: ${rfcTxt}` : ""}</div>
+  <div class="encabezado">
+    <h1>${nombreNegocio}</h1>
+    <div class="sub">Ticket de venta ${rfcTxt && !negocio?.rfcGenerico ? `· RFC: ${rfcTxt}` : ""}</div>
+    ${direccionTxt ? `<div class="sub">${direccionTxt}</div>` : ""}
+    ${telefonoTxt ? `<div class="sub">Tel. ${telefonoTxt}</div>` : ""}
+  </div>
   <div class="meta"><span>Folio</span><strong>${folioTxt(v.folio)}</strong></div>
   <div class="meta"><span>Fecha</span><strong>${formatFecha(fechaVenta(v))}</strong></div>
   <div class="meta"><span>Cliente</span><strong>${clienteTxt}</strong></div>
@@ -237,22 +223,22 @@ const Ventas = () => {
       <tr>
         <td>${productoTxt}</td>
         <td>${v.quantity}</td>
-        <td>$${money(v.price)}</td>
+        <td>${money(v.price)}</td>
         <td>${descTxt}</td>
-        <td>$${money(v.total)}</td>
+        <td>${money(v.total)}</td>
       </tr>
       <tr class="total-row">
         <td colspan="4">Total</td>
-        <td>$${money(v.total)}</td>
+        <td>${money(v.total)}</td>
       </tr>
     </tbody>
   </table>
   <div class="meta"><span>Método de pago</span><strong>${metodoTxt(v.paymentMethod)}</strong></div>
   ${v.paymentMethod === "credito"
-    ? `<div class="meta"><span>Cargado a crédito</span><strong>$${money(v.total)}</strong></div>`
-    : `<div class="meta"><span>Paga con</span><strong>$${money(v.amountPaid ?? v.total)}</strong></div>
-       <div class="meta"><span>Cambio</span><strong>$${money(v.change)}</strong></div>`}
-  <div class="meta" style="margin-top:10px"><span>Impreso</span><span>${formatFecha(new Date().toISOString())}</span></div>
+    ? `<div class="meta"><span>Cargado a crédito</span><strong>${money(v.total)}</strong></div>`
+    : `<div class="meta"><span>Paga con</span><strong>${money(v.amountPaid ?? v.total)}</strong></div>
+       <div class="meta"><span>Cambio</span><strong>${money(v.change ?? 0)}</strong></div>`}
+  <div class="meta" style="margin-top:10px"><span>Impreso</span><span>${formatFecha(new Date())}</span></div>
   <div class="footer">Gracias por su compra · Generado con Annie</div>
 </body>
 </html>`;
@@ -284,9 +270,11 @@ const Ventas = () => {
               Se eliminará la venta, el producto regresará al inventario y, si fue a crédito, se descontará del saldo del cliente.
             </p>
             <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-              <button style={styles.btnModalCancel} onClick={() => setConfirmId(null)}>No</button>
-              <button style={styles.btnModalDelete} onClick={() => handleEliminar(confirmId)}>
-                <i className="fa fa-trash" style={{ marginRight: 7 }} />Sí, cancelar venta
+              <button style={styles.btnModalCancel} onClick={() => setConfirmId(null)} disabled={guardando}>No</button>
+              <button style={{ ...styles.btnModalDelete, ...(guardando ? styles.btnDisabled : {}) }}
+                onClick={() => handleEliminar(confirmId)} disabled={guardando}>
+                <i className={`fa ${guardando ? "fa-spinner fa-spin" : "fa-trash"}`} style={{ marginRight: 7 }} />
+                {guardando ? "Cancelando..." : "Sí, cancelar venta"}
               </button>
             </div>
           </div>
@@ -305,11 +293,11 @@ const Ventas = () => {
             <div style={{ textAlign: "left", fontSize: 14, display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
               <div style={styles.filaTicket}><span style={{ color: "#888" }}>Fecha</span><strong>{formatFecha(fechaVenta(ventaHecha))}</strong></div>
               <div style={styles.filaTicket}><span style={{ color: "#888" }}>Método de pago</span><strong>{metodoTxt(ventaHecha.paymentMethod)}</strong></div>
-              <div style={styles.filaTicket}><span style={{ color: "#888" }}>Total</span><strong style={{ color: "#27ae60" }}>${money(ventaHecha.total)}</strong></div>
+              <div style={styles.filaTicket}><span style={{ color: "#888" }}>Total</span><strong style={{ color: "#27ae60" }}>{money(ventaHecha.total)}</strong></div>
               {ventaHecha.paymentMethod === "efectivo" && (
                 <>
-                  <div style={styles.filaTicket}><span style={{ color: "#888" }}>Paga con</span><strong>${money(ventaHecha.amountPaid ?? ventaHecha.total)}</strong></div>
-                  <div style={{ ...styles.filaTicket, fontSize: 16 }}><span style={{ color: "#888" }}>Cambio</span><strong>${money(ventaHecha.change)}</strong></div>
+                  <div style={styles.filaTicket}><span style={{ color: "#888" }}>Paga con</span><strong>{money(ventaHecha.amountPaid ?? ventaHecha.total)}</strong></div>
+                  <div style={{ ...styles.filaTicket, fontSize: 16 }}><span style={{ color: "#888" }}>Cambio</span><strong>{money(ventaHecha.change)}</strong></div>
                 </>
               )}
             </div>
@@ -353,9 +341,9 @@ const Ventas = () => {
       {/* KPI cards */}
       <div className="dash-kpi-grid" style={styles.kpiGrid}>
         {[
-          { icon: "fa-bolt",       bg: "#e8f5e9", color: "#6372ff", val: `$${ventasHoy.reduce((a,v) => a + v.total, 0).toFixed(2)}`, label: "Ventas hoy"         },
-          { icon: "fa-calendar",   bg: "#f0f2ff", color: "#6372ff", val: `$${totalMes.toFixed(2)}`,                                   label: "Total este mes"     },
-          { icon: "fa-line-chart", bg: "#fff8e1", color: "#f9a825", val: `$${ticketPromedio}`,                                        label: "Ticket promedio"    },
+          { icon: "fa-bolt",       bg: "#e8f5e9", color: "#6372ff", val: money(ventasHoy.reduce((a,v) => a + v.total, 0)), label: "Ventas hoy"         },
+          { icon: "fa-calendar",   bg: "#f0f2ff", color: "#6372ff", val: money(totalMes),                                   label: "Total este mes"     },
+          { icon: "fa-line-chart", bg: "#fff8e1", color: "#f9a825", val: money(ticketPromedio),                             label: "Ticket promedio"    },
           { icon: "fa-users",      bg: "#fce4ec", color: "#e91e63", val: clientesUnicos,                                              label: "Clientes este mes"  },
         ].map(({ icon, bg, color, val, label }) => (
           <div key={label} style={styles.kpiCard}>
@@ -431,7 +419,7 @@ const Ventas = () => {
                         <span style={{
                           fontSize: 11, fontWeight: 700, marginLeft: 2,
                           color: sel ? "#6372ff" : "#1a1a2e",
-                        }}>${p.price}</span>
+                        }}>{money(p.price)}</span>
                         {sinStock && (
                           <span style={{ fontSize: 10, color: "#e74c3c", fontWeight: 700 }}>sin stock</span>
                         )}
@@ -459,9 +447,9 @@ const Ventas = () => {
                       {productoSel.brand && <div style={{ fontSize: 12, color: "#6372ff", fontWeight: 600 }}>{productoSel.brand}</div>}
                       <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>
                         Stock disponible:{" "}
-                        <strong style={{ color: productoSel.quantity < 5 ? "#e74c3c" : "#27ae60" }}>{productoSel.quantity}</strong>
+                        <strong style={{ color: productoSel.quantity < STOCK_BAJO ? "#e74c3c" : "#27ae60" }}>{productoSel.quantity}</strong>
                         {" · "}
-                        Precio: <strong>${productoSel.price}</strong>
+                        Precio: <strong>{money(productoSel.price)}</strong>
                       </div>
                     </div>
                   </div>
@@ -490,7 +478,6 @@ const Ventas = () => {
                   </button>
                   {clientes.map((c) => {
                     const sel = form.clientId === c._id;
-                    const ini = ((c.name || "?").charAt(0) + (c.lastName || "").charAt(0)).toUpperCase();
                     return (
                       <button key={c._id} type="button"
                         onClick={() => setForm((p) => ({ ...p, clientId: c._id, paymentMethod: c.esMayoreo ? p.paymentMethod : "efectivo" }))}
@@ -509,8 +496,8 @@ const Ventas = () => {
                             : "linear-gradient(135deg,#d0d4ff,#b8d8ff)",
                           color: "#fff", fontWeight: 700, fontSize: 10,
                           display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-                        }}>{ini}</div>
-                        {c.name} {c.lastName || ""}
+                        }}>{initials(c)}</div>
+                        {fullName(c)}
                       </button>
                     );
                   })}
@@ -534,7 +521,7 @@ const Ventas = () => {
                 </label>
                 <input style={styles.input} name="saleDate" type="date"
                   value={form.saleDate} onChange={handleChange}
-                  max={hoyLocal()} />
+                  max={isoLocalDate()} />
               </div>
 
               {/* Descuento (ancho completo) */}
@@ -616,12 +603,12 @@ const Ventas = () => {
                       style={{ border: "none", outline: "none", padding: "9px 12px",
                         fontSize: 13, color: "#1a1a2e", background: "transparent", width: 100 }}
                       name="amountPaid" type="number" min="0" step="0.01"
-                      placeholder={calcTotal()}
+                      placeholder={calcTotal().toFixed(2)}
                       value={form.amountPaid} onChange={handleChange} />
                   </div>
                 ) : (
-                  <span style={{ fontSize: 12, fontWeight: 700, color: parseFloat(calcTotal()) > creditoDisp ? "#e05555" : "#27ae60" }}>
-                    Crédito disponible: ${money(creditoDisp)}
+                  <span style={{ fontSize: 12, fontWeight: 700, color: calcTotal() > creditoDisp ? "#e05555" : "#27ae60" }}>
+                    Crédito disponible: {money(creditoDisp)}
                   </span>
                 )}
               </div>
@@ -638,7 +625,7 @@ const Ventas = () => {
                 <div style={{ display: "flex", gap: 28, flexWrap: "wrap", alignItems: "center" }}>
                   <div>
                     <div style={{ fontSize: 11, color: "#9599b3", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Precio unit.</div>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a2e" }}>${productoSel.price}</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a2e" }}>{money(productoSel.price)}</div>
                   </div>
                   <div>
                     <div style={{ fontSize: 11, color: "#9599b3", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Cantidad</div>
@@ -648,7 +635,7 @@ const Ventas = () => {
                     <div>
                       <div style={{ fontSize: 11, color: "#9599b3", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Descuento</div>
                       <div style={{ fontSize: 16, fontWeight: 700, color: "#e05555" }}>
-                        {form.discountType === "porcentaje" ? `${form.discount}%` : `$${form.discount}`}
+                        {form.discountType === "porcentaje" ? `${form.discount}%` : money(form.discount)}
                       </div>
                       {calcDescPct() && (
                         <div style={{ fontSize: 11, color: "#e05555", fontWeight: 600, marginTop: 2 }}>≈ {calcDescPct()}% del total</div>
@@ -657,22 +644,22 @@ const Ventas = () => {
                   )}
                   <div style={{ marginLeft: "auto", textAlign: "right" }}>
                     <div style={{ fontSize: 11, color: "#9599b3", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Total</div>
-                    <div style={{ fontSize: isMobile ? 20 : 24, fontWeight: 800, color: "#27ae60" }}>${calcTotal()}</div>
+                    <div style={{ fontSize: isMobile ? 20 : 24, fontWeight: 800, color: "#27ae60" }}>{money(calcTotal())}</div>
                   </div>
                   {form.paymentMethod === "efectivo" && (() => {
-                    const total  = parseFloat(calcTotal());
+                    const total  = calcTotal();
                     const pagado = form.amountPaid === "" ? total : Number(form.amountPaid);
-                    const cambio = pagado - total;
+                    const cambio = round2(pagado - total);
                     return (
                       <>
                         <div style={{ textAlign: "right" }}>
                           <div style={{ fontSize: 11, color: "#9599b3", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Paga con</div>
-                          <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a2e" }}>${money(pagado)}</div>
+                          <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a2e" }}>{money(pagado)}</div>
                         </div>
                         <div style={{ textAlign: "right" }}>
                           <div style={{ fontSize: 11, color: "#9599b3", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Cambio</div>
                           <div style={{ fontSize: 16, fontWeight: 800, color: cambio < 0 ? "#e05555" : "#1a1a2e" }}>
-                            {cambio < 0 ? `Faltan $${money(-cambio)}` : `$${money(cambio)}`}
+                            {cambio < 0 ? `Faltan ${money(-cambio)}` : money(cambio)}
                           </div>
                         </div>
                       </>
@@ -699,15 +686,15 @@ const Ventas = () => {
                         <>
                           <div>
                             <div style={{ fontSize: 11, color: "#1a1a2e", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Ganancia neta</div>
-                            <div style={{ fontSize: isMobile ? 18 : 20, fontWeight: 800, color: Number(g.ganancia) >= 0 ? "#27ae60" : "#e94560", lineHeight: 1.1 }}>${g.ganancia}</div>
+                            <div style={{ fontSize: isMobile ? 18 : 20, fontWeight: 800, color: g.ganancia >= 0 ? "#27ae60" : "#e94560", lineHeight: 1.1 }}>{money(g.ganancia)}</div>
                           </div>
                           <div>
                             <div style={{ fontSize: 11, color: "#1a1a2e", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Margen</div>
-                            <div style={{ fontSize: isMobile ? 18 : 20, fontWeight: 800, color: Number(g.ganancia) >= 0 ? "#27ae60" : "#e94560" }}>{g.pct}%</div>
+                            <div style={{ fontSize: isMobile ? 18 : 20, fontWeight: 800, color: g.ganancia >= 0 ? "#27ae60" : "#e94560" }}>{g.pct}%</div>
                           </div>
                           <div>
                             <div style={{ fontSize: 11, color: "#1a1a2e", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Costo total</div>
-                            <div style={{ fontSize: isMobile ? 18 : 20, fontWeight: 800, color: "#1a1a2e" }}>${g.costoTotal}</div>
+                            <div style={{ fontSize: isMobile ? 18 : 20, fontWeight: 800, color: "#1a1a2e" }}>{money(g.costoTotal)}</div>
                           </div>
                         </>
                       )}
@@ -718,8 +705,9 @@ const Ventas = () => {
             )}
 
             <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-              <button type="submit" style={styles.btnSuccess}>
-                <i className="fa fa-check" style={{ marginRight: 8 }} />Confirmar venta
+              <button type="submit" style={{ ...styles.btnSuccess, ...(guardando ? styles.btnDisabled : {}) }} disabled={guardando}>
+                <i className={`fa ${guardando ? "fa-spinner fa-spin" : "fa-check"}`} style={{ marginRight: 8 }} />
+                {guardando ? "Guardando..." : "Confirmar venta"}
               </button>
               <button type="button" style={styles.btnCancel}
                 onClick={() => { setShowForm(false); setForm(nuevoForm()); setProductoSel(null); }}>
@@ -804,19 +792,19 @@ const Ventas = () => {
                   <div style={{ fontWeight: 700, color: "#1a1a2e", fontSize: 14 }}>{v.product?.name || "-"}</div>
                   <div style={{ fontSize: 11, color: "#9599b3" }}>Folio {folioTxt(v.folio)} · {formatFecha(fechaVenta(v))}</div>
                 </div>
-                <span style={{ color: "#27ae60", fontSize: 18, fontWeight: 800 }}>${v.total}</span>
+                <span style={{ color: "#27ae60", fontSize: 18, fontWeight: 800 }}>{money(v.total)}</span>
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
                 {v.client && (
                   <span style={{ fontSize: 12, color: "#555", display: "inline-flex", alignItems: "center", gap: 5 }}>
                     <i className="fa fa-user" style={{ color: "#6372ff", fontSize: 10 }} />
-                    {v.client.name} {v.client.lastName || ""}
+                    {fullName(v.client)}
                   </span>
                 )}
-                <span style={{ fontSize: 12, color: "#888" }}>×{v.quantity} · ${v.price}</span>
+                <span style={{ fontSize: 12, color: "#888" }}>×{v.quantity} · {money(v.price)}</span>
                 {v.discount > 0 && (
                   <span style={{ background: "#fff0f3", color: "#e05555", borderRadius: 6, padding: "2px 7px", fontSize: 11, fontWeight: 700 }}>
-                    {v.discountType === "fijo" ? `$${v.discount}` : `${v.discount}%`}
+                    {v.discountType === "fijo" ? money(v.discount) : `${v.discount}%`}
                   </span>
                 )}
                 <button style={{ ...styles.btnGhost, marginLeft: "auto", padding: "4px 10px" }} onClick={() => imprimirRecibo(v)}>
@@ -891,26 +879,26 @@ const Ventas = () => {
                           color: "#fff", fontWeight: 700, fontSize: 11,
                           display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                         }}>
-                          {((v.client.name || "?").charAt(0) + (v.client.lastName || "").charAt(0)).toUpperCase()}
+                          {initials(v.client)}
                         </div>
                         <span style={{ fontWeight: 600, color: "#1a1a2e" }}>
-                          {v.client.name} {v.client.lastName || ""}
+                          {fullName(v.client)}
                         </span>
                       </div>
                     ) : <span style={{ color: "#ccc", fontSize: 12 }}>--</span>}
                   </td>
                   <td style={{ ...styles.td, textAlign: "center", fontWeight: 700, color: "#1a1a2e" }}>{v.quantity}</td>
-                  <td style={{ ...styles.td, fontWeight: 700, color: "#1a1a2e" }}>${v.price}</td>
+                  <td style={{ ...styles.td, fontWeight: 700, color: "#1a1a2e" }}>{money(v.price)}</td>
                   <td style={styles.td}>
                     {v.discount > 0
                       ? <span style={{ background: "#fff0f3", color: "#e05555", borderRadius: 6,
                           padding: "2px 7px", fontSize: 11, fontWeight: 700 }}>
-                          {v.discountType === "fijo" ? `$${v.discount}` : `${v.discount}%`}
+                          {v.discountType === "fijo" ? money(v.discount) : `${v.discount}%`}
                         </span>
                       : <span style={{ color: "#ccc" }}>-</span>}
                   </td>
                   <td style={styles.td}>
-                    <span style={{ color: "#27ae60", fontSize: 15, fontWeight: 800 }}>${v.total}</span>
+                    <span style={{ color: "#27ae60", fontSize: 15, fontWeight: 800 }}>{money(v.total)}</span>
                     <div style={{ fontSize: 11, color: "#9599b3" }}>{metodoTxt(v.paymentMethod)}</div>
                   </td>
                   <td style={styles.td}>
@@ -966,6 +954,7 @@ const styles = {
     borderRadius: 8, padding: "10px 20px", cursor: "pointer", fontWeight: 600, fontSize: 14,
     display: "inline-flex", alignItems: "center",
   },
+  btnDisabled: { opacity: 0.6, cursor: "not-allowed" },
   filaTicket: { display: "flex", justifyContent: "space-between", gap: 12 },
   kpiGrid: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 },
   kpiCard: {

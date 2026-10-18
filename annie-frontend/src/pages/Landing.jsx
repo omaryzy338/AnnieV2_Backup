@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import {
   Navigation,
   Header,
@@ -9,24 +9,20 @@ import {
   Testimonials,
   Contact,
 } from "../components";
+// Textos de la página principal (contenido estático, viene en el bundle)
 import JsonData from "../data/data.json";
 
 const Landing = () => {
-  const [landingPageData, setLandingPageData] = useState({});
-  useEffect(() => {
-    setLandingPageData(JsonData);
-  }, []);
-
   return (
     <>
       <Navigation />
-      <Header data={landingPageData.Header} />
-      <Features data={landingPageData.Features} />
-      <About data={landingPageData.About} />
-      <Services data={landingPageData.Services} />
-      <Gallery data={landingPageData.Gallery} />
-      <Testimonials data={landingPageData.Testimonials} />
-      <Contact data={landingPageData.Contact} />
+      <Header data={JsonData.Header} />
+      <Features data={JsonData.Features} />
+      <About data={JsonData.About} />
+      <Services data={JsonData.Services} />
+      <Gallery data={JsonData.Gallery} />
+      <Testimonials data={JsonData.Testimonials} />
+      <Contact data={JsonData.Contact} />
     </>
   );
 };

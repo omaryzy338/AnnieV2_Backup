@@ -1,70 +1,74 @@
-# Getting Started with Create React App
+# Annie · aplicación web
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Panel web de **Annie**, la herramienta de gestión para pequeños negocios en
+México. Incluye la página principal (landing), el registro e inicio de sesión
+y el panel del negocio: inventario de productos, ventas con ticket imprimible,
+clientes, créditos de mayoreo, reportes y los datos de "Mi Negocio".
 
-## Available Scripts
+Está hecha con Create React App 5, React 19, React Router 7, axios y recharts.
+Se conecta a la API de `annie-backend`.
 
-In the project directory, you can run:
+## Requisitos
 
-### `npm start`
+- Node.js 18 o superior
+- La API de `annie-backend` corriendo (local o en la nube)
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Instalación
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+```bash
+npm install
+```
 
-### `npm test`
+## Desarrollo
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```bash
+npm start
+```
 
-### `npm run build`
+Abre <http://localhost:3000>. La URL de la API se toma de la variable
+`REACT_APP_API_URL`; si no se define se usa `http://localhost:5000`.
+Para apuntar a otra API crea un archivo `.env.local`:
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+```
+REACT_APP_API_URL=https://tu-api.ejemplo.com
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Compilar para producción
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```bash
+npm run build
+```
 
-### `npm run eject`
+Genera la carpeta `build/` con los archivos estáticos listos para publicar.
+`REACT_APP_API_URL` se fija al compilar, así que debe estar definida en ese
+momento.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## Despliegue en Vercel
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+1. Importa el repositorio en Vercel y elige `annie-frontend` como carpeta raíz
+   (framework: Create React App).
+2. En *Settings → Environment Variables* agrega `REACT_APP_API_URL` con la URL
+   pública del backend.
+3. Despliega. `vercel.json` redirige todas las rutas a `index.html` para que
+   funcione la recarga en rutas como `/dashboard/ventas`.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## Estructura
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+```
+public/                 index.html, manifest, logos, css de la landing y aviso de privacidad
+src/
+  api/                  instancia de axios (token, URL base, cierre de sesión con 401)
+  components/           secciones de la página principal (landing) y ProtectedRoute
+  pages/                Landing, Login, Register, Dashboard y NotFound
+  dashboard/
+    pages/              Inicio, Productos, Ventas, Clientes, Créditos, Reportes, Mi Negocio
+    components/         Sidebar y TopBar del panel
+  utils/                formatos (dinero, fechas, folios), reglas de venta, RFC,
+                        constantes, eventos y URLs de imágenes
+  hooks/                useWindowWidth, useIsMobile y useMensaje
+  data/                 textos de la página principal
+```
 
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Las reglas compartidas (cálculo del total de una venta, validación de RFC,
+formatos) están en `src/utils` y siguen las mismas reglas que el backend y la
+app móvil (`annie-mobile/src/lib`).

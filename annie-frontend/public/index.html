@@ -1,24 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#3284f7" />
   <!-- Todas las rutas deben ser absolutas (con / al inicio). Si son relativas,
        al recargar en una ruta anidada como /dashboard/productos el navegador
        las busca en /dashboard/css/... , recibe el index.html del fallback SPA
        e intenta interpretarlo como CSS/JS ("Unexpected token '<'"). -->
   <link rel="icon" type="image/png" href="%PUBLIC_URL%/favicon.png" />
-  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png" />
-  <link
-    rel="apple-touch-icon"
-    sizes="72x72"
-    href="/img/apple-touch-icon-72x72.png"
-  />
-  <link
-    rel="apple-touch-icon"
-    sizes="114x114"
-    href="/img/apple-touch-icon-114x114.png"
-  />
+  <link rel="manifest" href="/manifest.json" />
 
   <link rel="stylesheet" type="text/css" href="/css/bootstrap.css" />
   <link
@@ -27,12 +18,13 @@
     crossorigin="anonymous"
   />
   <link rel="stylesheet" type="text/css" href="/css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <!-- Poppins es la tipografía de toda la app (App.css y estilos en línea) -->
   <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"
     rel="stylesheet"
-    type="text/css"
-    href="/css/nivo-lightbox/nivo-lightbox.css"
   />
-  <link rel="stylesheet" type="text/css" href="/css/nivo-lightbox/default.css" />
   <link
     href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700"
     rel="stylesheet"
@@ -46,11 +38,14 @@
     rel="stylesheet"
   />
   <title>Annie</title>
-  <meta name="description" content="" />
-  <meta name="author" content="@Issaafalkattan" />
+  <meta
+    name="description"
+    content="Annie: gestión sencilla para pequeños negocios en México. Controla tu inventario, registra ventas, administra clientes y créditos, y consulta reportes desde cualquier dispositivo."
+  />
 </head>
 
 <body id="page-top" data-spy="scroll" data-target=".navbar-fixed-top">
+  <noscript>Necesitas activar JavaScript para usar Annie.</noscript>
   <div id="root"></div>
   <script type="text/javascript" src="/js/jquery.1.11.1.js"></script>
   <script type="text/javascript" src="/js/bootstrap.js"></script>

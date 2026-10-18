@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
 import axios from "../../api/axiosConfig";
+import { formatFechaCorta, fullName, money } from "../../utils/format";
+import { fechaVenta } from "../../utils/ventas";
+import { STOCK_BAJO } from "../../utils/constantes";
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -52,7 +55,7 @@ const Reportes = () => {
     }
     // Solo cuentan las ventas cuyo día está dentro de la ventana
     ventas.forEach((v) => {
-      const key = claveDia(new Date(v.saleDate || v.createdAt));
+      const key = claveDia(fechaVenta(v));
       if (mapa[key]) {
         mapa[key].total += v.total;
         mapa[key].transacciones += 1;
@@ -78,8 +81,10 @@ const Reportes = () => {
   const ventasPorCat = (() => {
     const mapa = {};
     ventas.forEach((v) => {
+      // La venta ya trae la categoría del producto (también si el producto
+      // se eliminó después); la lista de productos queda como respaldo
       const prod = productos.find((p) => p._id === (v.product?._id || v.product));
-      const cat = prod?.category || "Sin categoría";
+      const cat = v.product?.category || prod?.category || "Sin categoría";
       mapa[cat] = (mapa[cat] || 0) + v.total;
     });
     return Object.entries(mapa)
@@ -90,7 +95,7 @@ const Reportes = () => {
   // ── Resumen del mes actual ─────────────────────────────────────────
   const ahora = new Date();
   const ventasMes = ventas.filter((v) => {
-    const d = new Date(v.saleDate || v.createdAt);
+    const d = fechaVenta(v);
     return d.getMonth() === ahora.getMonth() && d.getFullYear() === ahora.getFullYear();
   });
   const totalMes   = ventasMes.reduce((a, v) => a + v.total, 0);
@@ -110,7 +115,7 @@ const Reportes = () => {
   // Mes anterior para comparativo
   const mesAnterior = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
   const ventasMesAnt = ventas.filter((v) => {
-    const d = new Date(v.saleDate || v.createdAt);
+    const d = fechaVenta(v);
     return d.getMonth() === mesAnterior.getMonth() && d.getFullYear() === mesAnterior.getFullYear();
   });
   const totalMesAnt   = ventasMesAnt.reduce((a, v) => a + v.total, 0);
@@ -121,7 +126,7 @@ const Reportes = () => {
     const dias = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
     const base = dias.map((d) => ({ dia: d, total: 0, ventas: 0 }));
     ventas.forEach((v) => {
-      const idx = new Date(v.saleDate || v.createdAt).getDay();
+      const idx = fechaVenta(v).getDay();
       base[idx].total  += v.total;
       base[idx].ventas += 1;
     });
@@ -154,7 +159,7 @@ const Reportes = () => {
     ventas.forEach((v) => {
       if (!v.client) return;
       const id     = v.client._id || v.client;
-      const nombre = `${v.client.name || ""} ${v.client.lastName || ""}`.trim() || "Sin nombre";
+      const nombre = fullName(v.client) || "Sin nombre";
       if (!mapa[id]) mapa[id] = { nombre, total: 0, compras: 0 };
       mapa[id].total   += v.total;
       mapa[id].compras += 1;
@@ -193,7 +198,7 @@ const Reportes = () => {
             <i className="fa fa-money" style={{ color: "#6372ff", fontSize: 22 }} />
           </div>
           <div style={{ flex: 1 }}>
-            <div style={styles.cardValue}>${totalMes.toFixed(2)}</div>
+            <div style={styles.cardValue}>{money(totalMes)}</div>
             <div style={styles.cardLabel}>Ventas del mes</div>
             {cambioMes !== null && (
               <div style={{ marginTop: 4, fontSize: 11, fontWeight: 700,
@@ -217,7 +222,7 @@ const Reportes = () => {
             <i className="fa fa-line-chart" style={{ color: "#ff9800", fontSize: 22 }} />
           </div>
           <div>
-            <div style={styles.cardValue}>${ticketProm.toFixed(2)}</div>
+            <div style={styles.cardValue}>{money(ticketProm)}</div>
             <div style={styles.cardLabel}>Ticket promedio</div>
           </div>
         </div>
@@ -226,7 +231,7 @@ const Reportes = () => {
             <i className="fa fa-cubes" style={{ color: "#00897b", fontSize: 22 }} />
           </div>
           <div>
-            <div style={styles.cardValue}>${valorInventario.toFixed(2)}</div>
+            <div style={styles.cardValue}>{money(valorInventario)}</div>
             <div style={styles.cardLabel}>Valor del inventario</div>
           </div>
         </div>
@@ -236,7 +241,7 @@ const Reportes = () => {
               <i className="fa fa-star" style={{ color: gananciaNeta >= 0 ? "#27ae60" : "#e94560", fontSize: 22 }} />
             </div>
             <div>
-              <div style={{ ...styles.cardValue, color: gananciaNeta >= 0 ? "#27ae60" : "#e94560" }}>${gananciaNeta.toFixed(2)}</div>
+              <div style={{ ...styles.cardValue, color: gananciaNeta >= 0 ? "#27ae60" : "#e94560" }}>{money(gananciaNeta)}</div>
               <div style={styles.cardLabel}>Ganancia neta del mes</div>
             </div>
           </div>
@@ -283,7 +288,7 @@ const Reportes = () => {
               <XAxis dataKey="dia" tick={{ fontSize: 11, fill: "#aaa" }} />
               <YAxis tick={{ fontSize: 11, fill: "#aaa" }} tickFormatter={(v) => `$${v}`} width={58} />
               <Tooltip
-                formatter={(v, name) => name === "total" ? [`$${v.toFixed(2)}`, "Total"] : [v, "Ventas"]}
+                formatter={(v, name) => name === "total" ? [money(v), "Total"] : [v, "Ventas"]}
                 contentStyle={{ borderRadius: 10, border: "1px solid #eee", fontSize: 12 }}
               />
               <Area type="monotone" dataKey="total" stroke="#6372ff" strokeWidth={2.5}
@@ -346,7 +351,7 @@ const Reportes = () => {
                     <Cell key={i} fill={COLORES[i % COLORES.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(v) => [`$${v.toFixed(2)}`, "Total"]}
+                <Tooltip formatter={(v) => [money(v), "Total"]}
                   contentStyle={{ borderRadius: 10, border: "1px solid #eee", fontSize: 12 }} />
                 <Legend iconType="circle" iconSize={9}
                   formatter={(v) => <span style={{ fontSize: 11, color: "#555" }}>{v}</span>} />
@@ -362,7 +367,7 @@ const Reportes = () => {
           { icon: "fa-cube",              color: "#6372ff", bg: "#f0f2ff", num: productos.length,                                  label: "Productos registrados"   },
           { icon: "fa-users",             color: "#27ae60", bg: "#e8f5e9", num: clientes.length,                                   label: "Clientes registrados"    },
           { icon: "fa-shopping-cart",     color: "#ff9800", bg: "#fff3e0", num: ventas.length,                                     label: "Ventas totales"          },
-          { icon: "fa-exclamation-triangle", color: "#e74c3c", bg: "#fff0f3", num: productos.filter((p) => p.quantity < 5).length, label: "Stock bajo (< 5 uds)"    },
+          { icon: "fa-exclamation-triangle", color: "#e74c3c", bg: "#fff0f3", num: productos.filter((p) => p.quantity < STOCK_BAJO).length, label: "Stock bajo (< 5 uds)"    },
         ].map(({ icon, color, bg, num, label }) => (
           <div key={label} style={styles.statBox}>
             <div style={{ ...styles.statIcon, background: bg }}>
@@ -409,7 +414,7 @@ const Reportes = () => {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f4" />
                 <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#888" }} interval={0} />
                 <YAxis tick={{ fontSize: 10, fill: "#aaa" }} tickFormatter={(v) => `$${v}`} width={52} />
-                <Tooltip formatter={(v, name) => [`$${v}`, name === "actual" ? nombreMes(ahora) : nombreMes(mesAnterior)]}
+                <Tooltip formatter={(v, name) => [money(v), name === "actual" ? nombreMes(ahora) : nombreMes(mesAnterior)]}
                   contentStyle={{ borderRadius: 10, border: "1px solid #eee", fontSize: 12 }} />
                 <Legend formatter={(v) => v === "actual" ? nombreMes(ahora) : nombreMes(mesAnterior)} wrapperStyle={{ fontSize: 11 }} />
                 <Bar dataKey="anterior" fill="#e0e4ff" radius={[4, 4, 0, 0]} />
@@ -439,7 +444,7 @@ const Reportes = () => {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f4" />
                 <XAxis dataKey="dia" tick={{ fontSize: 12, fill: "#555" }} />
                 <YAxis tick={{ fontSize: 10, fill: "#aaa" }} tickFormatter={(v) => `$${v}`} width={52} />
-                <Tooltip formatter={(v, name) => [name === "total" ? `$${v.toFixed(2)}` : v, name === "total" ? "Ingresos" : "Transacciones"]}
+                <Tooltip formatter={(v, name) => [name === "total" ? money(v) : v, name === "total" ? "Ingresos" : "Transacciones"]}
                   contentStyle={{ borderRadius: 10, border: "1px solid #eee", fontSize: 12 }} />
                 <Bar dataKey="total" radius={[6, 6, 0, 0]}>
                   {ventasPorSemana.map((entry, i) => {
@@ -490,7 +495,7 @@ const Reportes = () => {
                         <div style={{ fontSize: 11, color: "#9599b3" }}>{c.compras} compra{c.compras !== 1 ? "s" : ""}</div>
                       </div>
                     </div>
-                    <span style={{ fontWeight: 700, color: "#6372ff", fontSize: 13 }}>${c.total.toFixed(2)}</span>
+                    <span style={{ fontWeight: 700, color: "#6372ff", fontSize: 13 }}>{money(c.total)}</span>
                   </div>
                   <div style={{ height: 5, borderRadius: 4, background: "#f0f2ff", overflow: "hidden" }}>
                     <div style={{ height: "100%", width: `${pct}%`, borderRadius: 4,
@@ -527,13 +532,13 @@ const Reportes = () => {
                 </tr>
               </thead>
               <tbody>
-                {[...ventas].sort((a, b) => new Date(b.saleDate || b.createdAt) - new Date(a.saleDate || a.createdAt)).slice(0, 8).map((v) => (
+                {[...ventas].sort((a, b) => fechaVenta(b) - fechaVenta(a)).slice(0, 8).map((v) => (
                   <tr key={v._id} style={{ borderBottom: "1px solid #f4f4f4" }}>
                     <td style={{ padding: "9px 12px", fontSize: 12, color: "#1a1a2e", fontWeight: 600 }}>{v.product?.name || "—"}</td>
-                    <td style={{ padding: "9px 12px", fontSize: 12, color: "#1a1a2e" }}>{v.client ? `${v.client.name || ""} ${v.client.lastName || ""}`.trim() : <span style={{ color: "#ccc" }}>Sin cliente</span>}</td>
-                    <td style={{ padding: "9px 12px", fontSize: 12, fontWeight: 700, color: "#6372ff" }}>${v.total.toFixed(2)}</td>
+                    <td style={{ padding: "9px 12px", fontSize: 12, color: "#1a1a2e" }}>{v.client ? fullName(v.client) : <span style={{ color: "#ccc" }}>Sin cliente</span>}</td>
+                    <td style={{ padding: "9px 12px", fontSize: 12, fontWeight: 700, color: "#6372ff" }}>{money(v.total)}</td>
                     <td style={{ padding: "9px 12px", fontSize: 11, color: "#9599b3" }}>
-                      {new Date(v.saleDate || v.createdAt).toLocaleDateString("es-MX", { day: "2-digit", month: "short" })}
+                      {formatFechaCorta(fechaVenta(v))}
                     </td>
                   </tr>
                 ))}

@@ -2,15 +2,17 @@ import React, { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import axios from "../../api/axiosConfig";
 import { resolveMediaUrl } from "../../utils/media";
+import { initials as iniciales } from "../../utils/format";
+import { EVENTO_PERFIL } from "../../utils/eventos";
 
 const links = [
-  { to: "/dashboard",           icon: "fa-home",          label: "Inicio", fontFamily: "Poppins, sans-serif" },
-  { to: "/dashboard/productos",  icon: "fa-cube",          label: "Productos", fontFamily: "Poppins, sans-serif" },
-  { to: "/dashboard/ventas",     icon: "fa-shopping-cart", label: "Ventas", fontFamily: "Poppins, sans-serif" },
-  { to: "/dashboard/clientes",   icon: "fa-users",         label: "Clientes", fontFamily: "Poppins, sans-serif" },
-  { to: "/dashboard/creditos",   icon: "fa-credit-card",   label: "Créditos", fontFamily: "Poppins, sans-serif" },
-  { to: "/dashboard/reportes",   icon: "fa-bar-chart",     label: "Reportes", fontFamily: "Poppins, sans-serif" },
-  { to: "/dashboard/mi-negocio", icon: "fa-briefcase",     label: "Mi Negocio", fontFamily: "Poppins, sans-serif" },
+  { to: "/dashboard",           icon: "fa-home",          label: "Inicio" },
+  { to: "/dashboard/productos",  icon: "fa-cube",          label: "Productos" },
+  { to: "/dashboard/ventas",     icon: "fa-shopping-cart", label: "Ventas" },
+  { to: "/dashboard/clientes",   icon: "fa-users",         label: "Clientes" },
+  { to: "/dashboard/creditos",   icon: "fa-credit-card",   label: "Créditos" },
+  { to: "/dashboard/reportes",   icon: "fa-bar-chart",     label: "Reportes" },
+  { to: "/dashboard/mi-negocio", icon: "fa-briefcase",     label: "Mi Negocio" },
 ];
 
 const Sidebar = ({ isMobile, isOpen, onClose }) => {
@@ -56,8 +58,8 @@ const Sidebar = ({ isMobile, isOpen, onClose }) => {
 
     // Mi Negocio avisa cuando cambian el nombre, el logo o el propietario
     const onPerfilActualizado = () => cargar(true);
-    window.addEventListener("annie:perfil-actualizado", onPerfilActualizado);
-    return () => window.removeEventListener("annie:perfil-actualizado", onPerfilActualizado);
+    window.addEventListener(EVENTO_PERFIL, onPerfilActualizado);
+    return () => window.removeEventListener(EVENTO_PERFIL, onPerfilActualizado);
   }, []);
 
   const handleLogout = () => {
@@ -71,7 +73,7 @@ const Sidebar = ({ isMobile, isOpen, onClose }) => {
     if (isMobile && onClose) onClose();
   };
 
-  const initials = userData?.name ? userData.name[0].toUpperCase() : "U";
+  const initials = userData?.name ? iniciales(userData) : "U";
 
   const sidebarStyle = isMobile
     ? {

@@ -1,34 +1,13 @@
 import React, { useEffect, useState } from "react";
 import axios from "../../api/axiosConfig";
-import useWindowWidth from "../../hooks/useWindowWidth";
+import useIsMobile from "../../hooks/useIsMobile";
+import useMensaje from "../../hooks/useMensaje";
 import { resolveMediaUrl } from "../../utils/media";
-
-const CATEGORIAS = [
-  { label: "Bebidas",            icon: "fa-tint",      color: "#4fc3f7", bg: "#e1f5fe" },
-  { label: "Snacks",             icon: "fa-leaf",      color: "#81c784", bg: "#e8f5e9" },
-  { label: "Alimentos",          icon: "fa-cutlery",   color: "#ff8a65", bg: "#fbe9e7" },
-  { label: "Dulces y chocolates",icon: "fa-heart",     color: "#f06292", bg: "#fce4ec" },
-  { label: "Lácteos",            icon: "fa-cube",      color: "#90caf9", bg: "#e3f2fd" },
-  { label: "Panadería",          icon: "fa-circle",    color: "#ffb74d", bg: "#fff3e0" },
-  { label: "Limpieza",           icon: "fa-trash",     color: "#4dd0e1", bg: "#e0f7fa" },
-  { label: "Higiene personal",   icon: "fa-medkit",    color: "#ce93d8", bg: "#f3e5f5" },
-  { label: "Papelería",          icon: "fa-pencil",    color: "#7986cb", bg: "#e8eaf6" },
-  { label: "Electrónica",        icon: "fa-bolt",      color: "#ffd54f", bg: "#fffde7" },
-  { label: "Ferretería",         icon: "fa-wrench",    color: "#a1887f", bg: "#efebe9" },
-  { label: "Juguetes",           icon: "fa-gamepad",   color: "#4db6ac", bg: "#e0f2f1" },
-  { label: "Ropa y accesorios",  icon: "fa-tag",       color: "#f48fb1", bg: "#fce4ec" },
-  { label: "Servicios",          icon: "fa-star",      color: "#9575cd", bg: "#ede7f6" },
-  { label: "Otro",               icon: "fa-th-large",  color: "#90a4ae", bg: "#eceff1" },
-];
+import { money } from "../../utils/format";
+import { CATEGORIAS, STOCK_BAJO, STOCK_MEDIO, UNIDADES } from "../../utils/constantes";
+import { avisarDatosActualizados } from "../../utils/eventos";
 
 const camposIniciales = { name: "", description: "", price: "", cost: "", quantity: "", category: "", unit: "", brand: "", image: "" };
-
-const UNIDADES = [
-  { value: "",       label: "Sin unidad"  },
-  { value: "piezas", label: "Piezas"      },
-  { value: "kg",     label: "Kilogramos"  },
-  { value: "g",      label: "Gramos"      },
-];
 
 const Productos = () => {
   const [productos, setProductos] = useState([]);
@@ -37,7 +16,9 @@ const Productos = () => {
   const [form, setForm]           = useState(camposIniciales);
   const [editId, setEditId]       = useState(null);
   const [error, setError]         = useState("");
-  const [success, setSuccess]     = useState("");
+  const [success, mostrarExito]   = useMensaje();
+  // true mientras se guarda o elimina (evita mandar el formulario dos veces)
+  const [guardando, setGuardando] = useState(false);
   const [catCustom, setCatCustom] = useState("");
   const [filtro, setFiltro]       = useState("Todos");
   const [busqueda, setBusqueda]   = useState("");
@@ -46,25 +27,21 @@ const Productos = () => {
   const [ordenar, setOrdenar]     = useState("");      // "" | "stock_asc" | "stock_desc" | "precio_desc"
   const [vista, setVista]         = useState("tabla"); // "tabla" | "grid"
   const [hoveredRow, setHoveredRow] = useState(null);
-  const ww = useWindowWidth();
-  const isMobile = ww < 768;
+  const isMobile = useIsMobile();
 
   const handleImageFile = async (e) => {
     const file = e.target.files[0];
-    if (!file) return;
+    // Se limpia el input para poder volver a elegir el mismo archivo
+    e.target.value = "";
+    if (!file || uploading) return;
     const fd = new FormData();
     fd.append("image", file);
     setUploading(true);
     try {
       const res = await axios.post("/products/upload-image", fd);
       setForm((prev) => ({ ...prev, image: res.data.url }));
-    } catch { setError("Error al subir imagen"); }
+    } catch (err) { setError(err.response?.data?.message || "Error al subir imagen"); }
     finally { setUploading(false); }
-  };
-
-  const mostrarExito = (msg) => {
-    setSuccess(msg);
-    setTimeout(() => setSuccess(""), 3000);
   };
 
   const cargar = async () => {
@@ -84,11 +61,14 @@ const Productos = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(""); setSuccess("");
+    if (guardando) return; // ya hay un guardado en camino
+    if (uploading) return setError("Espera a que termine de subir la imagen");
+    setError(""); mostrarExito("");
     const payload = {
       ...form,
       category: form.category === "Otro" ? catCustom : form.category,
     };
+    setGuardando(true);
     try {
       if (editId) {
         await axios.put(`/products/${editId}`, payload);
@@ -99,9 +79,12 @@ const Productos = () => {
       }
       setForm(camposIniciales); setCatCustom("");
       setShowForm(false); setEditId(null);
+      avisarDatosActualizados();
       cargar();
     } catch (err) {
       setError(err.response?.data?.message || "Error al guardar producto");
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -114,14 +97,27 @@ const Productos = () => {
       unit: p.unit ?? "piezas", // conservar "" (Sin unidad) tal cual se guardó
       brand: p.brand || "", image: p.image || "" });
     setCatCustom(cat && !esPredefinida ? cat : "");
-    setEditId(p._id); setShowForm(true); setError(""); setSuccess("");
+    setEditId(p._id); setShowForm(true); setError(""); mostrarExito("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  // Si el producto ya tiene ventas el backend solo lo oculta: desaparece de
+  // la lista, pero las ventas anteriores siguen mostrando su nombre
   const handleEliminar = async (id) => {
-    try { await axios.delete(`/products/${id}`); mostrarExito("Producto eliminado"); cargar(); }
-    catch { setError("Error al eliminar"); }
-    finally { setConfirmId(null); }
+    if (guardando) return;
+    setGuardando(true);
+    setError("");
+    try {
+      const res = await axios.delete(`/products/${id}`);
+      mostrarExito(res.data?.message || "Producto eliminado");
+      avisarDatosActualizados();
+      cargar();
+    } catch (err) {
+      setError(err.response?.data?.message || "Error al eliminar el producto");
+    } finally {
+      setConfirmId(null);
+      setGuardando(false);
+    }
   };
 
   // Categorías que aparecen en los productos actuales (para los filtros)
@@ -129,7 +125,7 @@ const Productos = () => {
 
   // KPIs
   const valorInventario  = productos.reduce((a, p) => a + (p.price * p.quantity), 0);
-  const stockBajo        = productos.filter((p) => p.quantity < 5).length;
+  const stockBajo        = productos.filter((p) => p.quantity < STOCK_BAJO).length;
   const totalCategorias  = new Set(productos.map((p) => p.category).filter(Boolean)).size;
   const hayFiltros       = filtro !== "Todos" || busqueda;
 
@@ -163,11 +159,13 @@ const Productos = () => {
               Esta acción no se puede deshacer.
             </p>
             <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-              <button style={styles.btnModalCancel} onClick={() => setConfirmId(null)}>
+              <button style={styles.btnModalCancel} onClick={() => setConfirmId(null)} disabled={guardando}>
                 Cancelar
               </button>
-              <button style={styles.btnModalDelete} onClick={() => handleEliminar(confirmId)}>
-                <i className="fa fa-trash" style={{ marginRight: 7 }} />Sí, eliminar
+              <button style={{ ...styles.btnModalDelete, ...(guardando ? styles.btnDisabled : {}) }}
+                onClick={() => handleEliminar(confirmId)} disabled={guardando}>
+                <i className={`fa ${guardando ? "fa-spinner fa-spin" : "fa-trash"}`} style={{ marginRight: 7 }} />
+                {guardando ? "Eliminando..." : "Sí, eliminar"}
               </button>
             </div>
           </div>
@@ -204,7 +202,7 @@ const Productos = () => {
         <div className="dash-kpi-grid" style={styles.kpiGrid}>
           {[
             { icon: "fa-cube",                 bg: "#f0f2ff", color: "#6372ff", val: productos.length,             label: "Total productos"       },
-            { icon: "fa-money",                bg: "#e8f5e9", color: "#27ae60", val: `$${valorInventario.toFixed(2)}`, label: "Valor en inventario" },
+            { icon: "fa-money",                bg: "#e8f5e9", color: "#27ae60", val: money(valorInventario),  label: "Valor en inventario" },
             { icon: "fa-warning",  bg: "#fff0f3", color: "#e74c3c", val: stockBajo,       label: "Stock bajo (< 5)"  },
             { icon: "fa-tags",    bg: "#fff8e1", color: "#f9a825", val: totalCategorias, label: "Categorías en uso" },
           ].map(({ icon, bg, color, val, label }) => (
@@ -395,9 +393,9 @@ const Productos = () => {
 
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-              <button type="submit" style={styles.btnSuccess}>
-                <i className={`fa ${editId ? "fa-save" : "fa-plus"}`} style={{ marginRight: 8 }} />
-                {editId ? "Guardar cambios" : "Crear producto"}
+              <button type="submit" style={{ ...styles.btnSuccess, ...(guardando ? styles.btnDisabled : {}) }} disabled={guardando}>
+                <i className={`fa ${guardando ? "fa-spinner fa-spin" : editId ? "fa-save" : "fa-plus"}`} style={{ marginRight: 8 }} />
+                {guardando ? "Guardando..." : editId ? "Guardar cambios" : "Crear producto"}
               </button>
               <button type="button" style={styles.btnCancel}
                 onClick={() => { setShowForm(false); setEditId(null); setForm(camposIniciales); setCatCustom(""); }}>
@@ -544,9 +542,9 @@ const Productos = () => {
                   {/* Badge stock */}
                   <span style={{
                     position: "absolute", top: 8, right: 8,
-                    background: p.quantity < 5 ? "#fff0f3" : p.quantity < 15 ? "#fff8e1" : "#f0fff4",
-                    color: p.quantity < 5 ? "#e74c3c" : p.quantity < 15 ? "#e08c00" : "#27ae60",
-                    border: `1.5px solid ${p.quantity < 5 ? "#ffd0d8" : p.quantity < 15 ? "#ffe082" : "#b7f0cc"}`,
+                    background: p.quantity < STOCK_BAJO ? "#fff0f3" : p.quantity < STOCK_MEDIO ? "#fff8e1" : "#f0fff4",
+                    color: p.quantity < STOCK_BAJO ? "#e74c3c" : p.quantity < STOCK_MEDIO ? "#e08c00" : "#27ae60",
+                    border: `1.5px solid ${p.quantity < STOCK_BAJO ? "#ffd0d8" : p.quantity < STOCK_MEDIO ? "#ffe082" : "#b7f0cc"}`,
                     borderRadius: 20, padding: "2px 8px", fontSize: 11, fontWeight: 700,
                   }}>
                     {p.quantity} {p.unit || "uds."}
@@ -565,7 +563,7 @@ const Productos = () => {
                   {p.brand && <div style={{ fontSize: 11, color: "#6372ff", marginTop: 1, fontWeight: 600 }}>{p.brand}</div>}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 10 }}>
                     <div>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: "#1a1a2e" }}>${p.price}</div>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: "#1a1a2e" }}>{money(p.price)}</div>
                       {p.cost > 0 && (
                         <div style={{ fontSize: 10, color: "#27ae60", fontWeight: 700 }}>
                           {((p.price - p.cost) / p.price * 100).toFixed(0)}% margen
@@ -646,7 +644,7 @@ const Productos = () => {
                     })() : <span style={{ color: "#ccc" }}>—</span>}
                   </td>
                   <td style={{ ...styles.td, fontWeight: 700, color: "#1a1a2e" }}>
-                    <div>${p.price}</div>
+                    <div>{money(p.price)}</div>
                     {p.cost > 0 && (
                       <div style={{ fontSize: 11, color: "#27ae60", fontWeight: 700, marginTop: 2 }}>
                         <i className="fa fa-line-chart" style={{ marginRight: 3, fontSize: 10 }} />
@@ -657,13 +655,13 @@ const Productos = () => {
                   <td style={styles.td}>
                     <span style={{
                       display: "inline-flex", alignItems: "center", gap: 5,
-                      background: p.quantity < 5 ? "rgba(231,76,60,0.1)" : p.quantity < 15 ? "rgba(255,152,0,0.1)" : "rgba(39,174,96,0.1)",
-                      color: p.quantity < 5 ? "#e74c3c" : p.quantity < 15 ? "#e08c00" : "#27ae60",
+                      background: p.quantity < STOCK_BAJO ? "rgba(231,76,60,0.1)" : p.quantity < STOCK_MEDIO ? "rgba(255,152,0,0.1)" : "rgba(39,174,96,0.1)",
+                      color: p.quantity < STOCK_BAJO ? "#e74c3c" : p.quantity < STOCK_MEDIO ? "#e08c00" : "#27ae60",
                       borderRadius: 20, padding: "4px 10px", fontWeight: 700, fontSize: 12,
                     }}>
                       <i className="fa fa-archive" style={{ fontSize: 10 }} />
                       {p.quantity} {p.unit || "uds."}
-                      {p.quantity < 5 && <i className="fa fa-exclamation-triangle" style={{ fontSize: 10 }} />}
+                      {p.quantity < STOCK_BAJO && <i className="fa fa-exclamation-triangle" style={{ fontSize: 10 }} />}
                     </span>
                   </td>
                   <td style={styles.td}>
@@ -707,6 +705,7 @@ const styles = {
     borderRadius: 8, padding: "10px 20px", cursor: "pointer", fontWeight: 600, fontSize: 14,
     display: "inline-flex", alignItems: "center",
   },
+  btnDisabled: { opacity: 0.6, cursor: "not-allowed" },
   btnEdit: {
     background: "#f4f6ff", color: "#6372ff", border: "1px solid #c8ccff",
     borderRadius: 6, padding: "5px 12px", cursor: "pointer", fontSize: 12,

@@ -2,8 +2,14 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "../../api/axiosConfig";
 import { resolveMediaUrl } from "../../utils/media";
+import { fullName, initials, money } from "../../utils/format";
+import { EVENTO_DATOS, EVENTO_PERFIL } from "../../utils/eventos";
 
 const leerUsuario = () => JSON.parse(localStorage.getItem("user") || "{}");
+
+// Al enfocar el buscador se vuelven a pedir productos y clientes, pero como
+// mucho una vez cada 30 s para no repetir peticiones en cada clic
+const REFRESCO_MS = 30 * 1000;
 
 const TopBar = ({ isMobile, onMenuToggle }) => {
   const [busqueda, setBusqueda]   = useState("");
@@ -12,46 +18,58 @@ const TopBar = ({ isMobile, onMenuToggle }) => {
   const [clientes, setClientes]   = useState([]);
   const [logoUrl, setLogoUrl]     = useState(null);
   const [user, setUser]           = useState(leerUsuario);
-  const wrapperRef = useRef(null);
-  const navigate   = useNavigate();
+  const wrapperRef  = useRef(null);
+  const ultimaCarga = useRef(0); // momento de la última carga de productos/clientes
+  const navigate    = useNavigate();
 
-  const inicial      = user.name ? user.name.charAt(0).toUpperCase() : "?";
-  const nombreCompleto = user.name ? `${user.name} ${user.lastName || ""}`.trim() : null;
+  const inicial      = user.name ? initials(user) : "?";
+  const nombreCompleto = user.name ? fullName(user) : null;
 
-  // Carga datos una sola vez al montar
+  // Productos y clientes para el buscador. Las páginas eliminan o crean
+  // registros mientras la barra sigue montada, así que se recargan al
+  // enfocar el buscador y cuando una página avisa que cambió algo.
+  const cargarBusqueda = async () => {
+    ultimaCarga.current = Date.now();
+    try {
+      const [rP, rC] = await Promise.all([axios.get("/products"), axios.get("/clients")]);
+      setProductos(rP.data);
+      setClientes(rC.data);
+    } catch {
+      // sin conexión: se queda la lista anterior y se reintenta en el próximo foco
+      ultimaCarga.current = 0;
+    }
+  };
+
+  const cargarLogo = async () => {
+    try {
+      const res = await axios.get("/profile");
+      setLogoUrl(resolveMediaUrl(res.data.business?.logo));
+    } catch {
+      // sin conexión: se muestra la inicial
+    }
+  };
+
+  // Carga inicial + avisos de las páginas: Mi Negocio cambia el nombre o el
+  // logo (releer la sesión y el perfil); Productos, Clientes, Ventas y
+  // Créditos crean, editan o eliminan registros (releer el buscador)
   useEffect(() => {
-    const cargar = async () => {
-      try {
-        const [rP, rC, rPerfil] = await Promise.all([
-          axios.get("/products"),
-          axios.get("/clients"),
-          axios.get("/profile")
-        ]);
-        setProductos(rP.data);
-        setClientes(rC.data);
+    cargarBusqueda();
+    cargarLogo();
 
-        setLogoUrl(resolveMediaUrl(rPerfil.data.business?.logo));
-      } catch {
-        // ignore
-      }
-    };
-    cargar();
-  }, []);
-
-  // Mi Negocio avisa cuando cambian el nombre o el logo: releer la sesión
-  // y volver a pedir el perfil para mostrar el logo nuevo
-  useEffect(() => {
-    const onPerfilActualizado = async () => {
+    const onPerfilActualizado = () => {
       setUser(leerUsuario());
-      try {
-        const res = await axios.get("/profile");
-        setLogoUrl(resolveMediaUrl(res.data.business?.logo));
-      } catch {
-        // ignore
-      }
+      cargarLogo();
     };
-    window.addEventListener("annie:perfil-actualizado", onPerfilActualizado);
-    return () => window.removeEventListener("annie:perfil-actualizado", onPerfilActualizado);
+    const onDatosActualizados = () => cargarBusqueda();
+
+    window.addEventListener(EVENTO_PERFIL, onPerfilActualizado);
+    window.addEventListener(EVENTO_DATOS, onDatosActualizados);
+    return () => {
+      window.removeEventListener(EVENTO_PERFIL, onPerfilActualizado);
+      window.removeEventListener(EVENTO_DATOS, onDatosActualizados);
+    };
+    // Las funciones de carga solo usan setters y refs: basta con montarlo una vez
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Cierra el dropdown al hacer clic fuera
@@ -77,9 +95,14 @@ const TopBar = ({ isMobile, onMenuToggle }) => {
 
   const q         = busqueda.trim().toLowerCase();
   const matchProd = q.length >= 2 ? productos.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 5) : [];
-  const matchCli  = q.length >= 2 ? clientes.filter((c) => `${c.name} ${c.lastName || ""}`.toLowerCase().includes(q)).slice(0, 5) : [];
+  const matchCli  = q.length >= 2 ? clientes.filter((c) => fullName(c).toLowerCase().includes(q)).slice(0, 5) : [];
   const matchPag  = q.length >= 2 ? PAGINAS.filter((pg) => pg.keywords.some((k) => k.includes(q))) : [];
   const hayResultados = matchProd.length > 0 || matchCli.length > 0 || matchPag.length > 0;
+
+  const handleFocus = () => {
+    if (Date.now() - ultimaCarga.current > REFRESCO_MS) cargarBusqueda();
+    if (q.length >= 2) setShowDrop(true);
+  };
 
   const handleSelect = (ruta) => {
     setBusqueda("");
@@ -107,7 +130,7 @@ const TopBar = ({ isMobile, onMenuToggle }) => {
           placeholder="Buscar productos, clientes..."
           value={busqueda}
           onChange={(e) => { setBusqueda(e.target.value); setShowDrop(true); }}
-          onFocus={() => q.length >= 2 && setShowDrop(true)}
+          onFocus={handleFocus}
           onKeyDown={(e) => e.key === "Escape" && (setShowDrop(false))}
         />
         {busqueda && (
@@ -147,7 +170,7 @@ const TopBar = ({ isMobile, onMenuToggle }) => {
                       {p.brand && <div style={{ fontSize: 11, color: "#9599b3" }}>{p.brand}</div>}
                     </div>
                     <span style={{ color: "#6372ff", fontWeight: 700, fontSize: 13, flexShrink: 0, marginLeft: 8 }}>
-                      ${p.price}
+                      {money(p.price)}
                     </span>
                   </button>
                 ))}
@@ -166,12 +189,12 @@ const TopBar = ({ isMobile, onMenuToggle }) => {
                       background: "linear-gradient(135deg,#6372ff,#5ca9fb)",
                       display: "flex", alignItems: "center", justifyContent: "center",
                       color: "#fff", fontWeight: 700, fontSize: 12 }}>
-                      {c.name ? c.name.charAt(0).toUpperCase() : "?"}
+                      {initials(c)}
                     </div>
                     <div style={{ flex: 1, minWidth: 0, marginLeft: 8 }}>
                       <div style={{ fontWeight: 600, color: "#1a1a2e", fontSize: 13,
                         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {c.name} {c.lastName || ""}
+                        {fullName(c)}
                       </div>
                       {c.phone && <div style={{ fontSize: 11, color: "#9599b3" }}>{c.phone}</div>}
                     </div>

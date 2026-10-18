@@ -1,21 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "../../api/axiosConfig";
-import useWindowWidth from "../../hooks/useWindowWidth";
+import useIsMobile from "../../hooks/useIsMobile";
+import useMensaje from "../../hooks/useMensaje";
+import { formatFecha, fullName, initials, money } from "../../utils/format";
+import { limpiarRFC, sinRFCReal, validarRFC } from "../../utils/rfc";
+import { creditoDisponible } from "../../utils/ventas";
+import { avisarDatosActualizados } from "../../utils/eventos";
 
-// Validación de RFC en el cliente (espejo del backend) para feedback instantáneo
-const RFC_FISICA = /^[A-ZÑ&]{4}[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[A-Z0-9]{2}[0-9A]$/;
-const RFC_MORAL  = /^[A-ZÑ&]{3}[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[A-Z0-9]{2}[0-9A]$/;
-
-const limpiarRFC = (r) => String(r || "").toUpperCase().replace(/[\s-]/g, "");
-const rfcValido = (rfc, tipo) => {
-  const c = limpiarRFC(rfc);
-  if (tipo === "fisica") return RFC_FISICA.test(c);
-  if (tipo === "moral")  return RFC_MORAL.test(c);
-  return RFC_FISICA.test(c) || RFC_MORAL.test(c);
-};
-
-const money = (n) => "$" + Number(n || 0).toFixed(2);
+// Validación de RFC en el navegador (espejo del backend) para feedback instantáneo
+const rfcValido = (rfc, tipo) => validarRFC(rfc, tipo) === null;
 
 const formInicial = {
   name: "", lastName: "", tipoPersona: "fisica", rfc: "",
@@ -28,8 +22,10 @@ const Creditos = () => {
   const [rfcGenerico, setRfcGenerico] = useState(false);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState("");
-  const [success, setSuccess]   = useState("");
+  const [success, mostrarExito] = useMensaje();
   const [busqueda, setBusqueda] = useState("");
+  // true mientras se guarda un cliente o un movimiento (evita enviarlo dos veces)
+  const [guardando, setGuardando] = useState(false);
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm]         = useState(formInicial);
@@ -43,8 +39,7 @@ const Creditos = () => {
   // Panel de estado de cuenta
   const [estadoCuenta, setEstadoCuenta] = useState(null); // { client, movimientos }
 
-  const w = useWindowWidth();
-  const isMobile = w < 768;
+  const isMobile = useIsMobile();
 
   const cargar = async () => {
     try {
@@ -56,7 +51,7 @@ const Creditos = () => {
       setClientes(rc.data);
       setResumen(rr.data);
       // Sin RFC real = RFC vacío o el genérico del SAT
-      setRfcGenerico(!!rp.data.business?.rfcGenerico || !rp.data.business?.rfc);
+      setRfcGenerico(sinRFCReal(rp.data.business));
     } catch {
       setError("Error al cargar los créditos");
     } finally {
@@ -65,11 +60,6 @@ const Creditos = () => {
   };
 
   useEffect(() => { cargar(); }, []);
-
-  const mostrarExito = (msg) => {
-    setSuccess(msg);
-    setTimeout(() => setSuccess(""), 3000);
-  };
 
   // ── Alta / edición de cliente de crédito ────────────────────────
   const handleChange = (e) => {
@@ -81,7 +71,7 @@ const Creditos = () => {
     setForm(formInicial);
     setEditId(null);
     setShowForm(true);
-    setError(""); setSuccess("");
+    setError(""); mostrarExito("");
   };
 
   const abrirEditar = (c) => {
@@ -97,23 +87,20 @@ const Creditos = () => {
     });
     setEditId(c._id);
     setShowForm(true);
-    setError(""); setSuccess("");
+    setError(""); mostrarExito("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(""); setSuccess("");
+    if (guardando) return; // ya hay un guardado en camino
+    setError(""); mostrarExito("");
 
     // Validaciones cliente-side
     if (!form.name.trim()) return setError("El nombre es obligatorio");
     if (!form.rfc.trim())  return setError("El RFC es obligatorio para clientes de crédito");
-    if (!rfcValido(form.rfc, form.tipoPersona))
-      return setError(
-        form.tipoPersona === "moral"
-          ? "RFC de persona moral inválido (12 caracteres, ej. ABC010101XY9)"
-          : "RFC de persona física inválido (13 caracteres, ej. XAXX010101000)"
-      );
+    const errorRFC = validarRFC(form.rfc, form.tipoPersona);
+    if (errorRFC) return setError(errorRFC);
     const limite = Number(form.limiteCredito);
     if (Number.isNaN(limite) || limite < 0)
       return setError("El límite de crédito debe ser un número mayor o igual a 0");
@@ -131,6 +118,7 @@ const Creditos = () => {
       limiteCredito: limite,
     };
 
+    setGuardando(true);
     try {
       if (editId) {
         await axios.put(`/clients/${editId}`, payload);
@@ -142,9 +130,12 @@ const Creditos = () => {
       setShowForm(false);
       setForm(formInicial);
       setEditId(null);
+      avisarDatosActualizados();
       cargar();
     } catch (err) {
       setError(err.response?.data?.message || "Error al guardar el cliente");
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -157,12 +148,14 @@ const Creditos = () => {
 
   const submitMov = async (e) => {
     e.preventDefault();
+    if (guardando) return; // un cargo/abono doble movería el saldo dos veces
     setMovError("");
     const amount = Number(movForm.amount);
     if (Number.isNaN(amount) || amount <= 0)
       return setMovError("El monto debe ser mayor a 0");
 
     const { cliente, tipo } = movModal;
+    setGuardando(true);
     try {
       await axios.post(`/credits/${cliente._id}/${tipo}`, {
         amount,
@@ -170,9 +163,12 @@ const Creditos = () => {
       });
       mostrarExito(tipo === "cargo" ? "Cargo registrado" : "Abono registrado");
       setMovModal(null);
+      avisarDatosActualizados();
       cargar();
     } catch (err) {
       setMovError(err.response?.data?.message || "Error al registrar el movimiento");
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -181,13 +177,10 @@ const Creditos = () => {
     try {
       const res = await axios.get(`/credits/${cliente._id}/movimientos`);
       setEstadoCuenta(res.data);
-    } catch {
-      setError("Error al cargar el estado de cuenta");
+    } catch (err) {
+      setError(err.response?.data?.message || "Error al cargar el estado de cuenta");
     }
   };
-
-  const inicial = (c) =>
-    ((c.name || "?").charAt(0) + (c.lastName || "").charAt(0)).toUpperCase();
 
   const clientesFiltrados = clientes.filter((c) => {
     const q = busqueda.toLowerCase();
@@ -223,11 +216,11 @@ const Creditos = () => {
               {movModal.tipo === "cargo" ? "Registrar cargo (compra a crédito)" : "Registrar abono (pago)"}
             </h5>
             <p style={{ margin: "0 0 16px", color: "#888", fontSize: 13 }}>
-              {movModal.cliente.name} {movModal.cliente.lastName || ""}
+              {fullName(movModal.cliente)}
               {" · "}
               <strong>Saldo: {money(movModal.cliente.saldo)}</strong>
               {movModal.tipo === "cargo" && (
-                <> · Disponible: <strong>{money(Math.max(0, (movModal.cliente.limiteCredito || 0) - (movModal.cliente.saldo || 0)))}</strong></>
+                <> · Disponible: <strong>{money(creditoDisponible(movModal.cliente))}</strong></>
               )}
             </p>
             <form onSubmit={submitMov} style={{ textAlign: "left" }}>
@@ -249,10 +242,11 @@ const Creditos = () => {
               />
               {movError && <div style={{ ...styles.alertError, marginTop: 10 }}><i className="fa fa-exclamation-circle" style={{ marginRight: 8 }} />{movError}</div>}
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 18 }}>
-                <button type="button" style={styles.btnModalCancel} onClick={() => setMovModal(null)}>Cancelar</button>
-                <button type="submit" style={movModal.tipo === "cargo" ? styles.btnDangerSolid : styles.btnSuccessSolid}>
-                  <i className="fa fa-check" style={{ marginRight: 7 }} />
-                  {movModal.tipo === "cargo" ? "Registrar cargo" : "Registrar abono"}
+                <button type="button" style={styles.btnModalCancel} onClick={() => setMovModal(null)} disabled={guardando}>Cancelar</button>
+                <button type="submit" disabled={guardando}
+                  style={{ ...(movModal.tipo === "cargo" ? styles.btnDangerSolid : styles.btnSuccessSolid), ...(guardando ? styles.btnDisabled : {}) }}>
+                  <i className={`fa ${guardando ? "fa-spinner fa-spin" : "fa-check"}`} style={{ marginRight: 7 }} />
+                  {guardando ? "Guardando..." : movModal.tipo === "cargo" ? "Registrar cargo" : "Registrar abono"}
                 </button>
               </div>
             </form>
@@ -270,7 +264,7 @@ const Creditos = () => {
                   Estado de cuenta
                 </h5>
                 <div style={{ fontSize: 13, color: "#888" }}>
-                  {estadoCuenta.client.name} {estadoCuenta.client.lastName || ""}
+                  {fullName(estadoCuenta.client)}
                   {estadoCuenta.client.rfc ? ` · ${estadoCuenta.client.rfc}` : ""}
                 </div>
               </div>
@@ -282,7 +276,7 @@ const Creditos = () => {
             <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
               <div style={styles.miniStat}><div style={styles.miniLabel}>Saldo</div><div style={{ ...styles.miniVal, color: "#e05555" }}>{money(estadoCuenta.client.saldo)}</div></div>
               <div style={styles.miniStat}><div style={styles.miniLabel}>Límite</div><div style={styles.miniVal}>{money(estadoCuenta.client.limiteCredito)}</div></div>
-              <div style={styles.miniStat}><div style={styles.miniLabel}>Disponible</div><div style={{ ...styles.miniVal, color: "#27ae60" }}>{money(Math.max(0, (estadoCuenta.client.limiteCredito || 0) - (estadoCuenta.client.saldo || 0)))}</div></div>
+              <div style={styles.miniStat}><div style={styles.miniLabel}>Disponible</div><div style={{ ...styles.miniVal, color: "#27ae60" }}>{money(creditoDisponible(estadoCuenta.client))}</div></div>
             </div>
 
             <div style={{ maxHeight: 300, overflowY: "auto" }}>
@@ -305,7 +299,7 @@ const Creditos = () => {
                       {m.description || (m.type === "cargo" ? "Cargo" : "Abono")}
                     </div>
                     <div style={{ fontSize: 11, color: "#9599b3" }}>
-                      {new Date(m.createdAt).toLocaleString("es-MX", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      {formatFecha(m.createdAt)}
                     </div>
                   </div>
                   <div style={{ textAlign: "right" }}>
@@ -473,9 +467,9 @@ const Creditos = () => {
             </div>
 
             <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
-              <button type="submit" style={styles.btnSuccess}>
-                <i className={`fa ${editId ? "fa-save" : "fa-check"}`} style={{ marginRight: 8 }} />
-                {editId ? "Guardar cambios" : "Registrar cliente"}
+              <button type="submit" style={{ ...styles.btnSuccess, ...(guardando ? styles.btnDisabled : {}) }} disabled={guardando}>
+                <i className={`fa ${guardando ? "fa-spinner fa-spin" : editId ? "fa-save" : "fa-check"}`} style={{ marginRight: 8 }} />
+                {guardando ? "Guardando..." : editId ? "Guardar cambios" : "Registrar cliente"}
               </button>
               <button type="button" style={styles.btnCancel} onClick={() => { setShowForm(false); setEditId(null); setForm(formInicial); }}>
                 <i className="fa fa-times" style={{ marginRight: 7 }} />Cancelar
@@ -516,17 +510,17 @@ const Creditos = () => {
               Sin resultados para <strong>"{busqueda}"</strong>
             </div>
           ) : clientesFiltrados.map((c) => {
-            const disponible = Math.max(0, (c.limiteCredito || 0) - (c.saldo || 0));
+            const disponible = creditoDisponible(c);
             const b = barra(c.saldo || 0, c.limiteCredito || 0);
             const sobreLimite = (c.saldo || 0) > (c.limiteCredito || 0);
             return (
               <div key={c._id} style={{ background: "#fff", borderRadius: 14, padding: 18, boxShadow: "0 2px 12px rgba(99,114,255,0.08)", border: sobreLimite ? "1.5px solid #ffd0d8" : "1.5px solid #f0f2ff", display: "flex", flexDirection: "column", gap: 12 }}>
                 {/* Encabezado */}
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={styles.avatar}>{inicial(c)}</div>
+                  <div style={styles.avatar}>{initials(c)}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, color: "#1a1a2e", fontSize: 15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {c.name} {c.lastName || ""}
+                      {fullName(c)}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 10, fontWeight: 700, color: "#6372ff", background: "#f0f2ff", borderRadius: 6, padding: "2px 7px", textTransform: "uppercase" }}>
@@ -597,6 +591,7 @@ const styles = {
     borderRadius: 8, padding: "10px 20px", cursor: "pointer", fontWeight: 600, fontSize: 14,
     display: "inline-flex", alignItems: "center",
   },
+  btnDisabled: { opacity: 0.6, cursor: "not-allowed" },
   btnCargo: {
     flex: 1, minWidth: 80, background: "#fff0f3", color: "#e05555", border: "1px solid #ffd0d8",
     borderRadius: 8, padding: "8px 10px", cursor: "pointer", fontSize: 12, fontWeight: 700,

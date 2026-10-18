@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import axios from "../api/axiosConfig";
 import { useNavigate, Link } from "react-router-dom";
-import useWindowWidth from "../hooks/useWindowWidth";
+import useIsMobile from "../hooks/useIsMobile";
 
 const Login = () => {
   const [form, setForm]       = useState({ email: "", password: "" });
@@ -9,8 +9,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
   const navigate = useNavigate();
-  const w = useWindowWidth();
-  const isMobile = w < 768;
+  const isMobile = useIsMobile();
 
   const handleChange = (e) => {
     const { name, value } = e.target;

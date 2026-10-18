@@ -1,12 +1,9 @@
 {
   "short_name": "Annie",
-  "name": "Create React App Sample",
+  "name": "Annie",
+  "description": "Gestión de inventario, ventas, clientes y créditos para pequeños negocios.",
+  "lang": "es-MX",
   "icons": [
-    {
-      "src": "favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
-    },
     {
       "src": "logo192.png",
       "type": "image/png",
@@ -18,8 +15,8 @@
       "sizes": "512x512"
     }
   ],
-  "start_url": ".",
+  "start_url": "/",
   "display": "standalone",
-  "theme_color": "#000000",
+  "theme_color": "#3284f7",
   "background_color": "#ffffff"
 }

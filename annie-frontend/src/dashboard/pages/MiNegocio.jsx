@@ -1,18 +1,14 @@
 import React, { useEffect, useState, useRef } from "react";
 import axios from "../../api/axiosConfig";
-import useWindowWidth from "../../hooks/useWindowWidth";
+import useIsMobile from "../../hooks/useIsMobile";
 import { resolveMediaUrl } from "../../utils/media";
+import { ESTADOS_MEXICO } from "../../utils/constantes";
+import { sinRFCReal, validarRFC } from "../../utils/rfc";
+import { avisarPerfilActualizado } from "../../utils/eventos";
 
-const RFC_FISICA = /^[A-ZÑ&]{4}[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[A-Z0-9]{2}[0-9A]$/;
-const RFC_MORAL  = /^[A-ZÑ&]{3}[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[A-Z0-9]{2}[0-9A]$/;
-const rfcValido = (rfc) => {
-  const c = String(rfc || "").toUpperCase().replace(/[\s-]/g, "");
-  return RFC_FISICA.test(c) || RFC_MORAL.test(c);
-};
+// El RFC del negocio puede ser de persona física o moral
+const rfcValido = (rfc) => validarRFC(rfc) === null;
 
-const estadosMexico = [
-  "Aguascalientes","Baja California","Baja California Sur","Campeche","Chiapas","Chihuahua","Ciudad de Mexico","Coahuila","Colima","Durango","Estado de Mexico","Guanajuato","Guerrero","Hidalgo","Jalisco","Michoacan","Morelos","Nayarit","Nuevo Leon","Oaxaca","Puebla","Queretaro","Quintana Roo","San Luis Potosi","Sinaloa","Sonora","Tabasco","Tamaulipas","Tlaxcala","Veracruz","Yucatan","Zacatecas"
-];
 const defaultCountry = "Mexico";
 
 // Mantiene localStorage.user al día (Sidebar y TopBar lo leen) y les avisa
@@ -24,7 +20,7 @@ const actualizarSesion = (cambios) => {
   } catch {
     // localStorage corrupto o no disponible: solo avisamos
   }
-  window.dispatchEvent(new Event("annie:perfil-actualizado"));
+  avisarPerfilActualizado();
 };
 
 const MiNegocio = () => {
@@ -34,10 +30,11 @@ const MiNegocio = () => {
   const [error, setError]         = useState("");
   const [success, setSuccess]     = useState("");
   const [uploading, setUploading] = useState(false);
+  // true mientras se guardan los datos del negocio o del propietario
+  const [guardando, setGuardando] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
   const logoRef = useRef(null);
-  const w = useWindowWidth();
-  const isMobile = w < 768;
+  const isMobile = useIsMobile();
 
   const [formNegocio, setFormNegocio] = useState({
     name: "", address: "", phone: "", category: "", description: "", rfc: "",
@@ -60,7 +57,7 @@ const MiNegocio = () => {
         phone: business?.phone || "",
         category: business?.category || "",
         description: business?.description || "",
-        rfc: business?.rfcGenerico || !business?.rfc ? "" : business.rfc,
+        rfc: sinRFCReal(business) ? "" : business.rfc,
         country: business?.country || defaultCountry,
         state: business?.state || "",
         city: business?.city || "",
@@ -81,15 +78,19 @@ const MiNegocio = () => {
 
   const handleSaveNegocio = async (e) => {
     e.preventDefault();
+    if (guardando) return; // ya hay un guardado en camino
     setError(""); setSuccess("");
 
     if (!formNegocio.name.trim()) return setError("Nombre del negocio requerido");
     if (!formNegocio.state.trim()) return setError("Estado es requerido");
     if (!formNegocio.city.trim()) return setError("Ciudad es requerida");
     if (!formNegocio.address.trim()) return setError("Dirección es requerida");
-    if (formNegocio.rfc.trim() && !rfcValido(formNegocio.rfc))
-      return setError("El RFC no tiene un formato válido (física=13, moral=12 caracteres)");
+    if (formNegocio.rfc.trim()) {
+      const errorRFC = validarRFC(formNegocio.rfc);
+      if (errorRFC) return setError(errorRFC);
+    }
 
+    setGuardando(true);
     try {
       const res = await axios.put("/profile/business", formNegocio);
       actualizarSesion({ businessName: res.data?.name || formNegocio.name });
@@ -98,11 +99,14 @@ const MiNegocio = () => {
       cargar();
     } catch (err) {
       setError(err.response?.data?.message || "Error al guardar");
+    } finally {
+      setGuardando(false);
     }
   };
 
   const handleSaveUsuario = async (e) => {
     e.preventDefault();
+    if (guardando) return; // ya hay un guardado en camino
     setError(""); setSuccess("");
 
     if (!formUsuario.name.trim()) return setError("Nombre del propietario requerido");
@@ -111,6 +115,7 @@ const MiNegocio = () => {
     if (!formUsuario.state.trim()) return setError("Estado es requerido");
     if (!formUsuario.city.trim()) return setError("Ciudad es requerida");
 
+    setGuardando(true);
     try {
       const res = await axios.put("/profile/user", {
         ...formUsuario,
@@ -125,12 +130,16 @@ const MiNegocio = () => {
       cargar();
     } catch (err) {
       setError(err.response?.data?.message || "Error al guardar");
+    } finally {
+      setGuardando(false);
     }
   };
 
   const handleLogoUpload = async (e) => {
     const file = e.target.files[0];
-    if (!file) return;
+    // Se limpia el input para poder volver a elegir el mismo archivo
+    e.target.value = "";
+    if (!file || uploading) return; // un logo a la vez
 
     const allowed = ["image/jpeg", "image/png", "image/webp"];
     if (!allowed.includes(file.type)) {
@@ -166,10 +175,7 @@ const MiNegocio = () => {
   const { user, business } = data || {};
   const logoUrl = !logoBroken ? resolveMediaUrl(business?.logo) : null;
   // Sin RFC real = RFC vacío o el genérico del SAT
-  const sinRfcReal = !!(business?.rfcGenerico || !business?.rfc);
-
-  const estadosNegocio = estadosMexico;
-  const estadosUsuario = estadosMexico;
+  const sinRfcReal = sinRFCReal(business);
 
   const perfilCompleto = () => {
     const b = formNegocio;
@@ -224,15 +230,15 @@ const MiNegocio = () => {
         <div style={{ ...styles.cardHeader, flexDirection: isMobile ? "column" : "row", gap: isMobile ? 12 : 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div
-              onClick={() => logoRef.current && logoRef.current.click()}
+              onClick={() => !uploading && logoRef.current && logoRef.current.click()}
               style={{
-                width: 52, height: 52, borderRadius: 12, cursor: "pointer",
+                width: 52, height: 52, borderRadius: 12, cursor: uploading ? "wait" : "pointer",
                 background: logoUrl ? "none" : "linear-gradient(135deg,#6372ff,#5ca9fb)",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 overflow: "hidden", border: logoUrl ? "2px solid #e8eaff" : "none",
                 position: "relative",
               }}
-              title="Haz clic para cambiar el logo"
+              title={uploading ? "Subiendo logo..." : "Haz clic para cambiar el logo"}
             >
               {logoUrl ? (
                 <img
@@ -283,7 +289,7 @@ const MiNegocio = () => {
               </div>
               <SelectField icon="fa-map" label="Estado / Departamento" value={formNegocio.state}
                 onChange={(e) => setFormNegocio({ ...formNegocio, state: e.target.value })}
-                options={estadosNegocio} placeholder="Selecciona estado" />
+                options={ESTADOS_MEXICO} placeholder="Selecciona estado" />
               <div style={styles.fieldWrap}>
                 <label style={styles.label}><i className="fa fa-map-pin" style={styles.labelIcon} />Ciudad</label>
                 <input style={styles.input} placeholder="Ej: Guadalajara"
@@ -323,8 +329,9 @@ const MiNegocio = () => {
               </div>
             </div>
             <div style={{ marginTop: 18, display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button type="submit" style={styles.btnSave}>
-                <i className="fa fa-save" style={{ marginRight: 8 }} />Guardar cambios
+              <button type="submit" style={{ ...styles.btnSave, ...(guardando ? styles.btnDisabled : {}) }} disabled={guardando}>
+                <i className={`fa ${guardando ? "fa-spinner fa-spin" : "fa-save"}`} style={{ marginRight: 8 }} />
+                {guardando ? "Guardando..." : "Guardar cambios"}
               </button>
               <button type="button" style={styles.btnCancel} onClick={() => setEditMode(null)}>
                 <i className="fa fa-times" style={{ marginRight: 7 }} />Cancelar
@@ -392,7 +399,7 @@ const MiNegocio = () => {
               </div>
               <SelectField icon="fa-map" label="Estado / Departamento" value={formUsuario.state}
                 onChange={(e) => setFormUsuario({ ...formUsuario, state: e.target.value })}
-                options={estadosUsuario} placeholder="Selecciona estado" />
+                options={ESTADOS_MEXICO} placeholder="Selecciona estado" />
               <div style={styles.fieldWrap}>
                 <label style={styles.label}><i className="fa fa-map-pin" style={styles.labelIcon} />Ciudad</label>
                 <input style={styles.input} placeholder="Ej: Monterrey"
@@ -401,8 +408,9 @@ const MiNegocio = () => {
               </div>
             </div>
             <div style={{ marginTop: 18, display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button type="submit" style={styles.btnSave}>
-                <i className="fa fa-save" style={{ marginRight: 8 }} />Guardar cambios
+              <button type="submit" style={{ ...styles.btnSave, ...(guardando ? styles.btnDisabled : {}) }} disabled={guardando}>
+                <i className={`fa ${guardando ? "fa-spinner fa-spin" : "fa-save"}`} style={{ marginRight: 8 }} />
+                {guardando ? "Guardando..." : "Guardar cambios"}
               </button>
               <button type="button" style={styles.btnCancel} onClick={() => setEditMode(null)}>
                 <i className="fa fa-times" style={{ marginRight: 7 }} />Cancelar
@@ -472,6 +480,7 @@ const styles = {
     borderRadius: 8, padding: "10px 22px", cursor: "pointer", fontWeight: 600, fontSize: 14,
     display: "inline-flex", alignItems: "center",
   },
+  btnDisabled: { opacity: 0.6, cursor: "not-allowed" },
   btnCancel: {
     background: "#fff", color: "#e05555", border: "1.5px solid #ffd0d8",
     borderRadius: 8, padding: "10px 20px", cursor: "pointer", fontWeight: 600, fontSize: 14,

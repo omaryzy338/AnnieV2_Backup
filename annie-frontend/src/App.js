@@ -9,7 +9,9 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import SmoothScroll from "smooth-scroll";
 import "./App.css";
 
-export const scroll = new SmoothScroll('a[href*="#"]', {
+// Desplazamiento suave para los enlaces "#seccion" de la página principal
+// (la librería se engancha a los clics por sí sola; no hace falta guardarla)
+new SmoothScroll('a[href*="#"]', {
   speed: 1000,
   speedAsDuration: true,
   // La barra de navegación es fija (~130px); sin este offset la librería

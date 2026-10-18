@@ -1,17 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "../../api/axiosConfig";
-import useWindowWidth from "../../hooks/useWindowWidth";
+import useIsMobile from "../../hooks/useIsMobile";
+import useMensaje from "../../hooks/useMensaje";
+import { formatFechaDia, fullName, initials, money } from "../../utils/format";
+import { limpiarRFC, sinRFCReal, validarRFC } from "../../utils/rfc";
+import { fechaVenta } from "../../utils/ventas";
+import { avisarDatosActualizados } from "../../utils/eventos";
 
-// Validación de RFC en el cliente (espejo del backend)
-const RFC_FISICA = /^[A-ZÑ&]{4}[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[A-Z0-9]{2}[0-9A]$/;
-const RFC_MORAL  = /^[A-ZÑ&]{3}[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[A-Z0-9]{2}[0-9A]$/;
-const limpiarRFC = (r) => String(r || "").toUpperCase().replace(/[\s-]/g, "");
-const rfcValido = (rfc, tipo) => {
-  const c = limpiarRFC(rfc);
-  if (tipo === "moral") return RFC_MORAL.test(c);
-  return RFC_FISICA.test(c); // por defecto persona física
-};
+// Persona física por defecto (es el formato que se pide si no se eligió otro)
+const rfcValido = (rfc, tipo) => validarRFC(rfc, tipo === "moral" ? "moral" : "fisica") === null;
 
 const camposIniciales = {
   name: "", lastName: "", email: "", phone: "",
@@ -27,12 +25,13 @@ const Clientes = () => {
   const [form, setForm]               = useState(camposIniciales);
   const [editId, setEditId]           = useState(null);
   const [error, setError]             = useState("");
-  const [success, setSuccess]         = useState("");
+  const [success, mostrarExito]       = useMensaje();
   const [busqueda, setBusqueda]       = useState("");
   const [confirmId, setConfirmId]     = useState(null);
   const [hoveredRow, setHoveredRow]   = useState(null);
-  const w = useWindowWidth();
-  const isMobile = w < 768;
+  // true mientras se guarda o elimina (evita mandar el formulario dos veces)
+  const [guardando, setGuardando]     = useState(false);
+  const isMobile = useIsMobile();
 
   const cargar = async () => {
     try {
@@ -40,17 +39,12 @@ const Clientes = () => {
       setClientes(rc.data);
       setVentas(rv.data);
       // Sin RFC real = RFC vacío o el genérico del SAT
-      setRfcGenerico(!!rp.data.business?.rfcGenerico || !rp.data.business?.rfc);
+      setRfcGenerico(sinRFCReal(rp.data.business));
     } catch { setError("Error al cargar clientes"); }
     finally { setLoading(false); }
   };
 
   useEffect(() => { cargar(); }, []);
-
-  const mostrarExito = (msg) => {
-    setSuccess(msg);
-    setTimeout(() => setSuccess(""), 3000);
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -59,17 +53,14 @@ const Clientes = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(""); setSuccess("");
+    if (guardando) return; // ya hay un guardado en camino
+    setError(""); mostrarExito("");
 
     // Validación extra para clientes de mayoreo / crédito
     if (form.esMayoreo) {
       if (!form.rfc.trim()) return setError("El RFC es obligatorio para clientes de mayoreo / crédito");
-      if (!rfcValido(form.rfc, form.tipoPersona))
-        return setError(
-          form.tipoPersona === "moral"
-            ? "RFC de persona moral inválido (12 caracteres, ej. ABC010101XY9)"
-            : "RFC de persona física inválido (13 caracteres, ej. XAXX010101000)"
-        );
+      const errorRFC = validarRFC(form.rfc, form.tipoPersona === "moral" ? "moral" : "fisica");
+      if (errorRFC) return setError(errorRFC);
     }
 
     // Construir payload
@@ -87,6 +78,7 @@ const Clientes = () => {
       payload.limiteCredito = Number(form.limiteCredito) || 0;
     }
 
+    setGuardando(true);
     try {
       if (editId) {
         await axios.put(`/clients/${editId}`, payload);
@@ -98,9 +90,12 @@ const Clientes = () => {
       setForm(camposIniciales);
       setShowForm(false);
       setEditId(null);
+      avisarDatosActualizados();
       cargar();
     } catch (err) {
       setError(err.response?.data?.message || "Error al guardar cliente");
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -115,21 +110,24 @@ const Clientes = () => {
     });
     setEditId(c._id);
     setShowForm(true);
-    setError(""); setSuccess("");
+    setError(""); mostrarExito("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  // Si el cliente ya tiene ventas o movimientos de crédito el backend solo lo
+  // oculta: desaparece de la lista, pero su historial se conserva
   const handleEliminar = async (id) => {
+    if (guardando) return;
+    setGuardando(true);
+    setError("");
     try {
-      await axios.delete(`/clients/${id}`);
-      mostrarExito("Cliente eliminado");
+      const res = await axios.delete(`/clients/${id}`);
+      mostrarExito(res.data?.message || "Cliente eliminado");
+      avisarDatosActualizados();
       cargar();
     } catch (err) { setError(err.response?.data?.message || "Error al eliminar cliente"); }
-    finally { setConfirmId(null); }
+    finally { setConfirmId(null); setGuardando(false); }
   };
-
-  const inicial = (c) =>
-    ((c.name || "?").charAt(0) + (c.lastName || "").charAt(0)).toUpperCase();
 
   const clientesFiltrados = clientes.filter((c) => {
     const q = busqueda.toLowerCase();
@@ -151,7 +149,7 @@ const Clientes = () => {
     const vs = ventas.filter((v) => v.client && (v.client._id || v.client) === clienteId);
     const total = vs.reduce((a, v) => a + v.total, 0);
     const ultima = vs.length > 0
-      ? vs.reduce((a, v) => new Date(v.saleDate || v.createdAt) > new Date(a.saleDate || a.createdAt) ? v : a)
+      ? vs.reduce((a, v) => fechaVenta(v) > fechaVenta(a) ? v : a)
       : null;
     return { compras: vs.length, total, ultima };
   };
@@ -173,11 +171,13 @@ const Clientes = () => {
               Esta acción no se puede deshacer.
             </p>
             <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-              <button style={styles.btnModalCancel} onClick={() => setConfirmId(null)}>
+              <button style={styles.btnModalCancel} onClick={() => setConfirmId(null)} disabled={guardando}>
                 Cancelar
               </button>
-              <button style={styles.btnModalDelete} onClick={() => handleEliminar(confirmId)}>
-                <i className="fa fa-trash" style={{ marginRight: 7 }} />Sí, eliminar
+              <button style={{ ...styles.btnModalDelete, ...(guardando ? styles.btnDisabled : {}) }}
+                onClick={() => handleEliminar(confirmId)} disabled={guardando}>
+                <i className={`fa ${guardando ? "fa-spinner fa-spin" : "fa-trash"}`} style={{ marginRight: 7 }} />
+                {guardando ? "Eliminando..." : "Sí, eliminar"}
               </button>
             </div>
           </div>
@@ -353,9 +353,9 @@ const Clientes = () => {
             </div>
 
             <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
-              <button type="submit" style={styles.btnSuccess}>
-                <i className={`fa ${editId ? "fa-save" : "fa-check"}`} style={{ marginRight: 8 }} />
-                {editId ? "Guardar cambios" : "Registrar cliente"}
+              <button type="submit" style={{ ...styles.btnSuccess, ...(guardando ? styles.btnDisabled : {}) }} disabled={guardando}>
+                <i className={`fa ${guardando ? "fa-spinner fa-spin" : editId ? "fa-save" : "fa-check"}`} style={{ marginRight: 8 }} />
+                {guardando ? "Guardando..." : editId ? "Guardar cambios" : "Registrar cliente"}
               </button>
               <button type="button" style={styles.btnCancel}
                 onClick={() => { setShowForm(false); setEditId(null); setForm(camposIniciales); }}>
@@ -408,9 +408,9 @@ const Clientes = () => {
             return (
               <div key={c._id} style={{ background: "#fff", borderRadius: 12, padding: 16, boxShadow: "0 2px 8px rgba(0,0,0,0.07)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-                  <div style={styles.avatar}>{inicial(c)}</div>
+                  <div style={styles.avatar}>{initials(c)}</div>
                   <div style={{ flex: 1 }}>
-                    <strong style={{ color: "#1a1a2e", fontSize: 14 }}>{c.name} {c.lastName || ""}</strong>
+                    <strong style={{ color: "#1a1a2e", fontSize: 14 }}>{fullName(c)}</strong>
                     {c.esMayoreo && (
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
                         <span style={styles.badgeMayoreo}>
@@ -433,7 +433,7 @@ const Clientes = () => {
                     </span>
                   )}
                   {st.compras > 0 ? (
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#6372ff" }}>${st.total.toFixed(2)} · {st.compras} compra{st.compras !== 1 ? "s" : ""}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#6372ff" }}>{money(st.total)} · {st.compras} compra{st.compras !== 1 ? "s" : ""}</span>
                   ) : (
                     <span style={{ fontSize: 12, color: "#ccc" }}>Sin compras</span>
                   )}
@@ -481,10 +481,10 @@ const Clientes = () => {
                   }}>
                   <td style={styles.td}>
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <div style={styles.avatar}>{inicial(c)}</div>
+                      <div style={styles.avatar}>{initials(c)}</div>
                       <div>
                         <strong style={{ color: "#1a1a2e", fontSize: 14 }}>
-                          {c.name} {c.lastName || ""}
+                          {fullName(c)}
                         </strong>
                         {c.esMayoreo && (
                           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
@@ -524,7 +524,7 @@ const Clientes = () => {
                         <td style={styles.td}>
                           {st.compras > 0 ? (
                             <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                              <span style={{ fontWeight: 700, color: "#6372ff", fontSize: 13 }}>${st.total.toFixed(2)}</span>
+                              <span style={{ fontWeight: 700, color: "#6372ff", fontSize: 13 }}>{money(st.total)}</span>
                               <span style={{ fontSize: 11, color: "#9599b3" }}>{st.compras} compra{st.compras !== 1 ? "s" : ""}</span>
                             </div>
                           ) : <span style={{ color: "#ccc", fontSize: 12 }}>Sin compras</span>}
@@ -532,7 +532,7 @@ const Clientes = () => {
                         <td style={styles.td}>
                           {st.ultima ? (
                             <span style={{ fontSize: 12, color: "#9599b3" }}>
-                              {new Date(st.ultima.saleDate || st.ultima.createdAt).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}
+                              {formatFechaDia(fechaVenta(st.ultima))}
                             </span>
                           ) : <span style={{ color: "#ccc", fontSize: 12 }}>--</span>}
                         </td>
@@ -573,6 +573,7 @@ const styles = {
     borderRadius: 8, padding: "10px 20px", cursor: "pointer", fontWeight: 600, fontSize: 14,
     display: "inline-flex", alignItems: "center",
   },
+  btnDisabled: { opacity: 0.6, cursor: "not-allowed" },
   btnEdit: {
     background: "#f4f6ff", color: "#6372ff", border: "1px solid #c8ccff",
     borderRadius: 6, padding: "5px 12px", cursor: "pointer", fontSize: 12,

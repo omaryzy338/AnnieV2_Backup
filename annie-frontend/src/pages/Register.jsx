@@ -1,11 +1,9 @@
 import React, { useState } from "react";
 import axios from "../api/axiosConfig";
 import { useNavigate, Link } from "react-router-dom";
-import useWindowWidth from "../hooks/useWindowWidth";
-
-const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
-const RFC_FISICA = /^[A-ZÑ&]{4}[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[A-Z0-9]{2}[0-9A]$/;
-const RFC_MORAL  = /^[A-ZÑ&]{3}[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[A-Z0-9]{2}[0-9A]$/;
+import useIsMobile from "../hooks/useIsMobile";
+import { PASSWORD_REGEX } from "../utils/constantes";
+import { limpiarRFC, validarRFC } from "../utils/rfc";
 
 const Register = () => {
   const [form, setForm] = useState({
@@ -26,8 +24,7 @@ const Register = () => {
     setLogoPreview(URL.createObjectURL(file));
   };
   const navigate = useNavigate();
-  const w = useWindowWidth();
-  const isMobile = w < 768;
+  const isMobile = useIsMobile();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -41,12 +38,15 @@ const Register = () => {
       setError("Las contraseñas no coinciden");
       return;
     }
-    if (!passwordRegex.test(form.password)) {
+    if (!PASSWORD_REGEX.test(form.password)) {
       setError("La contraseña debe tener mínimo 8 caracteres, una mayúscula, un número y un carácter especial");
       return;
     }
-    if (form.rfc.trim() && !RFC_FISICA.test(form.rfc.trim().toUpperCase()) && !RFC_MORAL.test(form.rfc.trim().toUpperCase())) {
-      setError("El RFC no tiene un formato válido (física=13, moral=12 caracteres)");
+    // El RFC es opcional: solo se valida si se escribió algo
+    const rfcLimpio = limpiarRFC(form.rfc);
+    const errorRFC = rfcLimpio ? validarRFC(rfcLimpio) : null;
+    if (errorRFC) {
+      setError(errorRFC);
       return;
     }
     setLoading(true);
@@ -57,7 +57,7 @@ const Register = () => {
         businessName: form.businessName,
         email:        form.email,
         password:     form.password,
-        rfc:          form.rfc.trim() || undefined,
+        rfc:          rfcLimpio || undefined,
       });
       const { token, user } = res.data;
       localStorage.setItem("token", token);
