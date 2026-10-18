@@ -1,24 +1,13 @@
 # Dependencias
 node_modules/
-*/node_modules/
 
 # Variables de entorno (nunca subir credenciales)
 .env
 .env.local
 .env.production
-annie-backend/.env
 
 # Build de React
 annie-frontend/build/
-
-# Certificados TLS locales (se generan con certs/generate-self-signed.sh)
-certs/*.crt
-certs/*.key
-certs/*.pem
-
-# Archivos de imágenes subidas por usuarios
-annie-backend/uploads/*
-!annie-backend/uploads/.gitkeep
 
 # Logs
 npm-debug.log*

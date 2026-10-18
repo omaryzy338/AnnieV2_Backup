@@ -12,9 +12,9 @@ Tiene dos clientes que comparten el mismo backend y la misma base de datos:
 - **Inventario:** registro de productos con precios, categorías y existencias, con alertas de stock bajo.
 - **Ventas:** captura rápida con folio, método de pago (efectivo o crédito), pago, cambio y ticket imprimible o compartible.
 - **Clientes y créditos:** control de clientes y de sus cuentas a crédito ("fiado"): cargos, abonos y saldo.
-- **Reportes:** gráficas de ventas y productos más vendidos, con exportación a Excel.
-- **Offline:** las ventas, consultas de inventario y abonos funcionan sin internet y se sincronizan al recuperar la conexión.
-- **Instalable:** se agrega a la pantalla de inicio del celular como una app nativa.
+- **Reportes:** gráficas de ventas, productos más vendidos, categorías y mejores clientes; la app móvil exporta las ventas a CSV (Excel).
+- **App de celular:** instalable en Android (APK) y iPhone, con impresión y envío del ticket en PDF.
+- **En desarrollo (próximas revisiones):** modo sin conexión (PWA con service worker e IndexedDB) para registrar ventas sin internet y sincronizarlas después.
 
 ## Problema que resuelve
 
@@ -24,18 +24,43 @@ Muchos pequeños negocios llevan sus ventas, inventario y créditos en libreta p
 
 | Capa | Tecnologías |
 |------|-------------|
-| Frontend web (PWA) | React 19, React Router, Service Worker (Workbox), Web App Manifest, IndexedDB, Axios, Recharts |
+| Frontend web | React 19, React Router, Axios, Recharts, Web App Manifest (PWA en desarrollo) |
 | App móvil | React Native 0.88, Expo SDK 58, Expo Router, TypeScript, React Query, SecureStore, expo-print |
 | Backend | Node.js, Express 5, MongoDB (Mongoose), JWT, bcryptjs, Helmet |
-| Despliegue | Vercel (frontend), Render (backend), EAS Build (APK de Android), Docker para desarrollo local |
+| Despliegue | Vercel (web), Render (backend), EAS Build (APK de Android) |
 | Pruebas | node:test + supertest + mongodb-memory-server (backend), Jest + Testing Library (móvil) |
 
 ## Estructura
 
 ```
-annie-frontend/   Aplicación web React (PWA)
-annie-mobile/     App móvil React Native (Expo)
-annie-backend/    API REST en Express + MongoDB (la usan la web y la app)
+annie-backend/              API REST (Express + MongoDB) que usan la web y la app
+├── server.js               Arranque: seguridad, CORS, rutas y manejo de errores
+├── config/db.js            Conexión a MongoDB
+├── middleware/             Autenticación (JWT)
+├── models/                 Esquemas: User, Business, Product, Client, Sale, CreditMovement, Counter, Upload
+├── routes/                 auth, profile, products, clients, credits, sales
+├── utils/                  RFC, errores (mensajes en español), detección de imágenes
+├── scripts/                Datos de demostración, servidor en memoria, diagnóstico de conexión
+└── test/                   Pruebas (node:test + supertest)
+
+annie-frontend/             Aplicación web (React)
+├── public/                 index.html, manifest, estilos y medios de la página de inicio
+└── src/
+    ├── api/                Cliente HTTP (axios)
+    ├── components/         Secciones de la página de inicio
+    ├── pages/              Inicio, login, registro, panel
+    ├── dashboard/          Panel: pages/ (Ventas, Productos...) y components/ (menú, barra)
+    ├── utils/              Formatos, RFC, reglas de venta y constantes compartidas
+    └── hooks/              Hooks reutilizables
+
+annie-mobile/               App de celular (React Native + Expo) — ver su README
+├── src/app/                Pantallas (Expo Router)
+├── src/components/         Componentes y kit de UI
+├── src/lib/                API, consultas, reglas de negocio, ticket
+└── __tests__/              Pruebas (Jest + Testing Library)
+
+.github/workflows/ci.yml    Pruebas automáticas en GitHub en cada push
+render.yaml                 Despliegue del backend en Render
 ```
 
 ## Ejecución local
@@ -77,8 +102,6 @@ npm run dev:nube-pruebas   # backend contra Atlas en la base "annie_pruebas" (no
 cd annie-backend && npm test        # API: ventas, folios, crédito, permisos, archivos
 cd annie-mobile && npm test         # App móvil: reglas de negocio y pantallas
 ```
-
-También puede levantarse todo con Docker: ver [DOCKER.md](DOCKER.md).
 
 ## Estrategia de ramas
 

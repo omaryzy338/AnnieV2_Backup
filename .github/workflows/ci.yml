@@ -1,0 +1,61 @@
+# Revisión automática en cada push y pull request: si algo falla, GitHub lo
+# marca en rojo antes de que llegue a main.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend (pruebas)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: annie-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: annie-backend/package-lock.json
+      - run: npm ci
+      - run: npm test
+
+  movil:
+    name: App móvil (tipos, lint y pruebas)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: annie-mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: annie-mobile/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test -- --ci
+
+  web:
+    name: Web (compilación)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: annie-frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: annie-frontend/package-lock.json
+      - run: npm ci
+      # CI=true hace que las advertencias de ESLint detengan la compilación
+      - run: npm run build
+        env:
+          CI: true
