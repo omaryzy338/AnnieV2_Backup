@@ -86,6 +86,8 @@ Para probar sin instalar MongoDB: `npm run dev:memoria` en `annie-backend` levan
 
 ## Conectar con MongoDB Atlas (nube)
 
+Guía paso a paso para crear la base gratis y obtener la URI: [docs/CONFIGURAR_MONGODB_ATLAS.md](docs/CONFIGURAR_MONGODB_ATLAS.md).
+
 1. Crea `annie-backend/.env` copiando `annie-backend/.env.example` y pon tu cadena de conexión en `DB_URI` y una clave larga en `JWT_SECRET`. **Nunca subas `.env` a GitHub** (ya está en `.gitignore`).
 2. En Atlas → **Network Access**, permite tu IP (para probar en tu computadora) y `0.0.0.0/0` (para que Render pueda conectarse).
 3. Comandos útiles dentro de `annie-backend`:
