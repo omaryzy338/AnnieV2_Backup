@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { aplicarDNS } = require('../utils/dns');
 
 // En entornos serverless (Vercel) el archivo se ejecuta en cada invocación
 // "en frío", pero el proceso puede reutilizarse entre peticiones. Si abriéramos
@@ -21,7 +22,8 @@ const connectDB = async () => {
   }
 
   if (!cached.promise) {
-    const isAtlas = uri.includes('mongodb+srv');
+    aplicarDNS();
+    const isAtlas = uri.includes('mongodb+srv') || uri.includes('.mongodb.net');
     // DB_NAME (opcional) elige otra base dentro del mismo servidor, p. ej.
     // "annie_pruebas" para probar en Atlas sin tocar los datos reales.
     const dbName = process.env.DB_NAME || undefined;

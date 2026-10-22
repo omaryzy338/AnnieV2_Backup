@@ -7,12 +7,15 @@
 
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const mongoose = require('mongoose');
+const { aplicarDNS } = require('../utils/dns');
 
 // Explicación en español de los errores más comunes al conectar con Atlas
 function explicar(err) {
   const m = `${err?.message ?? ''} ${err?.cause?.message ?? ''}`;
   if (/bad auth|Authentication failed|auth error/i.test(m))
     return 'Usuario o contraseña incorrectos. Revisa el usuario de la base en Atlas → Database Access y que la contraseña en DB_URI no tenga caracteres sin codificar (@, :, / se escriben %40, %3A, %2F).';
+  if (/querySrv (ETIMEOUT|ECONNREFUSED)/i.test(m))
+    return 'Node.js no pudo consultar el DNS (común en Windows). Agrega en .env la línea DNS_SERVERS=8.8.8.8,1.1.1.1 y vuelve a intentar.';
   if (/querySrv|ENOTFOUND|EAI_AGAIN/i.test(m))
     return 'No se encontró el servidor. Revisa que el host del clúster en DB_URI esté bien escrito y que tengas internet.';
   if (/whitelist|not authorized.*IP|IP.*not.*allowed|ReplicaSetNoPrimary|Server selection timed out|ECONNREFUSED|ETIMEDOUT/i.test(m))
@@ -32,9 +35,10 @@ const hostSeguro = (uri) => {
     console.error('❌ No hay DB_URI. Crea annie-backend/.env (copia .env.example) y pon la cadena de conexión de Atlas.');
     process.exit(1);
   }
-  const atlas = uri.startsWith('mongodb+srv');
+  const atlas = uri.startsWith('mongodb+srv') || uri.includes('.mongodb.net');
   console.log(`Servidor: ${hostSeguro(uri)} ${atlas ? '(☁️  Atlas)' : '(local)'}`);
 
+  aplicarDNS();
   const inicio = Date.now();
   try {
     await mongoose.connect(uri, { serverSelectionTimeoutMS: 15000, ...(process.env.DB_NAME ? { dbName: process.env.DB_NAME } : {}) });
