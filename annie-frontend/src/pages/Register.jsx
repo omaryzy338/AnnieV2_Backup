@@ -88,23 +88,7 @@ const Register = () => {
       {!isMobile && (
       <div style={styles.leftPanel}>
         <div style={styles.leftContent}>
-          <div style={styles.brand}>Annie</div>
-          <div style={styles.brandSub}>Gestión empresarial para emprendedores</div>
-          <div style={styles.features}>
-            {[
-              { icon: "fa-bar-chart",  text: "Reportes y estadísticas" },
-              { icon: "fa-cube",       text: "Control de inventario" },
-              { icon: "fa-users",      text: "Gestión de clientes" },
-              { icon: "fa-money",      text: "Registro de ventas" },
-            ].map(({ icon, text }) => (
-              <div key={text} style={styles.featureItem}>
-                <i className={`fa ${icon}`} style={{ color: "rgba(255,255,255,0.9)", fontSize: 15 }} />
-                <span>{text}</span>
-              </div>
-            ))}
-          </div>
-          <div style={styles.decorCircle1} />
-          <div style={styles.decorCircle2} />
+          <img src="/Logo_Vertical_Blanco.png" alt="Annie" style={styles.brand} />
         </div>
       </div>
       )}
@@ -318,24 +302,8 @@ const styles = {
     textAlign: "center", color: "#fff", position: "relative", zIndex: 1, padding: 40,
   },
   brand: {
-    fontSize: 52, fontWeight: 900, letterSpacing: 4, color: "#fff",
-    textShadow: "0 4px 20px rgba(0,0,0,0.15)",
-  },
-  brandSub: {
-    fontSize: 15, color: "rgba(255,255,255,0.85)", marginTop: 10, marginBottom: 32, fontWeight: 400,
-  },
-  features: { display: "flex", flexDirection: "column", gap: 12, alignItems: "flex-start", textAlign: "left" },
-  featureItem: {
-    display: "flex", alignItems: "center", gap: 10,
-    color: "rgba(255,255,255,0.9)", fontSize: 14, fontWeight: 500,
-  },
-  decorCircle1: {
-    position: "absolute", width: 300, height: 300, borderRadius: "50%",
-    background: "rgba(255,255,255,0.08)", top: -80, right: -80,
-  },
-  decorCircle2: {
-    position: "absolute", width: 200, height: 200, borderRadius: "50%",
-    background: "rgba(255,255,255,0.06)", bottom: -50, left: -50,
+    display: "block", width: 420, maxWidth: "100%", height: "auto",
+    margin: "0 auto",
   },
   rightPanel: {
     flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
