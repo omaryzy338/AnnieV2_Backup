@@ -2,7 +2,7 @@ import React from "react";
 
 export const Testimonials = (props) => {
   return (
-    <div id="testimonials">
+    <div id="testimonials" style={{fontFamily: "Poppins, sans-serif" }}>
       <div className="container">
         <div className="section-title text-center">
           <h2>Testimonios e Insights</h2>

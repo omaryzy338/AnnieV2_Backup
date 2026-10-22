@@ -15,25 +15,25 @@ export const About = (props) => {
           </div>
           <div className="col-xs-12 col-md-6" style={{ paddingLeft: "20px" }}>
             <div className="about-text">
-              <h2 style={{ fontSize: "28px", fontWeight: "600", marginBottom: "16px", color: "#333" }}>
-                ¿Qué es Annie?
+              <h2 style={{ fontSize: "28px", fontWeight: "600", marginBottom: "16px", color: "#000000", fontFamily: "Poppins, sans-serif", textTransform: "none" }}>
+                Conocenos
               </h2>
               <p
-                style={{ color: "#666", lineHeight: "1.7", marginBottom: "24px", fontSize: "15px" }}
+                style={{ color: "#000000", lineHeight: "1.7", marginBottom: "24px", fontSize: "15px", fontFamily: "Poppins, sans-serif" }}
                 dangerouslySetInnerHTML={{
                   __html: props.data ? props.data.paragraph.replace(/Annie/g, "<strong>Annie</strong>") : "loading..."
                 }}
               />
-              <h3 style={{ fontSize: "20px", fontWeight: "600", marginBottom: "16px", marginTop: "32px", color: "#333" }}>
+              <h3 style={{ fontSize: "20px", fontWeight: "600", marginBottom: "16px", marginTop: "32px", color: "#000000", fontFamily: "Poppins, sans-serif" }}>
                 ¿Por qué elegirnos?
               </h3>
               <div className="list-style">
                 <div className="col-lg-6 col-sm-6 col-xs-12">
-                  <ul style={{ paddingLeft: "20px" }}>
+                  <ul style={{ paddingLeft: "20px", fontFamily: "Poppins, sans-serif" }}>
                     {props.data
                       ? props.data.Why.map((d, i) => (
-                          <li key={`${d}-${i}`} style={{ marginBottom: "10px", color: "#555" }}>
-                            <i className="fa fa-check" style={{ color: "#6372ff", marginRight: "8px" }}></i>
+                          <li key={`${d}-${i}`} style={{ marginBottom: "10px", color: "#000000" }}>
+                            <i className="fa fa-check" style={{ color: "#3284f7", marginRight: "8px" }}></i>
                             {d}
                           </li>
                         ))
@@ -41,11 +41,11 @@ export const About = (props) => {
                   </ul>
                 </div>
                 <div className="col-lg-6 col-sm-6 col-xs-12">
-                  <ul style={{ paddingLeft: "20px" }}>
+                  <ul style={{ paddingLeft: "20px" , fontFamily: "Poppins, sans-serif" }}>
                     {props.data
                       ? props.data.Why2.map((d, i) => (
-                          <li key={`${d}-${i}`} style={{ marginBottom: "10px", color: "#555" }}>
-                            <i className="fa fa-check" style={{ color: "#6372ff", marginRight: "8px" }}></i>
+                          <li key={`${d}-${i}`} style={{ marginBottom: "10px", color: "#000000" }}>
+                            <i className="fa fa-check" style={{ color: "#3284f7", marginRight: "8px" }}></i>
                             {d}
                           </li>
                         ))

@@ -1,7 +1,7 @@
 /* ===== MEJORAS GENERALES ===== */
 
 html, body, #root {
-  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: "Poppins", sans-serif;
   font-size: 15px;
   line-height: 1.5;
   color: #1a1a2e;
@@ -44,12 +44,12 @@ html {
   font-size: 36px;
   font-weight: 600;
   margin-bottom: 16px;
-  color: #333;
+  color: #000000;
 }
 
 .section-title p {
   font-size: 16px;
-  color: #666;
+  color: #000000;
   line-height: 1.6;
   max-width: 600px;
   margin: 0 auto;
@@ -72,7 +72,7 @@ html {
   border-radius: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
-  color: #6372ff !important;
+  color: #3284f7 !important;
 }
 
 #menu.navbar-default.scrolled {
@@ -83,16 +83,16 @@ html {
 #menu .navbar-brand {
   font-weight: 700;
   font-size: 18px;
-  color: #1a1a2e !important;
+  color: #000000 !important;
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .annie-nav__brand {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  color: #1a1a2e !important;
+  color: #000000 !important;
 }
 
 .annie-nav__item-logo,
@@ -170,7 +170,7 @@ html {
 
 .annie-nav__link,
 #menu .navbar-nav li a {
-  color: #38407f !important;
+  color: #1e447a !important;
   font-size: 14px;
   font-weight: 500;
   text-transform: capitalize;
@@ -187,7 +187,7 @@ html {
 .annie-nav__link:hover,
 #menu .navbar-nav li.active a,
 #menu .navbar-nav li a:hover {
-  color: #4d66ff !important;
+  color: #1e447a !important;
 }
 
 /* "Crear cuenta" se ve igual que el resto de los links del menú
@@ -214,7 +214,7 @@ html {
 #menu .navbar-nav > li > a.annie-nav__cta-link:hover,
 .annie-nav__cta-link:hover {
   background: transparent !important;
-  color: #4d66ff !important;
+  color: #1e447a !important;
 }
 
 .sr-only {
@@ -240,7 +240,7 @@ html {
 }
 
 #menu .navbar-toggle .icon-bar {
-  background-color: #2c3d99;
+  background-color: #1e447a;
 }
 
 #menu .navbar-toggle:hover {
@@ -415,7 +415,7 @@ html {
   display: flex;
   align-items: center;
   gap: 12px;
-  color: #4a5481;
+  color: #3284F7;
   font-size: 0.98rem;
   padding: 12px 0;
   border-bottom: 1px solid rgba(99, 114, 255, 0.08);
@@ -431,7 +431,7 @@ html {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #6372ff;
+  color: #3284F7;
   font-size: 1rem;
 }
 
@@ -452,7 +452,7 @@ html {
   justify-content: center;
   gap: 14px;
   align-items: center;
-  color: #5a5a78;
+  color: #000000;
   font-size: 0.95rem;
   width: 100%;
 }
@@ -460,11 +460,11 @@ html {
 .footer-brand {
   display: inline-flex;
   font-weight: 700;
-  color: #38407f;
+  color: #3284F7;
 }
 
 .footer-separator {
-  color: rgba(99, 114, 255, 0.32);
+  color: #000000;
 }
 
 .social-links {

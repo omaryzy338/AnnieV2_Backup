@@ -2,7 +2,7 @@ import React from "react";
 
 export const Features = (props) => {
   return (
-    <div id="features" className="text-center">
+    <div id="features" className="text-center" style={{fontFamily: "Poppins, sans-serif" }}>
       <div className="container">
         <div className="col-xs-12 col-md-10 col-md-offset-1 section-title">
           <h2>Propuesta</h2>
@@ -40,7 +40,7 @@ export const Features = (props) => {
                     <h3 style={{ marginTop: 0, marginBottom: "10px", fontSize: "clamp(14px, 3.5vw, 16px)", fontWeight: "600", color: "#1a1a2e" }}>
                       {d.title}
                     </h3>
-                    <p style={{ color: "#666", fontSize: "clamp(12px, 2.5vw, 14px)", lineHeight: "1.5", margin: 0 }}>
+                    <p style={{ color: "#000000", fontSize: "clamp(12px, 2.5vw, 14px)", lineHeight: "1.5", margin: 0 }}>
                       {d.text}
                     </p>
                   </div>

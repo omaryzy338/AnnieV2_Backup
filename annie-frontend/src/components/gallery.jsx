@@ -4,7 +4,7 @@ import React from "react";
 export const Gallery = (props) => {
   return (
     <div id="portfolio" className="text-center">
-      <div className="container">
+      <div className="container" style={{fontFamily: "Poppins, sans-serif" }}>
         <div className="section-title">
           <h2>Tecnologías Utilizadas</h2>
           <p>

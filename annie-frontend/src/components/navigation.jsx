@@ -18,18 +18,18 @@ export const Navigation = (props) => {
   };
 
   const navItems = [
-    { href: "/", icon: "fa fa-home", label: "Inicio", external: false },
+    { href: "/", icon: "fa fa-home", label: "Inicio", external: false, fontFamily: "Poppins, sans-serif" },
     // "Propuesta" apunta a #features, que es la sección titulada "Propuesta"
     // (#about, "¿Qué es Annie?", queda justo debajo al seguir bajando)
-    { href: "#features", icon: "fa fa-lightbulb-o", label: "Propuesta", external: true },
-    { href: "#services", icon: "fa fa-cogs", label: "Funciones", external: true },
-    { href: "#portfolio", icon: "fa fa-code", label: "Tecnología", external: true },
-    { href: "#testimonials", icon: "fa fa-comments", label: "Testimonios", external: true },
-    { href: "#contact", icon: "fa fa-envelope", label: "Contacto", external: true },
+    { href: "#features", icon: "fa fa-lightbulb-o", label: "Propuesta", external: true, fontFamily: "Poppins, sans-serif" },
+    { href: "#services", icon: "fa fa-cogs", label: "Funciones", external: true, fontFamily: "Poppins, sans-serif" },
+    { href: "#portfolio", icon: "fa fa-code", label: "Tecnología", external: true, fontFamily: "Poppins, sans-serif" },
+    { href: "#testimonials", icon: "fa fa-comments", label: "Testimonios", external: true, fontFamily: "Poppins, sans-serif" },
+    { href: "#contact", icon: "fa fa-envelope", label: "Contacto", external: true, fontFamily: "Poppins, sans-serif" },
   ];
 
   return (
-    <nav id="menu" className="navbar navbar-default navbar-fixed-top annie-nav">
+    <nav id="menu" className="navbar navbar-default navbar-fixed-top annie-nav" font-family="Poppins, sans-serif"> 
       <div className="container">
         <div className="navbar-header">
           <button
@@ -53,7 +53,7 @@ export const Navigation = (props) => {
             {navItems.map((item) => (
               <li key={item.label}>
                 {item.external ? (
-                  <a href={item.href} className="page-scroll annie-nav__link">
+                  <a href={item.href} className="page-scroll annie-nav__link" style={{ fontFamily: item.fontFamily }}>
                     {item.icon === "logo" ? (
                       <img src="/favicon.png" alt="Annie" className="annie-nav__item-logo" />
                     ) : (

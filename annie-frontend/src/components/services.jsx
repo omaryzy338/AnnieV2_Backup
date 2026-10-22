@@ -3,8 +3,8 @@ import React from "react";
 export const Services = (props) => {
   return (
     <div id="services" className="text-center">
-      <div className="container">
-        <div className="section-title">
+      <div className="container" style={{fontFamily: "Poppins, sans-serif" }}>
+        <div className="section-title" >
           <h2>Funcionalidades Principales</h2>
           <p>
             Herramientas esenciales diseñadas para ayudarte a gestionar tu negocio de manera eficiente, organizada y profesional.
@@ -18,7 +18,7 @@ export const Services = (props) => {
                     style={{
                       padding: "28px 16px",
                       borderRadius: "8px",
-                      backgroundColor: "#f8f9fa",
+                      backgroundColor: "#ffffff",
                       minHeight: "clamp(240px, 50vh, 280px)",
                       width: "100%",
                       display: "flex",
@@ -33,15 +33,15 @@ export const Services = (props) => {
                       aria-label={d.name}
                       style={{
                         fontSize: "clamp(44px, 10vw, 72px)",
-                        color: "#6372ff",
+                        color: "#ffffff",
                         display: "block",
                         marginBottom: "16px"
                       }}
                     ></i>
-                    <h3 style={{ marginTop: 0, marginBottom: "12px", fontSize: "clamp(14px, 3.5vw, 16px)", fontWeight: "600", color: "#1a1a2e" }}>
+                    <h3 style={{ marginTop: 0, marginBottom: "12px", fontSize: "clamp(14px, 3.5vw, 16px)", fontWeight: "600", color: "#000000" }}>
                       {d.name}
                     </h3>
-                    <p style={{ color: "#666", fontSize: "clamp(12px, 2.5vw, 14px)", lineHeight: "1.5", marginBottom: 0 }}>
+                    <p style={{ color: "#000000", fontSize: "clamp(12px, 2.5vw, 14px)", lineHeight: "1.5", marginBottom: 0 }}>
                       {d.text}
                     </p>
                   </div>
