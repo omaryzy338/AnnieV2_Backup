@@ -88,7 +88,7 @@ const Register = () => {
       {!isMobile && (
       <div style={styles.leftPanel}>
         <div style={styles.leftContent}>
-          <img src="/Logo_Vertical_Blanco.png" alt="Annie" style={styles.brand} />
+          <img src="/Logo_Horizontal_Blanco.png" alt="Annie" style={styles.brand} />
         </div>
       </div>
       )}
