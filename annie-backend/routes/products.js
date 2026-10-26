@@ -4,6 +4,7 @@ const { responderError, validarId } = require('../utils/errores');
 const path = require('path');
 const multer = require('multer');
 const authMiddleware = require('../middleware/authMiddleware');
+const { soloDueno } = authMiddleware;
 const Product = require('../models/Product');
 const Sale = require('../models/Sale');
 const Upload = require('../models/Upload');
@@ -11,6 +12,13 @@ const { detectarTipoImagen } = require('../utils/imagen');
 
 // Un id mal formado responde 404 (no 500)
 router.param('id', validarId('Producto no encontrado'));
+
+// El costo es información del dueño (su margen): a los empleados no se les envía
+const paraRespuesta = (req, product) => {
+  if (req.esDueno) return product;
+  const { cost, ...resto } = product.toJSON();
+  return resto;
+};
 
 // La imagen se recibe en memoria y se guarda en MongoDB: en Vercel el disco
 // es de solo lectura y efímero, así que no se puede escribir en /uploads.
@@ -62,8 +70,8 @@ function validarProducto(body, parcial) {
   return { datos };
 }
 
-// ── POST /products/upload-image — subir imagen ───────────────────
-router.post('/upload-image', authMiddleware, upload.single('image'), async (req, res) => {
+// ── POST /products/upload-image — subir imagen (solo el dueño) ───
+router.post('/upload-image', authMiddleware, soloDueno, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: 'No se recibió ningún archivo' });
 
@@ -76,7 +84,7 @@ router.post('/upload-image', authMiddleware, upload.single('image'), async (req,
       contentType: tipo,
       filename: req.file.originalname,
       size: req.file.size,
-      owner: req.user.id,
+      owner: req.ownerId,
     });
 
     // Misma forma de URL que antes, para no cambiar nada en el frontend
@@ -89,8 +97,8 @@ router.post('/upload-image', authMiddleware, upload.single('image'), async (req,
 // ── GET /products — listar todos los productos del usuario ────────
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const products = await Product.find({ owner: req.user.id, activo: { $ne: false } }).sort({ createdAt: -1 });
-    res.json(products);
+    const products = await Product.find({ owner: req.ownerId, activo: { $ne: false } }).sort({ createdAt: -1 });
+    res.json(products.map((p) => paraRespuesta(req, p)));
   } catch (err) {
     responderError(res, err, 'Error al obtener productos');
   }
@@ -99,21 +107,21 @@ router.get('/', authMiddleware, async (req, res) => {
 // ── GET /products/:id — obtener un producto ───────────────────────
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
-    const product = await Product.findOne({ _id: req.params.id, owner: req.user.id, activo: { $ne: false } });
+    const product = await Product.findOne({ _id: req.params.id, owner: req.ownerId, activo: { $ne: false } });
     if (!product) return res.status(404).json({ message: 'Producto no encontrado' });
-    res.json(product);
+    res.json(paraRespuesta(req, product));
   } catch (err) {
     responderError(res, err, 'Error al obtener producto');
   }
 });
 
-// ── POST /products — crear producto ──────────────────────────────
-router.post('/', authMiddleware, async (req, res) => {
+// ── POST /products — crear producto (solo el dueño) ──────────────
+router.post('/', authMiddleware, soloDueno, async (req, res) => {
   try {
     const { datos, error } = validarProducto(req.body, false);
     if (error) return res.status(400).json({ message: error });
 
-    const product = new Product({ ...datos, owner: req.user.id });
+    const product = new Product({ ...datos, owner: req.ownerId });
     await product.save();
 
     res.status(201).json(product);
@@ -122,14 +130,14 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 });
 
-// ── PUT /products/:id — actualizar producto ───────────────────────
-router.put('/:id', authMiddleware, async (req, res) => {
+// ── PUT /products/:id — actualizar producto (solo el dueño) ───────
+router.put('/:id', authMiddleware, soloDueno, async (req, res) => {
   try {
     const { datos, error } = validarProducto(req.body, true);
     if (error) return res.status(400).json({ message: error });
 
     const product = await Product.findOneAndUpdate(
-      { _id: req.params.id, owner: req.user.id, activo: { $ne: false } },
+      { _id: req.params.id, owner: req.ownerId, activo: { $ne: false } },
       datos,
       { returnDocument: 'after', runValidators: true }
     );
@@ -141,13 +149,13 @@ router.put('/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// ── DELETE /products/:id — eliminar producto ──────────────────────
+// ── DELETE /products/:id — eliminar producto (solo el dueño) ──────
 // Si el producto ya tiene ventas se oculta (activo: false) en lugar de
 // borrarse, para que los tickets anteriores sigan mostrando su nombre.
-router.delete('/:id', authMiddleware, async (req, res) => {
+router.delete('/:id', authMiddleware, soloDueno, async (req, res) => {
   try {
-    const filtro = { _id: req.params.id, owner: req.user.id, activo: { $ne: false } };
-    const conVentas = await Sale.exists({ product: req.params.id, owner: req.user.id });
+    const filtro = { _id: req.params.id, owner: req.ownerId, activo: { $ne: false } };
+    const conVentas = await Sale.exists({ product: req.params.id, owner: req.ownerId });
     const product = conVentas
       ? await Product.findOneAndUpdate(filtro, { activo: false }, { returnDocument: 'after' })
       : await Product.findOneAndDelete(filtro);

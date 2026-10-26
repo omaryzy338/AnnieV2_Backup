@@ -54,6 +54,19 @@ async function detener() {
 
 let contador = 0;
 
+// Cliente HTTP que manda el token dado en cada petición
+function conToken(token) {
+  const auth = (r) => r.set('Authorization', `Bearer ${token}`);
+  return {
+    token,
+    get:    (url)       => auth(request(app).get(url)),
+    post:   (url, data) => auth(request(app).post(url)).send(data),
+    put:    (url, data) => auth(request(app).put(url)).send(data),
+    delete: (url)       => auth(request(app).delete(url)),
+    upload: (url, field, buffer, filename) => auth(request(app).post(url)).attach(field, buffer, filename),
+  };
+}
+
 // Registra un usuario nuevo y regresa un cliente HTTP autenticado
 async function nuevaCuenta(extra = {}) {
   contador += 1;
@@ -67,18 +80,36 @@ async function nuevaCuenta(extra = {}) {
   };
   const res = await request(app).post('/auth/register').send(body);
   if (res.status !== 201) throw new Error(`Registro falló: ${res.status} ${JSON.stringify(res.body)}`);
-  const token = res.body.token;
-  const auth = (r) => r.set('Authorization', `Bearer ${token}`);
   return {
-    token,
+    ...conToken(res.body.token),
     user: res.body.user,
     email: body.email,
     password: body.password,
-    get:    (url)       => auth(request(app).get(url)),
-    post:   (url, data) => auth(request(app).post(url)).send(data),
-    put:    (url, data) => auth(request(app).put(url)).send(data),
-    delete: (url)       => auth(request(app).delete(url)),
-    upload: (url, field, buffer, filename) => auth(request(app).post(url)).attach(field, buffer, filename),
+  };
+}
+
+// El dueño (cuenta de nuevaCuenta) da de alta a un empleado y este inicia
+// sesión. Regresa el cliente HTTP del empleado, con `empleado` = la respuesta
+// de POST /employees.
+async function nuevoEmpleado(dueno, extra = {}) {
+  contador += 1;
+  const body = {
+    name: 'Empleado',
+    lastName: `Número ${contador}`,
+    email: `empleado${contador}_${Date.now()}@annie.test`,
+    password: 'Empleado123!',
+    ...extra,
+  };
+  const alta = await dueno.post('/employees', body);
+  if (alta.status !== 201) throw new Error(`Alta de empleado falló: ${alta.status} ${JSON.stringify(alta.body)}`);
+  const login = await request(app).post('/auth/login').send({ email: body.email, password: body.password });
+  if (login.status !== 200) throw new Error(`Login de empleado falló: ${login.status} ${JSON.stringify(login.body)}`);
+  return {
+    ...conToken(login.body.token),
+    user: login.body.user,
+    empleado: alta.body,
+    email: body.email,
+    password: body.password,
   };
 }
 
@@ -86,4 +117,7 @@ async function nuevaCuenta(extra = {}) {
 const RFC_NEGOCIO = 'GOMA800101AB1';
 const RFC_CLIENTE = 'PEJU900215XY2';
 
-module.exports = { iniciar, detener, nuevaCuenta, request: () => request(app), RFC_NEGOCIO, RFC_CLIENTE };
+module.exports = {
+  iniciar, detener, nuevaCuenta, nuevoEmpleado, conToken,
+  request: () => request(app), RFC_NEGOCIO, RFC_CLIENTE,
+};

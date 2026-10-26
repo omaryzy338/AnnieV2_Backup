@@ -12,6 +12,7 @@ Tiene dos clientes que comparten el mismo backend y la misma base de datos:
 - **Inventario:** registro de productos con precios, categorías y existencias, con alertas de stock bajo.
 - **Ventas:** captura rápida con folio, método de pago (efectivo o crédito), pago, cambio y ticket imprimible o compartible.
 - **Clientes y créditos:** control de clientes y de sus cuentas a crédito ("fiado"): cargos, abonos y saldo.
+- **Empleados:** el dueño crea cuentas para su equipo, que vende y atiende clientes sin ver costos ni cambiar la configuración (ver [Roles](#roles-dueño-y-empleados)).
 - **Reportes:** gráficas de ventas, productos más vendidos, categorías y mejores clientes; la app móvil exporta las ventas a CSV (Excel).
 - **App de celular:** instalable en Android (APK) y iPhone, con impresión y envío del ticket en PDF.
 - **En desarrollo (próximas revisiones):** modo sin conexión (PWA con service worker e IndexedDB) para registrar ventas sin internet y sincronizarlas después.
@@ -36,10 +37,10 @@ Muchos pequeños negocios llevan sus ventas, inventario y créditos en libreta p
 annie-backend/              API REST (Express + MongoDB) que usan la web y la app
 ├── server.js               Arranque: seguridad, CORS, rutas y manejo de errores
 ├── config/db.js            Conexión a MongoDB
-├── middleware/             Autenticación (JWT)
+├── middleware/             Autenticación (JWT) y permisos por rol
 ├── models/                 Esquemas: User, Business, Product, Client, Sale, CreditMovement, Counter, Upload
-├── routes/                 auth, profile, products, clients, credits, sales
-├── utils/                  RFC, errores (mensajes en español), detección de imágenes
+├── routes/                 auth, profile, products, clients, credits, sales, employees
+├── utils/                  RFC, errores (mensajes en español), credenciales, roles, detección de imágenes
 ├── scripts/                Datos de demostración, servidor en memoria, diagnóstico de conexión
 └── test/                   Pruebas (node:test + supertest)
 
@@ -62,6 +63,24 @@ annie-mobile/               App de celular (React Native + Expo) — ver su READ
 .github/workflows/ci.yml    Pruebas automáticas en GitHub en cada push
 render.yaml                 Despliegue del backend en Render
 ```
+
+## Roles: dueño y empleados
+
+Quien registra el negocio es el **dueño** y puede hacer todo. El dueño da de alta **empleados**, que entran con su propio email y trabajan sobre los datos de ese mismo negocio:
+
+- **Pueden:** ver productos (sin el costo), registrar ventas (comparten los folios del negocio y cada venta guarda quién la hizo en `vendedorNombre`), ver ventas y su resumen, ver, crear y editar clientes (solo datos básicos: los fiscales y de crédito se ignoran), consultar créditos, registrar abonos y editar su propio perfil.
+- **No pueden** (la API responde 403): crear, editar o borrar productos ni subir imágenes, cancelar ventas, eliminar clientes, registrar cargos ni cambiar límites de crédito, editar el negocio o su logo, ni administrar empleados.
+
+El login y `GET /profile` incluyen `rol` (`dueno` o `empleado`); el login de un empleado trae además `ownerId` y los datos del negocio de su dueño. Si el dueño desactiva o elimina a un empleado, o le cambia la contraseña, su sesión abierta deja de servir (401); mientras esté desactivado tampoco puede entrar (403), y al reactivarlo debe iniciar sesión de nuevo. Las cuentas creadas antes de los roles son dueños.
+
+Endpoints de empleados (solo el dueño):
+
+| Método y ruta | Qué hace |
+|---|---|
+| `GET /employees` | Lista los empleados, los más nuevos primero |
+| `POST /employees` | Crea uno: `name`, `lastName`, `email`, `password` (misma regla de contraseña que el registro) |
+| `PUT /employees/:id` | Cambia `name`, `lastName`, `activo` (true/false) o `password` |
+| `DELETE /employees/:id` | Lo elimina; sus ventas conservan el nombre del vendedor |
 
 ## Ejecución local
 
@@ -101,7 +120,7 @@ npm run dev:nube-pruebas   # backend contra Atlas en la base "annie_pruebas" (no
 ## Pruebas
 
 ```bash
-cd annie-backend && npm test        # API: ventas, folios, crédito, permisos, archivos
+cd annie-backend && npm test        # API: ventas, folios, crédito, roles y permisos, archivos
 cd annie-mobile && npm test         # App móvil: reglas de negocio y pantallas
 ```
 

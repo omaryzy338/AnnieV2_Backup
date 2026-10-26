@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { responderError, validarId } = require('../utils/errores');
 const authMiddleware = require('../middleware/authMiddleware');
+const { soloDueno } = authMiddleware;
 const Client = require('../models/Client');
 const CreditMovement = require('../models/CreditMovement');
 
@@ -14,7 +15,7 @@ const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 // ── GET /credits — clientes de crédito/mayoreo con su saldo ───────
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const clientes = await Client.find({ owner: req.user.id, esMayoreo: true, activo: { $ne: false } })
+    const clientes = await Client.find({ owner: req.ownerId, esMayoreo: true, activo: { $ne: false } })
       .sort({ createdAt: -1 });
 
     // Enriquecer con crédito disponible
@@ -32,7 +33,7 @@ router.get('/', authMiddleware, async (req, res) => {
 // ── GET /credits/resumen — totales de cuentas por cobrar ──────────
 router.get('/resumen', authMiddleware, async (req, res) => {
   try {
-    const clientes = await Client.find({ owner: req.user.id, esMayoreo: true, activo: { $ne: false } });
+    const clientes = await Client.find({ owner: req.ownerId, esMayoreo: true, activo: { $ne: false } });
     const totalPorCobrar = clientes.reduce((a, c) => a + (c.saldo || 0), 0);
     const limiteTotal    = clientes.reduce((a, c) => a + (c.limiteCredito || 0), 0);
     const conDeuda       = clientes.filter((c) => (c.saldo || 0) > 0).length;
@@ -54,12 +55,12 @@ router.get('/resumen', authMiddleware, async (req, res) => {
 // ── GET /credits/:clientId/movimientos — estado de cuenta ─────────
 router.get('/:clientId/movimientos', authMiddleware, async (req, res) => {
   try {
-    const client = await Client.findOne({ _id: req.params.clientId, owner: req.user.id });
+    const client = await Client.findOne({ _id: req.params.clientId, owner: req.ownerId });
     if (!client) return res.status(404).json({ message: 'Cliente no encontrado' });
 
     const movimientos = await CreditMovement.find({
       client: client._id,
-      owner: req.user.id,
+      owner: req.ownerId,
     })
       .populate('sale', 'total quantity')
       .sort({ createdAt: -1 });
@@ -70,14 +71,14 @@ router.get('/:clientId/movimientos', authMiddleware, async (req, res) => {
   }
 });
 
-// ── PUT /credits/:clientId/limite — ajustar límite de crédito ─────
-router.put('/:clientId/limite', authMiddleware, async (req, res) => {
+// ── PUT /credits/:clientId/limite — ajustar límite (solo el dueño) ─
+router.put('/:clientId/limite', authMiddleware, soloDueno, async (req, res) => {
   try {
     const limite = Number(req.body.limiteCredito);
     if (Number.isNaN(limite) || limite < 0)
       return res.status(400).json({ message: 'El límite debe ser un número mayor o igual a 0' });
 
-    const client = await Client.findOne({ _id: req.params.clientId, owner: req.user.id, activo: { $ne: false } });
+    const client = await Client.findOne({ _id: req.params.clientId, owner: req.ownerId, activo: { $ne: false } });
     if (!client) return res.status(404).json({ message: 'Cliente no encontrado' });
 
     if (limite < (client.saldo || 0))
@@ -110,7 +111,7 @@ async function registrarMovimiento(req, res, tipo) {
   if (Number.isNaN(amount) || amount <= 0)
     return res.status(400).json({ message: `El monto del ${tipo} debe ser mayor a 0` });
 
-  const filtro = { _id: req.params.clientId, owner: req.user.id, activo: { $ne: false } };
+  const filtro = { _id: req.params.clientId, owner: req.ownerId, activo: { $ne: false } };
   const condicion = esCargo
     ? { esMayoreo: true, $expr: { $lte: [{ $add: [{ $ifNull: ['$saldo', 0] }, amount] }, { $add: [{ $ifNull: ['$limiteCredito', 0] }, 0.001] }] } }
     : { $expr: { $gte: [{ $ifNull: ['$saldo', 0] }, amount - 0.001] } };
@@ -153,7 +154,7 @@ async function registrarMovimiento(req, res, tipo) {
       amount,
       description: description || (esCargo ? 'Compra a crédito' : 'Pago recibido'),
       saldoDespues: client.saldo,
-      owner: req.user.id,
+      owner: req.ownerId,
     });
   } catch (e) {
     // Revertir el saldo si no se pudo registrar el movimiento
@@ -169,8 +170,8 @@ async function registrarMovimiento(req, res, tipo) {
   });
 }
 
-// ── POST /credits/:clientId/cargo — registrar compra a crédito ────
-router.post('/:clientId/cargo', authMiddleware, async (req, res) => {
+// ── POST /credits/:clientId/cargo — compra a crédito (solo el dueño)
+router.post('/:clientId/cargo', authMiddleware, soloDueno, async (req, res) => {
   try {
     await registrarMovimiento(req, res, 'cargo');
   } catch (err) {
@@ -179,6 +180,7 @@ router.post('/:clientId/cargo', authMiddleware, async (req, res) => {
 });
 
 // ── POST /credits/:clientId/abono — registrar pago del cliente ────
+// También lo pueden registrar los empleados (cobrar en mostrador).
 router.post('/:clientId/abono', authMiddleware, async (req, res) => {
   try {
     await registrarMovimiento(req, res, 'abono');

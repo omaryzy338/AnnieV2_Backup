@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const router = express.Router();
 const { responderError, validarId } = require('../utils/errores');
 const authMiddleware = require('../middleware/authMiddleware');
+const { soloDueno } = authMiddleware;
 const Sale = require('../models/Sale');
 const Product = require('../models/Product');
 const Client = require('../models/Client');
@@ -55,8 +56,8 @@ const calcularTotal = (price, quantity, discount, discountType) => {
 // ── GET /sales — listar todas las ventas ─────────────────────────
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    await asegurarFolios(req.user.id);
-    const sales = await Sale.find({ owner: req.user.id })
+    await asegurarFolios(req.ownerId);
+    const sales = await Sale.find({ owner: req.ownerId })
       .populate('product', 'name price image unit category')
       .populate('client', 'name lastName email')
       .sort({ createdAt: -1 });
@@ -67,6 +68,8 @@ router.get('/', authMiddleware, async (req, res) => {
 });
 
 // ── POST /sales — registrar venta y descontar inventario ─────────
+// La pueden registrar el dueño y sus empleados: todos comparten los folios
+// del negocio y cada venta guarda quién la hizo.
 router.post('/', authMiddleware, async (req, res) => {
   try {
     const { productId, clientId, discountType, saleDate, paymentMethod, amountPaid } = req.body || {};
@@ -85,7 +88,7 @@ router.post('/', authMiddleware, async (req, res) => {
       return res.status(404).json({ message: 'Cliente no encontrado' });
 
     // Buscar el producto (solo del dueño)
-    const product = await Product.findOne({ _id: productId, owner: req.user.id, activo: { $ne: false } });
+    const product = await Product.findOne({ _id: productId, owner: req.ownerId, activo: { $ne: false } });
     if (!product)
       return res.status(404).json({ message: 'Producto no encontrado' });
 
@@ -107,7 +110,7 @@ router.post('/', authMiddleware, async (req, res) => {
     // Cliente y método de pago
     let cliente = null;
     if (clientId) {
-      cliente = await Client.findOne({ _id: clientId, owner: req.user.id, activo: { $ne: false } });
+      cliente = await Client.findOne({ _id: clientId, owner: req.ownerId, activo: { $ne: false } });
       if (!cliente) return res.status(404).json({ message: 'Cliente no encontrado' });
     }
     let pagado = null;
@@ -137,7 +140,7 @@ router.post('/', authMiddleware, async (req, res) => {
     // Descontar inventario de forma atómica: si otra venta se llevó el stock
     // entre la validación y este punto, la condición $gte falla.
     const actualizado = await Product.findOneAndUpdate(
-      { _id: product._id, owner: req.user.id, quantity: { $gte: quantity } },
+      { _id: product._id, owner: req.ownerId, quantity: { $gte: quantity } },
       { $inc: { quantity: -quantity } },
       { returnDocument: 'after' }
     );
@@ -154,7 +157,7 @@ router.post('/', authMiddleware, async (req, res) => {
       clienteCargado = await Client.findOneAndUpdate(
         {
           _id: cliente._id,
-          owner: req.user.id,
+          owner: req.ownerId,
           esMayoreo: true,
           $expr: {
             $lte: [
@@ -183,8 +186,8 @@ router.post('/', authMiddleware, async (req, res) => {
 
     let sale;
     try {
-      await asegurarFolios(req.user.id);
-      const folio = await siguienteFolio(req.user.id);
+      await asegurarFolios(req.ownerId);
+      const folio = await siguienteFolio(req.ownerId);
       sale = await Sale.create({
         product:       product._id,
         folio,
@@ -198,7 +201,10 @@ router.post('/', authMiddleware, async (req, res) => {
         paymentMethod: metodo,
         amountPaid:    pagado,
         change:        cambio,
-        owner:         req.user.id,
+        // Quién vendió (dueño o empleado), con su nombre al momento de la venta
+        vendedor:       req.user.id,
+        vendedorNombre: `${req.user.name || ''} ${req.user.lastName || ''}`.trim(),
+        owner:         req.ownerId,
       });
     } catch (err) {
       await devolverStock();
@@ -214,7 +220,7 @@ router.post('/', authMiddleware, async (req, res) => {
         description:  `Venta folio ${sale.folio}`,
         sale:         sale._id,
         saldoDespues: clienteCargado.saldo,
-        owner:        req.user.id,
+        owner:        req.ownerId,
       });
     }
 
@@ -234,7 +240,7 @@ router.post('/', authMiddleware, async (req, res) => {
 // ── GET /sales/resumen — total de ventas del usuario ─────────────
 router.get('/resumen', authMiddleware, async (req, res) => {
   try {
-    const ventas = await Sale.find({ owner: req.user.id });
+    const ventas = await Sale.find({ owner: req.ownerId });
     const totalVentas = ventas.reduce((acc, v) => acc + v.total, 0);
     const cantidadVentas = ventas.length;
     res.json({
@@ -246,24 +252,24 @@ router.get('/resumen', authMiddleware, async (req, res) => {
   }
 });
 
-// ── DELETE /sales/:id — cancelar venta ──────────────────────────
+// ── DELETE /sales/:id — cancelar venta (solo el dueño) ──────────
 // Regresa el producto al inventario y, si fue a crédito, descuenta el cargo
 // del saldo del cliente registrando un abono de cancelación.
-router.delete('/:id', authMiddleware, async (req, res) => {
+router.delete('/:id', authMiddleware, soloDueno, async (req, res) => {
   try {
     // Borrado atómico: si llegan dos cancelaciones de la misma venta al mismo
     // tiempo, solo una la encuentra, así el inventario y el crédito no se
     // regresan dos veces.
-    const sale = await Sale.findOneAndDelete({ _id: req.params.id, owner: req.user.id });
+    const sale = await Sale.findOneAndDelete({ _id: req.params.id, owner: req.ownerId });
     if (!sale) return res.status(404).json({ message: 'Venta no encontrada' });
 
     await Product.updateOne(
-      { _id: sale.product, owner: req.user.id },
+      { _id: sale.product, owner: req.ownerId },
       { $inc: { quantity: sale.quantity } }
     );
 
     if (sale.paymentMethod === 'credito' && sale.client) {
-      const cliente = await Client.findOne({ _id: sale.client, owner: req.user.id });
+      const cliente = await Client.findOne({ _id: sale.client, owner: req.ownerId });
       if (cliente) {
         const monto = round2(Math.min(sale.total, cliente.saldo || 0));
         if (monto > 0) {
@@ -275,7 +281,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
             amount:       monto,
             description:  `Cancelación de venta folio ${sale.folio ?? ''}`.trim(),
             saldoDespues: cliente.saldo,
-            owner:        req.user.id,
+            owner:        req.ownerId,
           });
         }
       }

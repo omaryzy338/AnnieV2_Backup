@@ -1,5 +1,5 @@
-// Siembra una cuenta de demostración completa (negocio, productos con
-// imágenes reales, clientes -incluyendo de mayoreo con crédito- y ventas)
+// Siembra una cuenta de demostración completa (negocio, un empleado, productos
+// con imágenes reales, clientes -incluyendo de mayoreo con crédito- y ventas)
 // hablando con la API real (no toca la base de datos directamente), para
 // que todo pase por las mismas validaciones que usaría un usuario real.
 //
@@ -9,6 +9,7 @@
 //
 // Se puede sembrar cualquier cuenta pasando estas variables:
 //   SEED_EMAIL, SEED_PASSWORD, SEED_BUSINESS, SEED_NAME, SEED_LASTNAME
+//   SEED_EMPLOYEE_EMAIL, SEED_EMPLOYEE_PASSWORD (cuenta del empleado demo)
 //
 // Es seguro correrlo varias veces: si el email ya existe, inicia sesión con
 // esa cuenta en vez de duplicarla.
@@ -20,6 +21,11 @@ const DEMO_PASSWORD = process.env.SEED_PASSWORD || 'Demo2026!';
 const DEMO_BUSINESS = process.env.SEED_BUSINESS || 'Abarrotes Demo Annie';
 const DEMO_NAME     = process.env.SEED_NAME     || 'Demo';
 const DEMO_LASTNAME = process.env.SEED_LASTNAME || 'Annie';
+
+// Empleado de demostración (rol "empleado": vende y atiende clientes, pero no
+// ve costos ni cambia productos, créditos o datos del negocio)
+const EMPLOYEE_EMAIL    = process.env.SEED_EMPLOYEE_EMAIL    || `empleado.${DEMO_EMAIL}`;
+const EMPLOYEE_PASSWORD = process.env.SEED_EMPLOYEE_PASSWORD || 'Empleado2026!';
 
 let token = '';
 
@@ -146,7 +152,25 @@ async function main() {
     rfc: 'GOMJ850315MN4',
   });
 
-  console.log('\n3. Creando productos...');
+  console.log('\n3. Creando empleado de demostración...');
+  let empleadoListo = false;
+  try {
+    await api('POST', '/employees', {
+      name: 'Carlos', lastName: 'Mendoza', email: EMPLOYEE_EMAIL, password: EMPLOYEE_PASSWORD,
+    });
+    console.log(`   Empleado creado: ${EMPLOYEE_EMAIL} / ${EMPLOYEE_PASSWORD}`);
+    empleadoListo = true;
+  } catch (err) {
+    if (String(err.message).includes('Ya existe una cuenta')) {
+      console.log('   El empleado demo ya existe');
+      empleadoListo = true;
+    } else {
+      // Sin empleado la demo funciona igual: solo se avisa
+      console.log(`   (no se pudo crear el empleado: ${err.message})`);
+    }
+  }
+
+  console.log('\n4. Creando productos...');
   const productosCreados = [];
   for (const p of PRODUCTOS) {
     const creado = await api('POST', '/products', p);
@@ -154,7 +178,7 @@ async function main() {
     console.log(`   + ${creado.name}`);
   }
 
-  console.log('\n4. Creando clientes...');
+  console.log('\n5. Creando clientes...');
   const clientesCreados = [];
   for (const c of CLIENTES) {
     const creado = await api('POST', '/clients', c);
@@ -162,7 +186,7 @@ async function main() {
     console.log(`   + ${creado.name}${creado.esMayoreo ? ' (mayoreo)' : ''}`);
   }
 
-  console.log('\n5. Registrando ventas de los últimos 30 días...');
+  console.log('\n6. Registrando ventas de los últimos 30 días...');
   const clientesRegulares = clientesCreados.filter((c) => !c.esMayoreo);
   let ventasCreadas = 0;
   for (let i = 0; i < 18; i++) {
@@ -194,7 +218,7 @@ async function main() {
   }
   console.log(`   ${ventasCreadas} ventas registradas`);
 
-  console.log('\n6. Registrando movimientos de crédito de ejemplo...');
+  console.log('\n7. Registrando movimientos de crédito de ejemplo...');
   const [abarrotes, distribuidora, minisuper, tortilleria] = clientesCreados.filter((c) => c.esMayoreo);
 
   // Abarrotes La Esquina: un par de compras a crédito
@@ -217,6 +241,11 @@ async function main() {
   console.log(`\n   Inicia sesión con:`);
   console.log(`   Email:    ${DEMO_EMAIL}`);
   console.log(`   Password: ${DEMO_PASSWORD}`);
+  if (empleadoListo) {
+    console.log(`\n   Empleado (vende y atiende clientes; sin costos ni ajustes):`);
+    console.log(`   Email:    ${EMPLOYEE_EMAIL}`);
+    console.log(`   Password: ${EMPLOYEE_PASSWORD}`);
+  }
 }
 
 main().catch((err) => {

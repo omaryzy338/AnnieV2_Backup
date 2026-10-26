@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { responderError, validarId } = require('../utils/errores');
 const authMiddleware = require('../middleware/authMiddleware');
+const { soloDueno } = authMiddleware;
 const Client = require('../models/Client');
 const Business = require('../models/Business');
 const Sale = require('../models/Sale');
@@ -97,10 +98,16 @@ async function construirDatosCredito(body, actual = {}, ownerId) {
   return { data };
 }
 
+// Los datos fiscales y de crédito (esMayoreo, limiteCredito, rfc, tipoPersona,
+// razonSocial) solo los define el dueño. Si un empleado los manda se ignoran,
+// sin error: de su petición solo se aplican los datos básicos del cliente.
+const datosCredito = (req, actual) =>
+  req.esDueno ? construirDatosCredito(req.body, actual, req.ownerId) : { data: {} };
+
 // ── GET /clients — listar todos los clientes del usuario ──────────
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const clients = await Client.find({ owner: req.user.id, activo: { $ne: false } }).sort({ createdAt: -1 });
+    const clients = await Client.find({ owner: req.ownerId, activo: { $ne: false } }).sort({ createdAt: -1 });
     res.json(clients);
   } catch (err) {
     responderError(res, err, 'Error al obtener clientes');
@@ -110,7 +117,7 @@ router.get('/', authMiddleware, async (req, res) => {
 // ── GET /clients/:id — obtener un cliente ─────────────────────────
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
-    const client = await Client.findOne({ _id: req.params.id, owner: req.user.id, activo: { $ne: false } });
+    const client = await Client.findOne({ _id: req.params.id, owner: req.ownerId, activo: { $ne: false } });
     if (!client) return res.status(404).json({ message: 'Cliente no encontrado' });
     res.json(client);
   } catch (err) {
@@ -126,14 +133,14 @@ router.post('/', authMiddleware, async (req, res) => {
     if (!name)
       return res.status(400).json({ message: 'El nombre del cliente es obligatorio' });
 
-    const { data, error } = await construirDatosCredito(req.body, {}, req.user.id);
+    const { data, error } = await datosCredito(req, {});
     if (error) return res.status(400).json({ message: error });
 
     const client = new Client({
       name, lastName, email, phone, address, notes,
       ...data,
       saldo: 0, // el saldo siempre arranca en 0; se maneja por movimientos
-      owner: req.user.id,
+      owner: req.ownerId,
     });
     await client.save();
 
@@ -146,12 +153,12 @@ router.post('/', authMiddleware, async (req, res) => {
 // ── PUT /clients/:id — actualizar cliente ─────────────────────────
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
-    const actual = await Client.findOne({ _id: req.params.id, owner: req.user.id, activo: { $ne: false } });
+    const actual = await Client.findOne({ _id: req.params.id, owner: req.ownerId, activo: { $ne: false } });
     if (!actual) return res.status(404).json({ message: 'Cliente no encontrado' });
 
     const { name, lastName, email, phone, address, notes } = req.body;
 
-    const { data, error } = await construirDatosCredito(req.body, actual, req.user.id);
+    const { data, error } = await datosCredito(req, actual);
     if (error) return res.status(400).json({ message: error });
 
     // Solo actualizamos los campos básicos que vengan definidos
@@ -165,7 +172,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
     // NOTA: 'saldo' nunca se actualiza aquí; se gestiona en /credits
 
     const client = await Client.findOneAndUpdate(
-      { _id: req.params.id, owner: req.user.id },
+      { _id: req.params.id, owner: req.ownerId },
       update,
       { returnDocument: 'after', runValidators: true }
     );
@@ -176,10 +183,10 @@ router.put('/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// ── DELETE /clients/:id — eliminar cliente ────────────────────────
-router.delete('/:id', authMiddleware, async (req, res) => {
+// ── DELETE /clients/:id — eliminar cliente (solo el dueño) ────────
+router.delete('/:id', authMiddleware, soloDueno, async (req, res) => {
   try {
-    const client = await Client.findOne({ _id: req.params.id, owner: req.user.id, activo: { $ne: false } });
+    const client = await Client.findOne({ _id: req.params.id, owner: req.ownerId, activo: { $ne: false } });
     if (!client) return res.status(404).json({ message: 'Cliente no encontrado' });
 
     // No permitir borrar un cliente que aún debe dinero
@@ -192,8 +199,8 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     // Con historial (ventas o movimientos de crédito) solo se oculta, para que
     // sus tickets y su estado de cuenta se conserven
     const conHistorial =
-      (await Sale.exists({ client: client._id, owner: req.user.id })) ||
-      (await CreditMovement.exists({ client: client._id, owner: req.user.id }));
+      (await Sale.exists({ client: client._id, owner: req.ownerId })) ||
+      (await CreditMovement.exists({ client: client._id, owner: req.ownerId }));
     if (conHistorial) {
       client.activo = false;
       await client.save();

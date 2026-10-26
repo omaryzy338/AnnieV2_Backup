@@ -4,11 +4,13 @@ const { responderError } = require('../utils/errores');
 const path = require('path');
 const multer = require('multer');
 const authMiddleware = require('../middleware/authMiddleware');
+const { soloDueno } = authMiddleware;
 const User = require('../models/User');
 const Business = require('../models/Business');
 const Upload = require('../models/Upload');
 const { detectarTipoImagen } = require('../utils/imagen');
 const { validarRFC, esRFCGenerico, GENERIC_RFC } = require('../utils/rfc');
+const { rolDe } = require('../utils/roles');
 
 // El logo se recibe en memoria y se guarda en MongoDB (en Vercel el disco es
 // de solo lectura y efímero, no se puede escribir en /uploads).
@@ -23,24 +25,30 @@ const upload = multer({
   },
 });
 
+// Datos del usuario para responder (ya sin contraseña), siempre con su rol:
+// los usuarios anteriores a los roles no tienen el campo y son dueños
+const conRol = (user) => ({ ...user.toJSON(), rol: rolDe(user) });
+
 // ── GET /profile — ver perfil del usuario y su negocio ───────────
+// Para un empleado, el negocio es el de su dueño.
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password');
     if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
 
-    const business = await Business.findOne({ owner: req.user.id });
+    const business = await Business.findOne({ owner: req.ownerId });
     const businessData = business
       ? { ...business.toObject(), rfcGenerico: esRFCGenerico(business.rfc) }
       : null;
 
-    res.json({ user, business: businessData });
+    res.json({ user: conRol(user), business: businessData });
   } catch (err) {
     responderError(res, err, 'Error al obtener perfil');
   }
 });
 
 // ── PUT /profile/user — actualizar datos del usuario ──────────────────
+// Cada quien (dueño o empleado) edita solo sus propios datos.
 router.put('/user', authMiddleware, async (req, res) => {
   try {
     const { name, lastName, birthDate, country, state, city } = req.body;
@@ -60,14 +68,14 @@ router.put('/user', authMiddleware, async (req, res) => {
       { returnDocument: 'after', runValidators: true }
     ).select('-password');
 
-    res.json(user);
+    res.json(user ? conRol(user) : user);
   } catch (err) {
     responderError(res, err, 'Error al actualizar usuario');
   }
 });
 
-// ── PUT /profile/business — actualizar datos del negocio ─────────
-router.put('/business', authMiddleware, async (req, res) => {
+// ── PUT /profile/business — actualizar datos del negocio (solo el dueño)
+router.put('/business', authMiddleware, soloDueno, async (req, res) => {
   try {
     const { name, address, phone, category, description, country, state, city, rfc } = req.body;
 
@@ -85,7 +93,7 @@ router.put('/business', authMiddleware, async (req, res) => {
     }
 
     const business = await Business.findOneAndUpdate(
-      { owner: req.user.id },
+      { owner: req.ownerId },
       update,
       { returnDocument: 'after', runValidators: true }
     );
@@ -97,8 +105,8 @@ router.put('/business', authMiddleware, async (req, res) => {
   }
 });
 
-// ── POST /profile/business/logo — subir logo del negocio ─────────
-router.post('/business/logo', authMiddleware, upload.single('logo'), async (req, res) => {
+// ── POST /profile/business/logo — subir logo (solo el dueño) ─────
+router.post('/business/logo', authMiddleware, soloDueno, upload.single('logo'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: 'No se recibió imagen' });
 
@@ -111,13 +119,13 @@ router.post('/business/logo', authMiddleware, upload.single('logo'), async (req,
       contentType: tipo,
       filename: req.file.originalname,
       size: req.file.size,
-      owner: req.user.id,
+      owner: req.ownerId,
     });
 
     // Misma forma de URL que antes, para no cambiar nada en el frontend
     const url = `/uploads/${doc._id}`;
     const business = await Business.findOneAndUpdate(
-      { owner: req.user.id },
+      { owner: req.ownerId },
       { logo: url },
       { returnDocument: 'after' }
     );

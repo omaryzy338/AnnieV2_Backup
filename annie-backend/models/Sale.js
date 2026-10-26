@@ -13,6 +13,11 @@ const saleSchema = new mongoose.Schema({
   paymentMethod:{ type: String, enum: ['efectivo', 'credito'], default: 'efectivo' },
   amountPaid:   { type: Number, default: null }, // con cuánto paga (efectivo)
   change:       { type: Number, default: 0 },    // cambio entregado
+  // Quién registró la venta (el dueño o uno de sus empleados). El nombre se
+  // copia al momento de vender para que el historial lo conserve aunque
+  // después se elimine al empleado.
+  vendedor:       { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  vendedorNombre: { type: String, trim: true, default: '' },
   owner:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
 }, { timestamps: true });
 

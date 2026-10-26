@@ -117,6 +117,7 @@ const productsRoutes = require('./routes/products');
 const salesRoutes    = require('./routes/sales');
 const clientsRoutes  = require('./routes/clients');
 const creditsRoutes  = require('./routes/credits');
+const employeesRoutes = require('./routes/employees');
 
 app.use('/auth',     authRoutes);
 app.use('/profile',  profileRoutes);
@@ -124,6 +125,7 @@ app.use('/products', productsRoutes);
 app.use('/sales',    salesRoutes);
 app.use('/clients',  clientsRoutes);
 app.use('/credits',  creditsRoutes);
+app.use('/employees', employeesRoutes);
 
 // Middleware de manejo de errores de multer y otros
 app.use((err, req, res, next) => {
