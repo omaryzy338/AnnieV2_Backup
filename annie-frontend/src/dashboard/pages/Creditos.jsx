@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import axios from "../../api/axiosConfig";
 import useIsMobile from "../../hooks/useIsMobile";
 import useMensaje from "../../hooks/useMensaje";
+import useSesion from "../../hooks/useSesion";
 import { formatFecha, fullName, initials, money } from "../../utils/format";
 import { limpiarRFC, sinRFCReal, validarRFC } from "../../utils/rfc";
 import { creditoDisponible } from "../../utils/ventas";
@@ -40,6 +41,9 @@ const Creditos = () => {
   const [estadoCuenta, setEstadoCuenta] = useState(null); // { client, movimientos }
 
   const isMobile = useIsMobile();
+  // Un empleado solo registra abonos y consulta estados de cuenta: no da de
+  // alta clientes de crédito, no los edita ni les hace cargos
+  const { esDueno } = useSesion();
 
   const cargar = async () => {
     try {
@@ -326,7 +330,7 @@ const Creditos = () => {
             {clientes.length} cliente{clientes.length !== 1 ? "s" : ""} con línea de crédito
           </p>
         </div>
-        {showForm ? (
+        {esDueno && (showForm ? (
           <button style={styles.btnCancel} onClick={() => { setShowForm(false); setEditId(null); setForm(formInicial); }}>
             <i className="fa fa-times" style={{ marginRight: 8 }} />Cancelar
           </button>
@@ -336,10 +340,11 @@ const Creditos = () => {
             title={rfcGenerico ? "Configura el RFC de tu negocio primero" : ""}>
             <i className="fa fa-plus" style={{ marginRight: 8 }} />Nuevo cliente de crédito
           </button>
-        )}
+        ))}
       </div>
 
-      {rfcGenerico && (
+      {/* Aviso para el dueño: solo él puede configurar el RFC del negocio */}
+      {esDueno && rfcGenerico && (
         <div style={{ ...styles.alertError, justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
           <span><i className="fa fa-exclamation-circle" style={{ marginRight: 8 }} />
             Tu negocio no tiene un RFC real configurado, así que no puedes dar crédito a clientes (sin RFC no puedes facturar).
@@ -375,8 +380,8 @@ const Creditos = () => {
         </div>
       )}
 
-      {/* ── Formulario alta/edición ─────────────────────────────── */}
-      {showForm && (
+      {/* ── Formulario alta/edición (solo el dueño) ─────────────── */}
+      {esDueno && showForm && (
         <div style={styles.formCard}>
           <div style={styles.formHeader}>
             <i className={`fa ${editId ? "fa-pencil" : "fa-user-plus"}`} style={{ color: "#6372ff", fontSize: 18 }} />
@@ -501,7 +506,11 @@ const Creditos = () => {
         <div style={styles.empty}>
           <i className="fa fa-credit-card" style={{ fontSize: 40, color: "#d0d4ff", display: "block", marginBottom: 12 }} />
           <div style={{ fontWeight: 600, color: "#555", marginBottom: 4 }}>Aún no hay clientes de crédito</div>
-          <div style={{ color: "#aaa", fontSize: 13 }}>Registra tu primer cliente de mayoreo con el botón de arriba</div>
+          <div style={{ color: "#aaa", fontSize: 13 }}>
+            {esDueno
+              ? "Registra tu primer cliente de mayoreo con el botón de arriba"
+              : "El dueño del negocio es quien da de alta a los clientes de crédito"}
+          </div>
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(340px, 1fr))", gap: 14 }}>
@@ -552,9 +561,11 @@ const Creditos = () => {
 
                 {/* Acciones */}
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  <button style={styles.btnCargo} onClick={() => abrirMov(c, "cargo")}>
-                    <i className="fa fa-arrow-up" style={{ marginRight: 5 }} />Cargo
-                  </button>
+                  {esDueno && (
+                    <button style={styles.btnCargo} onClick={() => abrirMov(c, "cargo")}>
+                      <i className="fa fa-arrow-up" style={{ marginRight: 5 }} />Cargo
+                    </button>
+                  )}
                   <button style={styles.btnAbono} onClick={() => abrirMov(c, "abono")} disabled={(c.saldo || 0) <= 0}
                     title={(c.saldo || 0) <= 0 ? "Sin saldo pendiente" : ""}>
                     <i className="fa fa-arrow-down" style={{ marginRight: 5 }} />Abono
@@ -562,9 +573,11 @@ const Creditos = () => {
                   <button style={styles.btnGhost} onClick={() => verEstadoCuenta(c)}>
                     <i className="fa fa-list" style={{ marginRight: 5 }} />Estado
                   </button>
-                  <button style={styles.btnGhost} onClick={() => abrirEditar(c)}>
-                    <i className="fa fa-pencil" style={{ marginRight: 5 }} />Editar
-                  </button>
+                  {esDueno && (
+                    <button style={styles.btnGhost} onClick={() => abrirEditar(c)}>
+                      <i className="fa fa-pencil" style={{ marginRight: 5 }} />Editar
+                    </button>
+                  )}
                 </div>
               </div>
             );

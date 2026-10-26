@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "../../api/axiosConfig";
 import useIsMobile from "../../hooks/useIsMobile";
 import useMensaje from "../../hooks/useMensaje";
+import useSesion from "../../hooks/useSesion";
 import { resolveMediaUrl } from "../../utils/media";
 import { money } from "../../utils/format";
 import { CATEGORIAS, STOCK_BAJO, STOCK_MEDIO, UNIDADES } from "../../utils/constantes";
@@ -28,6 +29,9 @@ const Productos = () => {
   const [vista, setVista]         = useState("tabla"); // "tabla" | "grid"
   const [hoveredRow, setHoveredRow] = useState(null);
   const isMobile = useIsMobile();
+  // Un empleado solo consulta: no crea, edita ni elimina productos, y el
+  // backend no le manda el costo (sin costo no se muestra el margen)
+  const { esDueno } = useSesion();
 
   const handleImageFile = async (e) => {
     const file = e.target.files[0];
@@ -183,7 +187,7 @@ const Productos = () => {
             {productos.length} producto{productos.length !== 1 ? "s" : ""} registrado{productos.length !== 1 ? "s" : ""}
           </p>
         </div>
-        {showForm ? (
+        {esDueno && (showForm ? (
           <button style={styles.btnCancel} onClick={() => { setShowForm(false); setEditId(null); setForm(camposIniciales); setCatCustom(""); }}>
             <i className="fa fa-times" style={{ marginRight: 8 }} />Cancelar
           </button>
@@ -191,7 +195,7 @@ const Productos = () => {
           <button style={styles.btnPrimary} onClick={() => { setShowForm(true); setEditId(null); setForm(camposIniciales); setCatCustom(""); }}>
             <i className="fa fa-plus" style={{ marginRight: 8 }} />Agregar producto
           </button>
-        )}
+        ))}
       </div>
 
       {error   && <div style={styles.alertError}><i className="fa fa-exclamation-circle" style={{ marginRight: 8 }} />{error}</div>}
@@ -219,8 +223,8 @@ const Productos = () => {
         </div>
       )}
 
-      {/* Formulario */}
-      {showForm && (
+      {/* Formulario (solo el dueño) */}
+      {esDueno && showForm && (
         <div style={styles.formCard}>
           <div style={styles.formHeader}>
             <i className={`fa ${editId ? "fa-pencil" : "fa-cube"}`} style={{ color: "#6372ff", fontSize: 18 }} />
@@ -517,8 +521,17 @@ const Productos = () => {
       {productos.length === 0 ? (
         <div style={styles.empty}>
           <i className="fa fa-cube" style={{ fontSize: 40, color: "#d0d4ff", display: "block", marginBottom: 12 }} />
-          <div style={{ fontWeight: 600, color: "#555", marginBottom: 4 }}>Sin productos todavía</div>
-          <div style={{ color: "#aaa", fontSize: 13 }}>Agrega tu primer producto con el botón de arriba</div>
+          {esDueno ? (
+            <>
+              <div style={{ fontWeight: 600, color: "#555", marginBottom: 4 }}>Sin productos todavía</div>
+              <div style={{ color: "#aaa", fontSize: 13 }}>Agrega tu primer producto con el botón de arriba</div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontWeight: 600, color: "#555", marginBottom: 4 }}>Aún no hay productos</div>
+              <div style={{ color: "#aaa", fontSize: 13 }}>Pídele al dueño del negocio que los agregue</div>
+            </>
+          )}
         </div>
       ) : (isMobile || vista === "grid") ? (
         /* ── Vista Grid ────────────────────────────────────────── */
@@ -564,20 +577,22 @@ const Productos = () => {
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 10 }}>
                     <div>
                       <div style={{ fontSize: 16, fontWeight: 800, color: "#1a1a2e" }}>{money(p.price)}</div>
-                      {p.cost > 0 && (
+                      {esDueno && p.cost > 0 && (
                         <div style={{ fontSize: 10, color: "#27ae60", fontWeight: 700 }}>
                           {((p.price - p.cost) / p.price * 100).toFixed(0)}% margen
                         </div>
                       )}
                     </div>
-                    <div style={{ display: "flex", gap: 4 }}>
-                      <button style={{ ...styles.btnEdit, padding: "5px 9px", marginRight: 0 }} onClick={() => handleEditar(p)}>
-                        <i className="fa fa-pencil" />
-                      </button>
-                      <button style={{ ...styles.btnDelete, padding: "5px 9px" }} onClick={() => setConfirmId(p._id)}>
-                        <i className="fa fa-trash" />
-                      </button>
-                    </div>
+                    {esDueno && (
+                      <div style={{ display: "flex", gap: 4 }}>
+                        <button style={{ ...styles.btnEdit, padding: "5px 9px", marginRight: 0 }} onClick={() => handleEditar(p)}>
+                          <i className="fa fa-pencil" />
+                        </button>
+                        <button style={{ ...styles.btnDelete, padding: "5px 9px" }} onClick={() => setConfirmId(p._id)}>
+                          <i className="fa fa-trash" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -594,7 +609,7 @@ const Productos = () => {
                 <th style={styles.th}>Categoría</th>
                 <th style={styles.th}>Precio</th>
                 <th style={styles.th}>Stock</th>
-                <th style={styles.th}>Acciones</th>
+                {esDueno && <th style={styles.th}>Acciones</th>}
               </tr>
             </thead>
             <tbody>
@@ -645,7 +660,7 @@ const Productos = () => {
                   </td>
                   <td style={{ ...styles.td, fontWeight: 700, color: "#1a1a2e" }}>
                     <div>{money(p.price)}</div>
-                    {p.cost > 0 && (
+                    {esDueno && p.cost > 0 && (
                       <div style={{ fontSize: 11, color: "#27ae60", fontWeight: 700, marginTop: 2 }}>
                         <i className="fa fa-line-chart" style={{ marginRight: 3, fontSize: 10 }} />
                         {((p.price - p.cost) / p.price * 100).toFixed(0)}% margen
@@ -664,14 +679,16 @@ const Productos = () => {
                       {p.quantity < STOCK_BAJO && <i className="fa fa-exclamation-triangle" style={{ fontSize: 10 }} />}
                     </span>
                   </td>
-                  <td style={styles.td}>
-                    <button style={styles.btnEdit} onClick={() => handleEditar(p)}>
-                      <i className="fa fa-pencil" style={{ marginRight: 5 }} />Editar
-                    </button>
-                    <button style={styles.btnDelete} onClick={() => setConfirmId(p._id)}>
-                      <i className="fa fa-trash" style={{ marginRight: 5 }} />Eliminar
-                    </button>
-                  </td>
+                  {esDueno && (
+                    <td style={styles.td}>
+                      <button style={styles.btnEdit} onClick={() => handleEditar(p)}>
+                        <i className="fa fa-pencil" style={{ marginRight: 5 }} />Editar
+                      </button>
+                      <button style={styles.btnDelete} onClick={() => setConfirmId(p._id)}>
+                        <i className="fa fa-trash" style={{ marginRight: 5 }} />Eliminar
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

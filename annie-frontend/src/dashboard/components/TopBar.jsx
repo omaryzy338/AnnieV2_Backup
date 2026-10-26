@@ -4,8 +4,7 @@ import axios from "../../api/axiosConfig";
 import { resolveMediaUrl } from "../../utils/media";
 import { fullName, initials, money } from "../../utils/format";
 import { EVENTO_DATOS, EVENTO_PERFIL } from "../../utils/eventos";
-
-const leerUsuario = () => JSON.parse(localStorage.getItem("user") || "{}");
+import { esDueno, leerUsuario, nombreRol } from "../../utils/sesion";
 
 // Al enfocar el buscador se vuelven a pedir productos y clientes, pero como
 // mucho una vez cada 30 s para no repetir peticiones en cada clic
@@ -83,20 +82,25 @@ const TopBar = ({ isMobile, onMenuToggle }) => {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  // soloDueno: secciones que no se le muestran a un empleado
   const PAGINAS = [
     { label: "Inicio",      ruta: "/dashboard",            icon: "fa-home",        keywords: ["inicio", "home", "dashboard", "principio"] },
     { label: "Productos",   ruta: "/dashboard/productos",   icon: "fa-cube",        keywords: ["productos", "producto", "inventario", "stock", "articulos"] },
     { label: "Ventas",      ruta: "/dashboard/ventas",      icon: "fa-shopping-cart", keywords: ["ventas", "venta", "pedidos", "ordenes", "cobros"] },
     { label: "Clientes",    ruta: "/dashboard/clientes",    icon: "fa-users",       keywords: ["clientes", "cliente", "personas", "compradores"] },
     { label: "Créditos",    ruta: "/dashboard/creditos",    icon: "fa-credit-card", keywords: ["creditos", "credito", "fiado", "mayoreo", "deudas", "cobrar"] },
-    { label: "Reportes",    ruta: "/dashboard/reportes",    icon: "fa-bar-chart",   keywords: ["reportes", "reporte", "estadisticas", "graficas", "analisis"] },
-    { label: "Mi Negocio",  ruta: "/dashboard/mi-negocio", icon: "fa-briefcase",   keywords: ["negocio", "empresa", "mi negocio", "perfil negocio", "configuracion"] },
+    { label: "Reportes",    ruta: "/dashboard/reportes",    icon: "fa-bar-chart",   keywords: ["reportes", "reporte", "estadisticas", "graficas", "analisis"], soloDueno: true },
+    { label: "Mi Negocio",  ruta: "/dashboard/mi-negocio", icon: "fa-briefcase",   keywords: ["negocio", "empresa", "mi negocio", "perfil negocio", "configuracion"], soloDueno: true },
+    { label: "Empleados",   ruta: "/dashboard/empleados",  icon: "fa-id-badge",    keywords: ["empleados", "empleado", "trabajadores", "personal", "equipo", "vendedores", "cajeros", "usuarios"], soloDueno: true },
   ];
+  const dueno = esDueno(user);
 
   const q         = busqueda.trim().toLowerCase();
   const matchProd = q.length >= 2 ? productos.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 5) : [];
   const matchCli  = q.length >= 2 ? clientes.filter((c) => fullName(c).toLowerCase().includes(q)).slice(0, 5) : [];
-  const matchPag  = q.length >= 2 ? PAGINAS.filter((pg) => pg.keywords.some((k) => k.includes(q))) : [];
+  const matchPag  = q.length >= 2
+    ? PAGINAS.filter((pg) => (dueno || !pg.soloDueno) && pg.keywords.some((k) => k.includes(q)))
+    : [];
   const hayResultados = matchProd.length > 0 || matchCli.length > 0 || matchPag.length > 0;
 
   const handleFocus = () => {
@@ -235,7 +239,7 @@ const TopBar = ({ isMobile, onMenuToggle }) => {
         {nombreCompleto && (
           <div style={{ textAlign: "right" }}>
             <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a2e" }}>{nombreCompleto}</div>
-            {/* Administrador eliminado */}
+            <span style={styles.rol}>{nombreRol(user)}</span>
           </div>
         )}
         <div style={styles.avatar}>
@@ -345,6 +349,19 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: 12,
+  },
+  rol: {
+    display: "inline-block",
+    marginTop: 2,
+    fontSize: 10,
+    fontWeight: 700,
+    color: "#6372ff",
+    background: "#f0f2ff",
+    border: "1px solid #d6dbff",
+    borderRadius: 6,
+    padding: "1px 7px",
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
   },
   avatar: {
     width: 38,

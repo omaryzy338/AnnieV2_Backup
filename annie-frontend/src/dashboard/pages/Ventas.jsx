@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "../../api/axiosConfig";
 import useIsMobile from "../../hooks/useIsMobile";
 import useMensaje from "../../hooks/useMensaje";
+import useSesion from "../../hooks/useSesion";
 import { resolveMediaUrl } from "../../utils/media";
 import { folioTxt, formatFecha, fullName, initials, isoLocalDate, money } from "../../utils/format";
 import { calcularTotal, creditoDisponible, fechaParaEnviar, fechaVenta, metodoTxt, round2 } from "../../utils/ventas";
@@ -26,6 +27,9 @@ const Ventas = () => {
   const [hoveredRow, setHoveredRow]   = useState(null);
   const [form, setForm]               = useState(nuevoForm);
   const isMobile = useIsMobile();
+  // Un empleado registra ventas, pero no las cancela ni ve la ganancia
+  // (el backend no le manda el costo de los productos)
+  const { esDueno } = useSesion();
   const [productoSel, setProductoSel] = useState(null);
   const [negocio, setNegocio]         = useState(null);
   const [ventaHecha, setVentaHecha]   = useState(null);
@@ -170,6 +174,10 @@ const Ventas = () => {
   const ticketPromedio = ventasMes.length ? totalMes / ventasMes.length : 0;
   const clientesUnicos = new Set(ventasMes.filter((v) => v.client).map((v) => v.client._id)).size;
 
+  // Quién atendió cada venta: al dueño solo se le muestra en la lista cuando
+  // venden varias personas (si siempre vende él, sería repetir su nombre)
+  const variosVendedores = new Set(ventas.map((v) => v.vendedorNombre).filter(Boolean)).size > 1;
+  const verVendedor = (v) => esDueno && variosVendedores && !!v.vendedorNombre;
 
   // Genera un recibo/orden de venta imprimible (el usuario puede "Guardar
   // como PDF" desde el diálogo de impresión del navegador)
@@ -182,6 +190,8 @@ const Ventas = () => {
     const rfcTxt = escaparHTML(negocio?.rfc || "");
     const direccionTxt = escaparHTML(negocio?.address || "");
     const telefonoTxt = escaparHTML(negocio?.phone || "");
+    // Quién registró la venta (las ventas antiguas no lo tienen)
+    const vendedorTxt = escaparHTML((v.vendedorNombre || "").trim());
     const descTxt = v.discount > 0
       ? (v.discountType === "fijo" ? `-${money(v.discount)}` : `-${v.discount}%`)
       : "—";
@@ -215,6 +225,7 @@ const Ventas = () => {
   <div class="meta"><span>Folio</span><strong>${folioTxt(v.folio)}</strong></div>
   <div class="meta"><span>Fecha</span><strong>${formatFecha(fechaVenta(v))}</strong></div>
   <div class="meta"><span>Cliente</span><strong>${clienteTxt}</strong></div>
+  ${vendedorTxt ? `<div class="meta"><span>Atendió</span><strong>${vendedorTxt}</strong></div>` : ""}
   <table>
     <thead>
       <tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Desc.</th><th>Importe</th></tr>
@@ -667,8 +678,8 @@ const Ventas = () => {
                   })()}
                 </div>
 
-                {/* Ganancia neta */}
-                {(() => {
+                {/* Ganancia neta (solo el dueño: el empleado no recibe costos) */}
+                {esDueno && (() => {
                   const g = calcGanancia();
                   const sinCosto = !productoSel.cost || productoSel.cost <= 0;
                   return (
@@ -801,6 +812,12 @@ const Ventas = () => {
                     {fullName(v.client)}
                   </span>
                 )}
+                {verVendedor(v) && (
+                  <span style={{ fontSize: 12, color: "#888", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                    <i className="fa fa-id-badge" style={{ color: "#9599b3", fontSize: 10 }} />
+                    Atendió: {v.vendedorNombre}
+                  </span>
+                )}
                 <span style={{ fontSize: 12, color: "#888" }}>×{v.quantity} · {money(v.price)}</span>
                 {v.discount > 0 && (
                   <span style={{ background: "#fff0f3", color: "#e05555", borderRadius: 6, padding: "2px 7px", fontSize: 11, fontWeight: 700 }}>
@@ -810,9 +827,11 @@ const Ventas = () => {
                 <button style={{ ...styles.btnGhost, marginLeft: "auto", padding: "4px 10px" }} onClick={() => imprimirRecibo(v)}>
                   <i className="fa fa-file-text-o" style={{ fontSize: 11 }} />
                 </button>
-                <button style={{ ...styles.btnDelete, padding: "4px 10px" }} onClick={() => setConfirmId(v._id)}>
-                  <i className="fa fa-trash" style={{ fontSize: 11 }} />
-                </button>
+                {esDueno && (
+                  <button style={{ ...styles.btnDelete, padding: "4px 10px" }} onClick={() => setConfirmId(v._id)}>
+                    <i className="fa fa-trash" style={{ fontSize: 11 }} />
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -850,6 +869,11 @@ const Ventas = () => {
                   <td style={{ ...styles.td, color: "#6372ff", fontWeight: 800 }}>{folioTxt(v.folio)}</td>
                   <td style={{ ...styles.td, color: "#888", fontSize: 12, whiteSpace: "nowrap" }}>
                     {formatFecha(fechaVenta(v))}
+                    {verVendedor(v) && (
+                      <div style={{ fontSize: 11, color: "#9599b3", marginTop: 2 }}>
+                        <i className="fa fa-id-badge" style={{ marginRight: 4 }} />Atendió: {v.vendedorNombre}
+                      </div>
+                    )}
                   </td>
                   <td style={styles.td}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -905,9 +929,11 @@ const Ventas = () => {
                     <button style={styles.btnGhost} onClick={() => imprimirRecibo(v)}>
                       <i className="fa fa-file-text-o" style={{ marginRight: 5 }} />Recibo
                     </button>
-                    <button style={styles.btnDelete} onClick={() => setConfirmId(v._id)}>
-                      <i className="fa fa-trash" style={{ marginRight: 5 }} />Eliminar
-                    </button>
+                    {esDueno && (
+                      <button style={styles.btnDelete} onClick={() => setConfirmId(v._id)}>
+                        <i className="fa fa-trash" style={{ marginRight: 5 }} />Eliminar
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

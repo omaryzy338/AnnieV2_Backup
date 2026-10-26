@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "../../api/axiosConfig";
 import useIsMobile from "../../hooks/useIsMobile";
+import useSesion from "../../hooks/useSesion";
 import { formatFechaCorta, fullName, money } from "../../utils/format";
 import { fechaVenta, round2 } from "../../utils/ventas";
 import { STOCK_BAJO, STOCK_MEDIO } from "../../utils/constantes";
@@ -32,8 +33,7 @@ const Inicio = () => {
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState("");
   const isMobile = useIsMobile();
-
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const { user, esDueno } = useSesion();
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -60,9 +60,11 @@ const Inicio = () => {
   if (loading) return <div style={{ padding: 30 }}>Cargando...</div>;
 
   // Costo unitario de cada producto que lo tiene registrado (las ventas no
-  // traen el costo, así que se toma de la lista de productos)
+  // traen el costo, así que se toma de la lista de productos). Un empleado
+  // no ve ganancias: el backend no le manda el costo y, sin costos, la
+  // tarjeta muestra "Más ingresos"
   const costoPorProducto = productos.reduce((acc, p) => {
-    if (p.cost > 0) acc[p._id] = p.cost;
+    if (esDueno && p.cost > 0) acc[p._id] = p.cost;
     return acc;
   }, {});
 
@@ -126,7 +128,7 @@ const Inicio = () => {
 
       {/* Saludo */}
       <p style={{ margin: 0, color: "#1a1a2e", fontSize: 15, fontWeight: 600 }}>
-        Hola, <span style={{ color: "#6372ff" }}>{user.name || "👋"}</span> — aquí está el resumen de tu negocio
+        Hola, <span style={{ color: "#6372ff" }}>{user.name || "👋"}</span> — aquí está el resumen {esDueno ? "de tu negocio" : "del negocio"}
       </p>
 
       {error && (

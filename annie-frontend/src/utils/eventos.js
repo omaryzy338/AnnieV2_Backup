@@ -1,7 +1,8 @@
 // Eventos del navegador con los que las páginas del panel avisan a la barra
 // superior y a la lateral que algo cambió, sin tener que recargar.
 
-// Mi Negocio cambió el nombre, el logo o los datos del propietario
+// Mi Negocio cambió el nombre, el logo o los datos del propietario, o la
+// barra lateral guardó el rol que le faltaba a la sesión
 export const EVENTO_PERFIL = "annie:perfil-actualizado";
 
 // Se creó, editó o eliminó un producto, cliente, venta o movimiento de crédito

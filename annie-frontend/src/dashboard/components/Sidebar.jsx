@@ -3,34 +3,40 @@ import { NavLink, useNavigate } from "react-router-dom";
 import axios from "../../api/axiosConfig";
 import { resolveMediaUrl } from "../../utils/media";
 import { initials as iniciales } from "../../utils/format";
-import { EVENTO_PERFIL } from "../../utils/eventos";
+import { EVENTO_PERFIL, avisarPerfilActualizado } from "../../utils/eventos";
+import { ROL_DUENO, esDueno, leerUsuario, nombreRol } from "../../utils/sesion";
 
+// soloDueno: secciones que no se le muestran a un empleado
 const links = [
   { to: "/dashboard",           icon: "fa-home",          label: "Inicio" },
   { to: "/dashboard/productos",  icon: "fa-cube",          label: "Productos" },
   { to: "/dashboard/ventas",     icon: "fa-shopping-cart", label: "Ventas" },
   { to: "/dashboard/clientes",   icon: "fa-users",         label: "Clientes" },
   { to: "/dashboard/creditos",   icon: "fa-credit-card",   label: "Créditos" },
-  { to: "/dashboard/reportes",   icon: "fa-bar-chart",     label: "Reportes" },
-  { to: "/dashboard/mi-negocio", icon: "fa-briefcase",     label: "Mi Negocio" },
+  { to: "/dashboard/reportes",   icon: "fa-bar-chart",     label: "Reportes",   soloDueno: true },
+  { to: "/dashboard/mi-negocio", icon: "fa-briefcase",     label: "Mi Negocio", soloDueno: true },
+  { to: "/dashboard/empleados",  icon: "fa-id-badge",      label: "Empleados",  soloDueno: true },
 ];
 
 const Sidebar = ({ isMobile, isOpen, onClose }) => {
   const navigate = useNavigate();
-  const [userData, setUserData] = useState(null);
+  // Se lee desde el primer render para que un empleado no vea, ni por un
+  // instante, las secciones del dueño
+  const [userData, setUserData] = useState(leerUsuario);
   const [businessName, setBusinessName] = useState("Mi Tienda");
   const [businessLogo, setBusinessLogo] = useState(null);
 
   useEffect(() => {
-    // Lee la sesión guardada; si le falta el nombre o logo del negocio (o
-    // se pide refrescar) los trae del backend
+    // Lee la sesión guardada; si le falta el nombre o logo del negocio o el
+    // rol (las sesiones anteriores a los empleados no lo guardaban), o se
+    // pide refrescar, los trae del backend
     const cargar = (refrescar) => {
-      const stored = JSON.parse(localStorage.getItem("user") || "{}");
+      const stored = leerUsuario();
       setUserData(stored);
       setBusinessLogo(stored.businessLogo || null);
       if (stored.businessName) setBusinessName(stored.businessName);
 
-      if (refrescar || !stored.businessName || !stored.businessLogo) {
+      if (refrescar || !stored.businessName || !stored.businessLogo || !stored.rol) {
         axios.get("/profile").then((res) => {
           const name = res.data.business?.name || "Mi Tienda";
           const logo = resolveMediaUrl(res.data.business?.logo);
@@ -43,11 +49,17 @@ const Sidebar = ({ isMobile, isOpen, onClose }) => {
             ...stored,
             name: res.data.user?.name || stored.name,
             lastName: res.data.user?.lastName ?? stored.lastName,
+            // Un usuario sin rol es el dueño (cuentas creadas antes de los empleados)
+            rol: res.data.user?.rol || stored.rol || ROL_DUENO,
             businessName: name,
             businessLogo: logo,
           };
           localStorage.setItem("user", JSON.stringify(updated));
           setUserData(updated);
+          // Si con el rol del backend cambia lo que puede hacer, se avisa al
+          // panel y a las páginas para que lo vuelvan a leer (la segunda
+          // lectura ya no cambia nada, así que no se repite)
+          if (esDueno(updated) !== esDueno(stored)) avisarPerfilActualizado();
         }).catch(() => {
           // sin conexión: se queda lo que había en localStorage
         });
@@ -74,6 +86,7 @@ const Sidebar = ({ isMobile, isOpen, onClose }) => {
   };
 
   const initials = userData?.name ? iniciales(userData) : "U";
+  const dueno = esDueno(userData);
 
   const sidebarStyle = isMobile
     ? {
@@ -105,6 +118,8 @@ const Sidebar = ({ isMobile, isOpen, onClose }) => {
             {userData?.name} {userData?.lastName}
           </div>
           <div style={{ fontSize: 12, color: "#888" }}>{userData?.email}</div>
+          {/* En móvil la barra superior no muestra al usuario: el rol va aquí */}
+          {isMobile && <span style={styles.rol}>{nombreRol(userData)}</span>}
         </div>
       </div>
 
@@ -112,7 +127,7 @@ const Sidebar = ({ isMobile, isOpen, onClose }) => {
 
       {/* Navegación */}
       <nav style={{ flex: 1, overflowY: "auto", paddingBottom: 75 }}>
-        {links.map((link) => (
+        {links.filter((link) => dueno || !link.soloDueno).map((link) => (
           <NavLink
             key={link.to}
             to={link.to}
@@ -187,6 +202,19 @@ const styles = {
     fontWeight: "bold",
     fontSize: 16,
     flexShrink: 0,
+  },
+  rol: {
+    display: "inline-block",
+    marginTop: 4,
+    fontSize: 10,
+    fontWeight: 700,
+    color: "#6372ff",
+    background: "#f0f2ff",
+    border: "1px solid #d6dbff",
+    borderRadius: 6,
+    padding: "1px 7px",
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
   },
   navLink: {
     display: "flex",

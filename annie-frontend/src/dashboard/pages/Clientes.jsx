@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import axios from "../../api/axiosConfig";
 import useIsMobile from "../../hooks/useIsMobile";
 import useMensaje from "../../hooks/useMensaje";
+import useSesion from "../../hooks/useSesion";
 import { formatFechaDia, fullName, initials, money } from "../../utils/format";
 import { limpiarRFC, sinRFCReal, validarRFC } from "../../utils/rfc";
 import { fechaVenta } from "../../utils/ventas";
@@ -32,6 +33,9 @@ const Clientes = () => {
   // true mientras se guarda o elimina (evita mandar el formulario dos veces)
   const [guardando, setGuardando]     = useState(false);
   const isMobile = useIsMobile();
+  // Un empleado da de alta y edita clientes, pero no los elimina ni toca el
+  // mayoreo / crédito (el backend ignora esos campos si los manda)
+  const { esDueno } = useSesion();
 
   const cargar = async () => {
     try {
@@ -56,22 +60,23 @@ const Clientes = () => {
     if (guardando) return; // ya hay un guardado en camino
     setError(""); mostrarExito("");
 
-    // Validación extra para clientes de mayoreo / crédito
-    if (form.esMayoreo) {
+    // Validación extra para clientes de mayoreo / crédito (solo el dueño los
+    // configura; el empleado no ve esos campos)
+    if (esDueno && form.esMayoreo) {
       if (!form.rfc.trim()) return setError("El RFC es obligatorio para clientes de mayoreo / crédito");
       const errorRFC = validarRFC(form.rfc, form.tipoPersona === "moral" ? "moral" : "fisica");
       if (errorRFC) return setError(errorRFC);
     }
 
-    // Construir payload
+    // Construir payload: el empleado solo manda los datos de contacto
     const payload = {
       name: form.name,
       lastName: form.lastName,
       email: form.email,
       phone: form.phone,
-      esMayoreo: form.esMayoreo,
     };
-    if (form.esMayoreo) {
+    if (esDueno) payload.esMayoreo = form.esMayoreo;
+    if (esDueno && form.esMayoreo) {
       payload.tipoPersona   = form.tipoPersona;
       payload.rfc           = limpiarRFC(form.rfc);
       payload.razonSocial   = form.tipoPersona === "moral" ? form.razonSocial : ""; // solo persona moral
@@ -270,87 +275,89 @@ const Clientes = () => {
               </div>
             </div>
 
-            {/* ── Mayoreo / crédito ──────────────────────────────── */}
-            <div style={{ marginTop: 16, padding: 16, background: "#f8f9ff", border: "1.5px solid #eef0ff", borderRadius: 10 }}>
-              <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: rfcGenerico ? "not-allowed" : "pointer", userSelect: "none", opacity: rfcGenerico ? 0.6 : 1 }}>
-                <input type="checkbox" checked={form.esMayoreo} disabled={rfcGenerico}
-                  onChange={(e) => setForm((p) => ({ ...p, esMayoreo: e.target.checked }))}
-                  style={{ width: 18, height: 18, accentColor: "#6372ff", cursor: rfcGenerico ? "not-allowed" : "pointer" }} />
-                <span style={{ fontWeight: 700, color: "#1a1a2e", fontSize: 14 }}>
-                  <i className="fa fa-credit-card" style={{ color: "#6372ff", marginRight: 8 }} />
-                  Cliente de mayoreo (con línea de crédito)
-                </span>
-              </label>
+            {/* ── Mayoreo / crédito (solo el dueño) ─────────────── */}
+            {esDueno && (
+              <div style={{ marginTop: 16, padding: 16, background: "#f8f9ff", border: "1.5px solid #eef0ff", borderRadius: 10 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: rfcGenerico ? "not-allowed" : "pointer", userSelect: "none", opacity: rfcGenerico ? 0.6 : 1 }}>
+                  <input type="checkbox" checked={form.esMayoreo} disabled={rfcGenerico}
+                    onChange={(e) => setForm((p) => ({ ...p, esMayoreo: e.target.checked }))}
+                    style={{ width: 18, height: 18, accentColor: "#6372ff", cursor: rfcGenerico ? "not-allowed" : "pointer" }} />
+                  <span style={{ fontWeight: 700, color: "#1a1a2e", fontSize: 14 }}>
+                    <i className="fa fa-credit-card" style={{ color: "#6372ff", marginRight: 8 }} />
+                    Cliente de mayoreo (con línea de crédito)
+                  </span>
+                </label>
 
-              {rfcGenerico && (
-                <div style={{ marginTop: 10, fontSize: 12, color: "#c0392b", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                  <i className="fa fa-exclamation-circle" />
-                  Necesitas configurar el RFC real de tu negocio para poder dar crédito.
-                  <Link to="/dashboard/mi-negocio" style={{ color: "#c0392b", fontWeight: 700, textDecoration: "underline" }}>
-                    Configurar RFC →
-                  </Link>
-                </div>
-              )}
-
-              {form.esMayoreo && (
-                <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 16 }}>
-                  {/* Tipo de persona */}
-                  <div>
-                    <label style={styles.label}><i className="fa fa-id-card" style={styles.labelIcon} />Tipo de persona *</label>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      {[
-                        { v: "fisica", l: "Persona física", ico: "fa-user" },
-                        { v: "moral",  l: "Persona moral",  ico: "fa-building" },
-                      ].map(({ v, l, ico }) => (
-                        <button key={v} type="button"
-                          onClick={() => setForm((p) => ({ ...p, tipoPersona: v }))}
-                          style={{
-                            display: "inline-flex", alignItems: "center", gap: 8,
-                            padding: "9px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer",
-                            border: form.tipoPersona === v ? "1.5px solid transparent" : "1.5px solid #e0e0e0",
-                            background: form.tipoPersona === v ? "linear-gradient(to right,#6372ff,#5ca9fb)" : "#fff",
-                            color: form.tipoPersona === v ? "#fff" : "#666",
-                          }}>
-                          <i className={`fa ${ico}`} style={{ fontSize: 12 }} />{l}
-                        </button>
-                      ))}
-                    </div>
+                {rfcGenerico && (
+                  <div style={{ marginTop: 10, fontSize: 12, color: "#c0392b", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                    <i className="fa fa-exclamation-circle" />
+                    Necesitas configurar el RFC real de tu negocio para poder dar crédito.
+                    <Link to="/dashboard/mi-negocio" style={{ color: "#c0392b", fontWeight: 700, textDecoration: "underline" }}>
+                      Configurar RFC →
+                    </Link>
                   </div>
+                )}
 
-                  <div className="dash-form-grid" style={styles.formGrid}>
-                    <div style={styles.fieldWrap}>
-                      <label style={styles.label}><i className="fa fa-id-card-o" style={styles.labelIcon} />RFC *</label>
-                      <input
-                        style={{ ...styles.input, textTransform: "uppercase",
-                          borderColor: form.rfc && !rfcValido(form.rfc, form.tipoPersona) ? "#e05555" : "#e8e8e8" }}
-                        name="rfc" value={form.rfc}
-                        onChange={(e) => setForm((p) => ({ ...p, rfc: e.target.value.toUpperCase() }))}
-                        maxLength={13}
-                        placeholder={form.tipoPersona === "moral" ? "12 caracteres" : "13 caracteres"} />
-                      {form.rfc && (
-                        <span style={{ fontSize: 11, marginTop: 4, fontWeight: 600,
-                          color: rfcValido(form.rfc, form.tipoPersona) ? "#27ae60" : "#e05555" }}>
-                          <i className={`fa ${rfcValido(form.rfc, form.tipoPersona) ? "fa-check-circle" : "fa-exclamation-circle"}`} style={{ marginRight: 5 }} />
-                          {rfcValido(form.rfc, form.tipoPersona) ? "RFC válido" : "Formato inválido"}
-                        </span>
+                {form.esMayoreo && (
+                  <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 16 }}>
+                    {/* Tipo de persona */}
+                    <div>
+                      <label style={styles.label}><i className="fa fa-id-card" style={styles.labelIcon} />Tipo de persona *</label>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {[
+                          { v: "fisica", l: "Persona física", ico: "fa-user" },
+                          { v: "moral",  l: "Persona moral",  ico: "fa-building" },
+                        ].map(({ v, l, ico }) => (
+                          <button key={v} type="button"
+                            onClick={() => setForm((p) => ({ ...p, tipoPersona: v }))}
+                            style={{
+                              display: "inline-flex", alignItems: "center", gap: 8,
+                              padding: "9px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer",
+                              border: form.tipoPersona === v ? "1.5px solid transparent" : "1.5px solid #e0e0e0",
+                              background: form.tipoPersona === v ? "linear-gradient(to right,#6372ff,#5ca9fb)" : "#fff",
+                              color: form.tipoPersona === v ? "#fff" : "#666",
+                            }}>
+                            <i className={`fa ${ico}`} style={{ fontSize: 12 }} />{l}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="dash-form-grid" style={styles.formGrid}>
+                      <div style={styles.fieldWrap}>
+                        <label style={styles.label}><i className="fa fa-id-card-o" style={styles.labelIcon} />RFC *</label>
+                        <input
+                          style={{ ...styles.input, textTransform: "uppercase",
+                            borderColor: form.rfc && !rfcValido(form.rfc, form.tipoPersona) ? "#e05555" : "#e8e8e8" }}
+                          name="rfc" value={form.rfc}
+                          onChange={(e) => setForm((p) => ({ ...p, rfc: e.target.value.toUpperCase() }))}
+                          maxLength={13}
+                          placeholder={form.tipoPersona === "moral" ? "12 caracteres" : "13 caracteres"} />
+                        {form.rfc && (
+                          <span style={{ fontSize: 11, marginTop: 4, fontWeight: 600,
+                            color: rfcValido(form.rfc, form.tipoPersona) ? "#27ae60" : "#e05555" }}>
+                            <i className={`fa ${rfcValido(form.rfc, form.tipoPersona) ? "fa-check-circle" : "fa-exclamation-circle"}`} style={{ marginRight: 5 }} />
+                            {rfcValido(form.rfc, form.tipoPersona) ? "RFC válido" : "Formato inválido"}
+                          </span>
+                        )}
+                      </div>
+                      <div style={styles.fieldWrap}>
+                        <label style={styles.label}><i className="fa fa-credit-card" style={styles.labelIcon} />Límite de crédito</label>
+                        <input style={styles.input} name="limiteCredito" type="number" min="0" step="0.01"
+                          value={form.limiteCredito} onChange={handleChange} placeholder="0.00" />
+                      </div>
+                      {form.tipoPersona === "moral" && (
+                        <div style={{ ...styles.fieldWrap, gridColumn: "1 / -1" }}>
+                          <label style={styles.label}><i className="fa fa-building" style={styles.labelIcon} />Razón social</label>
+                          <input style={styles.input} name="razonSocial" value={form.razonSocial}
+                            onChange={handleChange} placeholder="Ej: Distribuidora Ejemplo S.A. de C.V." />
+                        </div>
                       )}
                     </div>
-                    <div style={styles.fieldWrap}>
-                      <label style={styles.label}><i className="fa fa-credit-card" style={styles.labelIcon} />Límite de crédito</label>
-                      <input style={styles.input} name="limiteCredito" type="number" min="0" step="0.01"
-                        value={form.limiteCredito} onChange={handleChange} placeholder="0.00" />
-                    </div>
-                    {form.tipoPersona === "moral" && (
-                      <div style={{ ...styles.fieldWrap, gridColumn: "1 / -1" }}>
-                        <label style={styles.label}><i className="fa fa-building" style={styles.labelIcon} />Razón social</label>
-                        <input style={styles.input} name="razonSocial" value={form.razonSocial}
-                          onChange={handleChange} placeholder="Ej: Distribuidora Ejemplo S.A. de C.V." />
-                      </div>
-                    )}
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
 
             <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
               <button type="submit" style={{ ...styles.btnSuccess, ...(guardando ? styles.btnDisabled : {}) }} disabled={guardando}>
@@ -442,9 +449,11 @@ const Clientes = () => {
                   <button style={{ ...styles.btnEdit, flex: 1, justifyContent: "center" }} onClick={() => handleEditar(c)}>
                     <i className="fa fa-pencil" style={{ marginRight: 5 }} />Editar
                   </button>
-                  <button style={{ ...styles.btnDelete, flex: 1, justifyContent: "center" }} onClick={() => setConfirmId(c._id)}>
-                    <i className="fa fa-trash" style={{ marginRight: 5 }} />Eliminar
-                  </button>
+                  {esDueno && (
+                    <button style={{ ...styles.btnDelete, flex: 1, justifyContent: "center" }} onClick={() => setConfirmId(c._id)}>
+                      <i className="fa fa-trash" style={{ marginRight: 5 }} />Eliminar
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -543,9 +552,11 @@ const Clientes = () => {
                     <button style={styles.btnEdit} onClick={() => handleEditar(c)}>
                       <i className="fa fa-pencil" style={{ marginRight: 5 }} />Editar
                     </button>
-                    <button style={styles.btnDelete} onClick={() => setConfirmId(c._id)}>
-                      <i className="fa fa-trash" style={{ marginRight: 5 }} />Eliminar
-                    </button>
+                    {esDueno && (
+                      <button style={styles.btnDelete} onClick={() => setConfirmId(c._id)}>
+                        <i className="fa fa-trash" style={{ marginRight: 5 }} />Eliminar
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
