@@ -5,11 +5,14 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, View } f
 
 import {
   aviso,
+  Badge,
   Banner,
   Button,
   Card,
   Chip,
   confirmar,
+  Divider,
+  EmptyState,
   ErrorView,
   LoadingView,
   ProductImage,
@@ -18,9 +21,10 @@ import {
   Text,
   TextField,
 } from '@/components/ui';
+import { useAuth } from '@/context/auth';
 import { useDesplazamientoTeclado } from '@/hooks/useDesplazamientoTeclado';
 import { mensajeError } from '@/lib/api';
-import { parseAmount } from '@/lib/format';
+import { money, parseAmount } from '@/lib/format';
 import {
   camposAProducto,
   productoACampos,
@@ -31,20 +35,110 @@ import {
 } from '@/lib/formularios';
 import { elegirImagen, type Origen } from '@/lib/imagenes';
 import { subirImagenProducto, useEliminarProducto, useGuardarProducto, useProducts } from '@/lib/queries';
+import { colorStock } from '@/lib/reportes';
 import type { Product } from '@/lib/types';
 import { CATEGORIAS_PRODUCTO, UNIDADES } from '@/lib/validacion';
 import { colors, spacing } from '@/theme';
 
 export default function ProductoFormScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { esDueno } = useAuth();
   const productos = useProducts();
 
-  if (id === 'nuevo') return <ProductoForm id={id} existente={null} />;
+  // Solo el dueño crea y edita productos; el empleado los consulta
+  if (id === 'nuevo') return esDueno ? <ProductoForm id={id} existente={null} /> : <SoloDueno />;
   if (productos.isPending) return <LoadingView />;
   if (productos.isError) return <ErrorView mensaje={mensajeError(productos.error)} onRetry={() => productos.refetch()} />;
   const existente = productos.data.find((p) => p._id === id);
   if (!existente) return <ErrorView mensaje="Este producto ya no existe." />;
+  if (!esDueno) return <ProductoDetalle producto={existente} />;
   return <ProductoForm key={id} id={id} existente={existente} />;
+}
+
+/** Un empleado que llega a "nuevo producto" (p. ej. desde un enlace). */
+function SoloDueno() {
+  const router = useRouter();
+  return (
+    <Screen>
+      <Stack.Screen options={{ title: 'Nuevo producto' }} />
+      <Card>
+        <EmptyState
+          icon="lock-closed-outline"
+          title="Solo el dueño puede agregar productos"
+          message="Pídele al dueño del negocio que lo registre en el inventario."
+          action={<Button title="Volver" variant="secondary" onPress={() => (router.canGoBack() ? router.back() : router.replace('/productos'))} />}
+        />
+      </Card>
+    </Screen>
+  );
+}
+
+function Dato({ etiqueta, valor, color }: { etiqueta: string; valor: string; color?: string }) {
+  return (
+    <Row style={{ justifyContent: 'space-between' }}>
+      <Text variant="body" color={colors.textMuted}>
+        {etiqueta}
+      </Text>
+      <Text variant="body" weight="semibold" color={color} style={{ flexShrink: 1, textAlign: 'right' }}>
+        {valor}
+      </Text>
+    </Row>
+  );
+}
+
+/** Vista de solo lectura para el empleado: sin costo, margen ni botones para editar. */
+function ProductoDetalle({ producto: p }: { producto: Product }) {
+  const router = useRouter();
+  const unidad = UNIDADES.find((u) => u.valor === (p.unit ?? ''))?.texto ?? p.unit;
+  const descuento = p.discount ?? 0;
+
+  return (
+    <Screen>
+      <Stack.Screen options={{ title: 'Producto' }} />
+      <Card style={{ alignItems: 'center', gap: spacing.sm }}>
+        <ProductImage uri={p.image} size={120} radius={18} />
+        <Text variant="heading" align="center">
+          {p.name}
+        </Text>
+        <Text variant="title" color={colors.primary}>
+          {money(p.price)}
+        </Text>
+        {descuento > 0 ? <Badge text={`${descuento}% de descuento`} color={colors.success} style={{ alignSelf: 'center' }} /> : null}
+      </Card>
+
+      <Card style={{ gap: spacing.xs }}>
+        <Dato etiqueta="Stock" valor={`${p.quantity} ${p.unit || 'uds.'}`} color={colorStock(p.quantity)} />
+        <Divider />
+        <Dato etiqueta="Unidad" valor={unidad || 'Sin unidad'} />
+        <Divider />
+        <Dato etiqueta="Categoría" valor={p.category || 'Sin categoría'} />
+        <Divider />
+        <Dato etiqueta="Marca" valor={p.brand || '—'} />
+        {p.description ? (
+          <>
+            <Divider />
+            <Text variant="label" style={styles.label}>
+              Descripción
+            </Text>
+            <Text variant="body">{p.description}</Text>
+          </>
+        ) : null}
+      </Card>
+
+      <Button
+        title="Vender este producto"
+        icon="cart-outline"
+        size="lg"
+        disabled={p.quantity < 1}
+        onPress={() => router.push({ pathname: '/venta/nueva', params: { productId: p._id } })}
+      />
+      {p.quantity < 1 && (
+        <Text variant="caption" align="center">
+          Sin existencias: avísale al dueño para que lo resurta.
+        </Text>
+      )}
+    </Screen>
+  );
 }
 
 function ProductoForm({ id, existente }: { id: string; existente: Product | null }) {

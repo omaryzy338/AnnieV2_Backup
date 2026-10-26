@@ -3,7 +3,7 @@ import Constants from 'expo-constants';
 import { useRouter, type Href } from 'expo-router';
 import { View } from 'react-native';
 
-import { Avatar, Card, confirmar, Divider, ListRow, Row, Screen, Text } from '@/components/ui';
+import { Avatar, Badge, Card, confirmar, Divider, ListRow, Row, Screen, Text } from '@/components/ui';
 import { useAuth } from '@/context/auth';
 import { getApiBaseUrl, resolveMediaUrl } from '@/lib/api';
 import { fullName, money } from '@/lib/format';
@@ -22,11 +22,17 @@ function Icono({ nombre, color = colors.primary }: { nombre: keyof typeof Ionico
 
 export default function MasScreen() {
   const router = useRouter();
-  const { user, cerrarSesion } = useAuth();
+  const { user, esDueno, cerrarSesion } = useAuth();
   const perfil = useProfile();
   const credito = useCreditSummary();
   const negocio = perfil.data?.business;
 
+  // Reportes, Mi negocio y Empleados son solo del dueño
+  const soloDueno: Opcion[] = [
+    { icono: 'bar-chart', titulo: 'Reportes', detalle: 'Ventas, productos, clientes y exportar', ruta: '/reportes', color: colors.success },
+    { icono: 'briefcase', titulo: 'Mi negocio', detalle: 'Datos del negocio, RFC, logo y propietario', ruta: '/negocio' },
+    { icono: 'people-circle-outline', titulo: 'Empleados', detalle: 'Cuentas para tu personal', ruta: '/empleados', color: colors.primaryDark },
+  ];
   const opciones: Opcion[] = [
     {
       icono: 'card',
@@ -35,8 +41,7 @@ export default function MasScreen() {
       ruta: '/creditos',
       color: colors.warning,
     },
-    { icono: 'bar-chart', titulo: 'Reportes', detalle: 'Ventas, productos, clientes y exportar', ruta: '/reportes', color: colors.success },
-    { icono: 'briefcase', titulo: 'Mi negocio', detalle: 'Datos del negocio, RFC, logo y propietario', ruta: '/negocio' },
+    ...(esDueno ? soloDueno : []),
     { icono: 'server', titulo: 'Servidor', detalle: getApiBaseUrl().replace(/^https?:\/\//, ''), ruta: '/servidor', color: colors.textMuted },
   ];
 
@@ -60,6 +65,9 @@ export default function MasScreen() {
             <Text variant="caption" numberOfLines={1}>
               {user?.email}
             </Text>
+            {user ? (
+              <Badge text={esDueno ? 'Dueño' : 'Empleado'} color={esDueno ? colors.primary : colors.success} style={{ marginTop: spacing.xs }} />
+            ) : null}
           </View>
         </Row>
       </Card>

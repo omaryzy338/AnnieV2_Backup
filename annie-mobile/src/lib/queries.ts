@@ -10,6 +10,7 @@ import type {
   CreditMovement,
   CreditSummary,
   DiscountType,
+  Empleado,
   PaymentMethod,
   Product,
   Profile,
@@ -25,13 +26,15 @@ export const qk = {
   credits: ['credits'] as const,
   creditSummary: ['credits', 'resumen'] as const,
   movimientos: (clientId: string) => ['credits', 'movimientos', clientId] as const,
+  employees: ['employees'] as const,
 };
 
 // ── Consultas ────────────────────────────────────────────────────
 export const useProducts = () => useQuery({ queryKey: qk.products, queryFn: () => api.get<Product[]>('/products') });
 export const useClients = () => useQuery({ queryKey: qk.clients, queryFn: () => api.get<Client[]>('/clients') });
 export const useSales = () => useQuery({ queryKey: qk.sales, queryFn: () => api.get<Sale[]>('/sales') });
-export const useProfile = () => useQuery({ queryKey: qk.profile, queryFn: () => api.get<Profile>('/profile') });
+export const useProfile = ({ enabled = true }: { enabled?: boolean } = {}) =>
+  useQuery({ queryKey: qk.profile, queryFn: () => api.get<Profile>('/profile'), enabled });
 export const useCreditClients = () => useQuery({ queryKey: qk.credits, queryFn: () => api.get<Client[]>('/credits') });
 export const useCreditSummary = () =>
   useQuery({ queryKey: qk.creditSummary, queryFn: () => api.get<CreditSummary>('/credits/resumen') });
@@ -110,12 +113,13 @@ export const subirImagenProducto = (archivo: ArchivoLocal) =>
   api.upload<{ url: string }>('/products/upload-image', 'image', archivo);
 
 // ── Clientes y créditos ──────────────────────────────────────────
+// El empleado solo manda los datos de contacto (sin esMayoreo ni datos de crédito)
 export type ClienteForm = {
   name: string;
   lastName: string;
   email: string;
   phone: string;
-  esMayoreo: boolean;
+  esMayoreo?: boolean;
   tipoPersona?: 'fisica' | 'moral';
   rfc?: string;
   razonSocial?: string;
@@ -173,5 +177,29 @@ export function useSubirLogo() {
   return useMutation({
     mutationFn: (archivo: ArchivoLocal) => api.upload<{ logo: string }>('/profile/business/logo', 'logo', archivo),
     onSuccess: () => invalidar(qk.profile),
+  });
+}
+
+// ── Empleados (solo el dueño) ────────────────────────────────────
+export const useEmpleados = () => useQuery({ queryKey: qk.employees, queryFn: () => api.get<Empleado[]>('/employees') });
+
+/** Al crear se mandan correo y contraseña; al editar, `activo` y la contraseña solo si se cambia. */
+export type EmpleadoForm = { name: string; lastName: string; email?: string; password?: string; activo?: boolean };
+
+export function useGuardarEmpleado() {
+  const invalidar = useInvalidar();
+  return useMutation({
+    mutationFn: ({ id, datos }: { id?: string; datos: EmpleadoForm }) =>
+      id ? api.put<Empleado>(`/employees/${id}`, datos) : api.post<Empleado>('/employees', datos),
+    onSuccess: () => invalidar(qk.employees),
+  });
+}
+
+// Las ventas que registró conservan su nombre (vendedorNombre), no hay que recargarlas
+export function useEliminarEmpleado() {
+  const invalidar = useInvalidar();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<{ message: string }>(`/employees/${id}`),
+    onSuccess: () => invalidar(qk.employees),
   });
 }

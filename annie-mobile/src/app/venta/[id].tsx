@@ -2,6 +2,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 
 import { TicketCard } from '@/components/TicketCard';
 import { aviso, Banner, Button, confirmar, EmptyState, ErrorView, LoadingView, Row, Screen } from '@/components/ui';
+import { useAuth } from '@/context/auth';
 import { mensajeError } from '@/lib/api';
 import { folioTxt } from '@/lib/format';
 import { useCancelarVenta, useProfile, useSales } from '@/lib/queries';
@@ -10,6 +11,7 @@ import { compartirTicket, imprimirTicket } from '@/lib/ticketAcciones';
 export default function VentaDetalleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { esDueno } = useAuth();
   const ventas = useSales();
   const perfil = useProfile();
   const cancelar = useCancelarVenta();
@@ -61,7 +63,8 @@ export default function VentaDetalleScreen() {
         <Button title="Compartir" icon="share-outline" variant="secondary" onPress={() => ticket('compartir')} style={{ flex: 1 }} />
       </Row>
       {!venta.product && <Banner tono="aviso">El producto de esta venta ya fue eliminado del inventario.</Banner>}
-      <Button title="Cancelar venta" icon="trash-outline" variant="danger" onPress={cancelarVenta} loading={cancelar.isPending} />
+      {/* Solo el dueño puede cancelar ventas */}
+      {esDueno && <Button title="Cancelar venta" icon="trash-outline" variant="danger" onPress={cancelarVenta} loading={cancelar.isPending} />}
     </Screen>
   );
 }

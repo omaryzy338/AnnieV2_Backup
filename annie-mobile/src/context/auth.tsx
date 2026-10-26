@@ -6,6 +6,8 @@ import { createContext, use, useCallback, useEffect, useMemo, useRef, useState, 
 import { aviso } from '@/components/ui/dialogs';
 import { api, setApiBaseUrl, setAuthToken, setUnauthorizedHandler, urlPorDefecto } from '@/lib/api';
 import { tokenVencido } from '@/lib/jwt';
+import { useProfile } from '@/lib/queries';
+import { rolDeSesion } from '@/lib/roles';
 import { KEYS, storage } from '@/lib/storage';
 import type { SessionUser } from '@/lib/types';
 
@@ -23,6 +25,8 @@ export type DatosRegistro = {
 type AuthContextValue = {
   estado: Estado;
   user: SessionUser | null;
+  /** true si la sesión es del dueño del negocio (las sesiones sin rol son del dueño). */
+  esDueno: boolean;
   iniciarSesion: (email: string, password: string) => Promise<void>;
   registrarse: (datos: DatosRegistro) => Promise<void>;
   cerrarSesion: () => Promise<void>;
@@ -37,10 +41,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [estado, setEstado] = useState<Estado>('cargando');
   const [user, setUser] = useState<SessionUser | null>(null);
+  // El token también trae el rol: es el respaldo si el usuario guardado no lo tiene
+  const [token, setToken] = useState<string | null>(null);
   const cerrando = useRef(false);
 
   const limpiarSesion = useCallback(async () => {
     setAuthToken(null);
+    setToken(null);
     setUser(null);
     setEstado('fuera');
     queryClient.clear();
@@ -51,18 +58,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        const [urlGuardada, token, userTxt] = await Promise.all([
+        const [urlGuardada, tokenGuardado, userTxt] = await Promise.all([
           storage.get(KEYS.apiUrl),
           storage.get(KEYS.token),
           storage.get(KEYS.user),
         ]);
         setApiBaseUrl(urlGuardada || urlPorDefecto());
-        if (token && userTxt && !tokenVencido(token)) {
-          setAuthToken(token);
+        if (tokenGuardado && userTxt && !tokenVencido(tokenGuardado)) {
+          setAuthToken(tokenGuardado);
+          setToken(tokenGuardado);
           setUser(JSON.parse(userTxt));
           setEstado('dentro');
         } else {
-          if (token) await Promise.all([storage.remove(KEYS.token), storage.remove(KEYS.user)]);
+          if (tokenGuardado) await Promise.all([storage.remove(KEYS.token), storage.remove(KEYS.user)]);
           setEstado('fuera');
         }
       } catch {
@@ -71,22 +79,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })();
   }, []);
 
-  // Si el backend responde 401 (sesión vencida o inválida) se cierra la sesión
+  // Si el backend responde 401 (sesión vencida o inválida, o un empleado al que
+  // el dueño desactivó) se cierra la sesión y se muestra el motivo
   useEffect(() => {
-    setUnauthorizedHandler(() => {
+    setUnauthorizedHandler((mensaje) => {
       if (cerrando.current) return;
       cerrando.current = true;
       limpiarSesion().finally(() => {
         cerrando.current = false;
-        aviso('Sesión vencida', 'Tu sesión expiró. Inicia sesión de nuevo.');
+        if (mensaje) aviso('Sesión cerrada', mensaje);
+        else aviso('Sesión vencida', 'Tu sesión expiró. Inicia sesión de nuevo.');
       });
     });
     return () => setUnauthorizedHandler(null);
   }, [limpiarSesion]);
 
-  const guardarSesion = useCallback(async ({ token, user: u }: RespuestaAuth) => {
-    await Promise.all([storage.set(KEYS.token, token), storage.set(KEYS.user, JSON.stringify(u))]);
-    setAuthToken(token);
+  const guardarSesion = useCallback(async ({ token: t, user: u }: RespuestaAuth) => {
+    await Promise.all([storage.set(KEYS.token, t), storage.set(KEYS.user, JSON.stringify(u))]);
+    setAuthToken(t);
+    setToken(t);
     setUser(u);
     setEstado('dentro');
   }, []);
@@ -126,9 +137,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user]
   );
 
+  // El perfil trae el rol vigente. Si la sesión guardada no lo tiene (se inició
+  // antes de que existieran los roles) o es otro, se guarda para la próxima vez
+  const rolPerfil = useProfile({ enabled: estado === 'dentro' }).data?.user?.rol;
+  useEffect(() => {
+    if (user && rolPerfil && user.rol !== rolPerfil) {
+      storage.set(KEYS.user, JSON.stringify({ ...user, rol: rolPerfil })).catch(() => {});
+    }
+  }, [user, rolPerfil]);
+
+  const esDueno = !!user && rolDeSesion({ rol: rolPerfil ?? user.rol }, token) === 'dueno';
+
   const value = useMemo(
-    () => ({ estado, user, iniciarSesion, registrarse, cerrarSesion: limpiarSesion, actualizarUsuario }),
-    [estado, user, iniciarSesion, registrarse, limpiarSesion, actualizarUsuario]
+    () => ({ estado, user, esDueno, iniciarSesion, registrarse, cerrarSesion: limpiarSesion, actualizarUsuario }),
+    [estado, user, esDueno, iniciarSesion, registrarse, limpiarSesion, actualizarUsuario]
   );
 
   return <AuthContext value={value}>{children}</AuthContext>;

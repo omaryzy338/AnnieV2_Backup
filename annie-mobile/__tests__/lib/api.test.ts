@@ -39,6 +39,32 @@ describe('cliente de la API', () => {
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
+  it('un 401 le pasa al cierre de sesión el motivo que da el backend (empleado desactivado)', async () => {
+    const handler = jest.fn();
+    setUnauthorizedHandler(handler);
+    const motivo = 'Tu acceso como empleado fue desactivado. Pídele al dueño que lo active.';
+    fetchMock.mockReturnValue(respuesta(401, { message: motivo }));
+    await expect(api.get('/sales')).rejects.toEqual(new ApiError(motivo, 401));
+    expect(handler).toHaveBeenCalledWith(motivo);
+  });
+
+  it('un 401 sin mensaje cierra la sesión con el aviso por defecto', async () => {
+    const handler = jest.fn();
+    setUnauthorizedHandler(handler);
+    fetchMock.mockReturnValue(Promise.resolve({ ok: false, status: 401, text: () => Promise.resolve('') } as Response));
+    await expect(api.get('/sales')).rejects.toThrow('Error 401');
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(handler).toHaveBeenCalledWith(undefined);
+  });
+
+  it('un 403 (acción solo del dueño) da el mensaje sin cerrar la sesión', async () => {
+    const handler = jest.fn();
+    setUnauthorizedHandler(handler);
+    fetchMock.mockReturnValue(respuesta(403, { message: 'Solo el dueño del negocio puede hacer esto.' }));
+    await expect(api.delete('/sales/s1')).rejects.toEqual(new ApiError('Solo el dueño del negocio puede hacer esto.', 403));
+    expect(handler).not.toHaveBeenCalled();
+  });
+
   it('sin conexión da un mensaje entendible', async () => {
     fetchMock.mockRejectedValue(new TypeError('Network request failed'));
     await expect(api.get('/products')).rejects.toThrow(/No se pudo conectar/);

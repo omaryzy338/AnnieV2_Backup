@@ -1,8 +1,8 @@
-// Validación y armado de los formularios de producto, cliente y negocio.
-// Regresan los errores por campo (vacío = todo bien).
+// Validación y armado de los formularios de producto, cliente, empleado y
+// negocio. Regresan los errores por campo (vacío = todo bien).
 import { parseAmount } from './format';
-import type { Client, Product } from './types';
-import { limpiarRFC, validarRFC } from './validacion';
+import type { Client, Empleado, Product } from './types';
+import { EMAIL_REGEX, limpiarRFC, MENSAJE_PASSWORD, PASSWORD_REGEX, validarRFC } from './validacion';
 
 export type Errores<K extends string> = Partial<Record<K, string>>;
 
@@ -117,13 +117,18 @@ export const clienteACampos = (c: Client): CamposCliente => ({
   limiteCredito: c.limiteCredito ? String(c.limiteCredito) : '',
 });
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/**
+ * soloContacto: el empleado solo captura los datos de contacto; el crédito y
+ * los datos fiscales los maneja el dueño (el backend los ignora si vienen de
+ * un empleado).
+ */
+type OpcionesCliente = { soloContacto?: boolean };
 
-export function validarCliente(c: CamposCliente, saldoActual = 0): Errores<keyof CamposCliente> {
+export function validarCliente(c: CamposCliente, saldoActual = 0, { soloContacto = false }: OpcionesCliente = {}): Errores<keyof CamposCliente> {
   const e: Errores<keyof CamposCliente> = {};
   if (!c.name.trim()) e.name = 'El nombre es obligatorio';
-  if (c.email.trim() && !EMAIL.test(c.email.trim())) e.email = 'El correo no tiene un formato válido';
-  if (c.esMayoreo) {
+  if (c.email.trim() && !EMAIL_REGEX.test(c.email.trim())) e.email = 'El correo no tiene un formato válido';
+  if (c.esMayoreo && !soloContacto) {
     if (!c.rfc.trim()) e.rfc = 'El RFC es obligatorio para clientes de crédito';
     else {
       const err = validarRFC(c.rfc, c.tipoPersona);
@@ -136,14 +141,15 @@ export function validarCliente(c: CamposCliente, saldoActual = 0): Errores<keyof
   return e;
 }
 
-export function camposACliente(c: CamposCliente) {
-  const base = {
+export function camposACliente(c: CamposCliente, { soloContacto = false }: OpcionesCliente = {}) {
+  const contacto = {
     name: c.name.trim(),
     lastName: c.lastName.trim(),
     email: c.email.trim(),
     phone: c.phone.trim(),
-    esMayoreo: c.esMayoreo,
   };
+  if (soloContacto) return contacto;
+  const base = { ...contacto, esMayoreo: c.esMayoreo };
   if (!c.esMayoreo) return base;
   return {
     ...base,
@@ -152,6 +158,50 @@ export function camposACliente(c: CamposCliente) {
     razonSocial: c.tipoPersona === 'moral' ? c.razonSocial.trim() : '',
     limiteCredito: c.limiteCredito.trim() ? parseAmount(c.limiteCredito) : 0,
   };
+}
+
+// ── Empleado ─────────────────────────────────────────────────────
+export type CamposEmpleado = {
+  name: string;
+  lastName: string;
+  email: string;
+  password: string;
+  confirmar: string;
+  activo: boolean;
+};
+
+export const empleadoVacio: CamposEmpleado = { name: '', lastName: '', email: '', password: '', confirmar: '', activo: true };
+
+export const empleadoACampos = (e: Empleado): CamposEmpleado => ({
+  name: e.name,
+  lastName: e.lastName ?? '',
+  email: e.email,
+  password: '',
+  confirmar: '',
+  activo: e.activo !== false,
+});
+
+/** Al crear todo es obligatorio; al editar, la contraseña solo se valida si se escribe una nueva. */
+export function validarEmpleado(c: CamposEmpleado, esNuevo: boolean): Errores<keyof CamposEmpleado> {
+  const e: Errores<keyof CamposEmpleado> = {};
+  if (!c.name.trim()) e.name = 'Escribe el nombre';
+  if (!c.lastName.trim()) e.lastName = 'Escribe el apellido';
+  if (esNuevo) {
+    if (!c.email.trim()) e.email = 'Escribe el correo';
+    else if (!EMAIL_REGEX.test(c.email.trim())) e.email = 'El correo no tiene un formato válido';
+  }
+  if (esNuevo || c.password || c.confirmar) {
+    if (!PASSWORD_REGEX.test(c.password)) e.password = MENSAJE_PASSWORD;
+    if (c.confirmar !== c.password) e.confirmar = 'Las contraseñas no coinciden';
+  }
+  return e;
+}
+
+/** Cuerpo para la API: al crear, correo y contraseña; al editar, `activo` y la contraseña solo si se cambió. */
+export function camposAEmpleado(c: CamposEmpleado, esNuevo: boolean) {
+  const base = { name: c.name.trim(), lastName: c.lastName.trim() };
+  if (esNuevo) return { ...base, email: c.email.trim().toLowerCase(), password: c.password };
+  return c.password ? { ...base, activo: c.activo, password: c.password } : { ...base, activo: c.activo };
 }
 
 // ── Movimiento de crédito ────────────────────────────────────────

@@ -35,7 +35,7 @@ import { colors, spacing } from '@/theme';
 export default function InicioScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, esDueno } = useAuth();
   const ventas = useSales();
   const productos = useProducts();
   const perfil = useProfile();
@@ -68,9 +68,11 @@ export default function InicioScreen() {
   }
 
   const negocio = perfil.data?.business;
-  const perfilIncompleto = negocio && (!negocio.state || !negocio.city || !negocio.address);
+  // Solo el dueño puede completar los datos del negocio
+  const perfilIncompleto = esDueno && negocio && (!negocio.state || !negocio.city || !negocio.address);
   const refrescando = ventas.isRefetching || productos.isRefetching;
   const { mes } = datos;
+  const logo = <Avatar text={(negocio?.name ?? 'A').charAt(0).toUpperCase()} uri={resolveMediaUrl(negocio?.logo)} size={46} />;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -90,9 +92,13 @@ export default function InicioScreen() {
               {negocio?.name ?? user?.businessName ?? 'Mi negocio'}
             </Text>
           </View>
-          <Pressable onPress={() => router.push('/negocio')} accessibilityRole="button" accessibilityLabel="Mi negocio">
-            <Avatar text={(negocio?.name ?? 'A').charAt(0).toUpperCase()} uri={resolveMediaUrl(negocio?.logo)} size={46} />
-          </Pressable>
+          {esDueno ? (
+            <Pressable onPress={() => router.push('/negocio')} accessibilityRole="button" accessibilityLabel="Mi negocio">
+              {logo}
+            </Pressable>
+          ) : (
+            logo
+          )}
         </View>
 
         {perfilIncompleto && (

@@ -25,6 +25,7 @@ import {
   TextField,
   type Opcion,
 } from '@/components/ui';
+import { useAuth } from '@/context/auth';
 import { useDesplazamientoTeclado } from '@/hooks/useDesplazamientoTeclado';
 import { mensajeError } from '@/lib/api';
 import { fullName, initials, money, parseAmount } from '@/lib/format';
@@ -58,6 +59,7 @@ function FormularioVenta({ productos, clientes, productIdInicial }: { productos:
   const desplazamientoTeclado = useDesplazamientoTeclado();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { esDueno } = useAuth();
   const perfil = useProfile();
   const crearVenta = useCrearVenta();
 
@@ -84,7 +86,8 @@ function FormularioVenta({ productos, clientes, productIdInicial }: { productos:
   const total = producto ? calcularTotal(producto.price, cantidad, Number.isNaN(descuento) ? 0 : descuento, tipoDescuento) : 0;
   const pagaCon = pagaConTxt.trim() ? parseAmount(pagaConTxt) : total;
   const cambio = calcularCambio(total, Number.isNaN(pagaCon) ? 0 : pagaCon);
-  const ganancia = producto?.cost && producto.cost > 0 ? round2(total - producto.cost * cantidad) : null;
+  // Solo el dueño ve la ganancia (al empleado el backend no le manda el costo)
+  const ganancia = esDueno && producto?.cost && producto.cost > 0 ? round2(total - producto.cost * cantidad) : null;
 
   const opcionesProducto: Opcion[] = useMemo(
     () =>
@@ -219,16 +222,21 @@ function FormularioVenta({ productos, clientes, productIdInicial }: { productos:
 
   // ── Formulario ────────────────────────────────────────────────
   if (!productos.length) {
+    // Solo el dueño puede agregar productos
     return (
       <Screen>
         <Card>
           <Text variant="subheading" align="center">
-            Primero registra un producto
+            {esDueno ? 'Primero registra un producto' : 'Aún no hay productos'}
           </Text>
           <Text variant="caption" align="center" style={{ marginVertical: spacing.sm }}>
-            Para vender necesitas tener al menos un producto en tu inventario.
+            {esDueno
+              ? 'Para vender necesitas tener al menos un producto en tu inventario.'
+              : 'Para vender se necesita al menos un producto en el inventario. Pídele al dueño que los agregue.'}
           </Text>
-          <Button title="Agregar producto" icon="add" onPress={() => router.replace({ pathname: '/producto/[id]', params: { id: 'nuevo' } })} />
+          {esDueno && (
+            <Button title="Agregar producto" icon="add" onPress={() => router.replace({ pathname: '/producto/[id]', params: { id: 'nuevo' } })} />
+          )}
         </Card>
       </Screen>
     );

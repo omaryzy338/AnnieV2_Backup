@@ -1,5 +1,5 @@
 // Resumen de una venta con el formato del ticket: folio, fecha, producto,
-// método de pago, total, con cuánto pagó y el cambio.
+// quién la atendió, método de pago, total, con cuánto pagó y el cambio.
 import { StyleSheet, View } from 'react-native';
 
 import { Badge, Card, Divider, ProductImage, Text } from '@/components/ui';
@@ -25,6 +25,8 @@ export function TicketCard({ venta }: { venta: Sale }) {
   const credito = venta.paymentMethod === 'credito';
   const descuento =
     venta.discount > 0 ? (venta.discountType === 'fijo' ? `-${money(venta.discount)}` : `-${venta.discount}%`) : null;
+  // Las ventas antiguas no guardan quién las registró
+  const vendedor = venta.vendedorNombre?.trim();
 
   return (
     <Card style={{ gap: spacing.sm }}>
@@ -51,6 +53,7 @@ export function TicketCard({ venta }: { venta: Sale }) {
       <Divider />
       <Fila etiqueta="Fecha" valor={formatDateTime(fechaVenta(venta))} />
       <Fila etiqueta="Cliente" valor={fullName(venta.client) || 'Cliente general'} />
+      {vendedor ? <Fila etiqueta="Atendió" valor={vendedor} /> : null}
       <Divider />
       <Fila etiqueta="Total" valor={money(venta.total)} fuerte color={colors.success} />
       {credito ? (

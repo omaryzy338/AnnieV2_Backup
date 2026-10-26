@@ -19,6 +19,7 @@ import {
   SearchBar,
   Text,
 } from '@/components/ui';
+import { useAuth } from '@/context/auth';
 import { mensajeError } from '@/lib/api';
 import { fullName, initials, money } from '@/lib/format';
 import { useCreditClients, useCreditSummary, useProfile } from '@/lib/queries';
@@ -31,6 +32,8 @@ const colorUso = (pct: number) => (pct >= 100 ? colors.danger : pct >= 70 ? colo
 
 export default function CreditosScreen() {
   const router = useRouter();
+  // El empleado consulta los créditos y cobra abonos; dar crédito es del dueño
+  const { esDueno } = useAuth();
   const clientes = useCreditClients();
   const resumen = useCreditSummary();
   const perfil = useProfile();
@@ -52,7 +55,7 @@ export default function CreditosScreen() {
 
   const encabezado = (
     <View style={{ gap: spacing.lg, marginBottom: spacing.lg }}>
-      {sinRFC && perfil.data && (
+      {esDueno && sinRFC && perfil.data && (
         <Banner
           tono="aviso"
           action={
@@ -73,12 +76,14 @@ export default function CreditosScreen() {
         <Kpi icon="alert-circle" label="Sobre su límite" value={String(r?.sobreLimite ?? 0)} color={(r?.sobreLimite ?? 0) > 0 ? colors.danger : colors.textMuted} />
       </KpiGrid>
 
-      <Button
-        title="Nuevo cliente de crédito"
-        icon="person-add"
-        disabled={sinRFC}
-        onPress={() => router.push({ pathname: '/cliente/[id]', params: { id: 'nuevo', credito: '1' } })}
-      />
+      {esDueno && (
+        <Button
+          title="Nuevo cliente de crédito"
+          icon="person-add"
+          disabled={sinRFC}
+          onPress={() => router.push({ pathname: '/cliente/[id]', params: { id: 'nuevo', credito: '1' } })}
+        />
+      )}
 
       {clientes.data.length > 0 && <SearchBar value={busqueda} onChangeText={setBusqueda} placeholder="Buscar por nombre, RFC o razón social" />}
     </View>
@@ -106,7 +111,11 @@ export default function CreditosScreen() {
       ListEmptyComponent={
         <Card>
           {clientes.data.length === 0 ? (
-            <EmptyState icon="card-outline" title="Aún no hay clientes de crédito" message="Activa el crédito en un cliente o registra uno nuevo de mayoreo." />
+            <EmptyState
+              icon="card-outline"
+              title="Aún no hay clientes de crédito"
+              message={esDueno ? 'Activa el crédito en un cliente o registra uno nuevo de mayoreo.' : 'Cuando el dueño le dé crédito a un cliente aparecerá aquí.'}
+            />
           ) : (
             <EmptyState icon="search" title="Sin resultados" message={`No hay clientes que coincidan con "${busqueda}".`} />
           )}

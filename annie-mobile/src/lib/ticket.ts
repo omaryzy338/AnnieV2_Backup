@@ -11,6 +11,8 @@ export function ticketHTML(v: Sale, negocio?: Pick<Business, 'name' | 'rfc' | 'r
   const nombreNegocio = escapar(negocio?.name || 'Mi negocio');
   const rfc = negocio?.rfc && !negocio.rfcGenerico ? `RFC: ${escapar(negocio.rfc)}` : '';
   const cliente = escapar(fullName(v.client) || 'Cliente general');
+  // Las ventas antiguas no guardan quién las registró
+  const vendedor = escapar(v.vendedorNombre?.trim() ?? '');
   const producto = escapar(v.product?.name || 'Producto eliminado');
   const descuento =
     v.discount > 0 ? (v.discountType === 'fijo' ? `-${money(v.discount)}` : `-${v.discount}%`) : '—';
@@ -56,6 +58,7 @@ export function ticketHTML(v: Sale, negocio?: Pick<Business, 'name' | 'rfc' | 'r
   <div class="folio">FOLIO ${folioTxt(v.folio)}</div>
   <div class="fila"><span>Fecha</span><strong>${formatDateTime(fechaVenta(v))}</strong></div>
   <div class="fila"><span>Cliente</span><strong>${cliente}</strong></div>
+  ${vendedor ? `<div class="fila"><span>Atendió</span><strong>${vendedor}</strong></div>` : ''}
   <hr>
   <table>
     <thead><tr><th>Producto</th><th class="num">Cant.</th><th class="num">Precio</th><th class="num">Desc.</th></tr></thead>

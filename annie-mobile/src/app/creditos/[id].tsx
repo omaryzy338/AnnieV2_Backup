@@ -19,6 +19,7 @@ import {
   Text,
   TextField,
 } from '@/components/ui';
+import { useAuth } from '@/context/auth';
 import { useDesplazamientoTeclado } from '@/hooks/useDesplazamientoTeclado';
 import { mensajeError } from '@/lib/api';
 import { formatDateTime, fullName, money, parseAmount } from '@/lib/format';
@@ -31,6 +32,7 @@ export default function EstadoCuentaScreen() {
   const desplazamientoTeclado = useDesplazamientoTeclado();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { esDueno } = useAuth();
   const datos = useMovimientos(id);
   const registrar = useMovimientoCredito();
   const [tipo, setTipo] = useState<'abono' | 'cargo'>('abono');
@@ -45,8 +47,10 @@ export default function EstadoCuentaScreen() {
   const saldo = client.saldo ?? 0;
   const disponible = creditoDisponible(client);
   const pct = porcentajeCreditoUsado(client);
-  // Si el cliente no debe nada, el único movimiento posible es un cargo
-  const tipoActual = saldo <= 0 ? 'cargo' : tipo;
+  // El empleado solo registra abonos (pagos); los cargos son del dueño. Para el
+  // dueño, si el cliente no debe nada el único movimiento posible es un cargo
+  const tipoActual = !esDueno ? 'abono' : saldo <= 0 ? 'cargo' : tipo;
+  const puedeRegistrar = esDueno || saldo > 0;
 
   const onRegistrar = async () => {
     setMensaje(null);
@@ -90,54 +94,66 @@ export default function EstadoCuentaScreen() {
           <Text variant="caption">
             {client.rfc} · Persona {client.tipoPersona === 'moral' ? 'moral' : 'física'}
           </Text>
-          <Button
-            title="Editar cliente"
-            icon="create-outline"
-            variant="ghost"
-            size="sm"
-            onPress={() => router.push({ pathname: '/cliente/[id]', params: { id } })}
-          />
+          {esDueno && (
+            <Button
+              title="Editar cliente"
+              icon="create-outline"
+              variant="ghost"
+              size="sm"
+              onPress={() => router.push({ pathname: '/cliente/[id]', params: { id } })}
+            />
+          )}
         </Card>
 
         <Card style={{ gap: spacing.md }}>
-          <SectionTitle>Registrar movimiento</SectionTitle>
-          <Segmented
-            options={[
-              { value: 'abono', label: 'Abono (pago)', icon: 'arrow-down-circle-outline', disabled: saldo <= 0 },
-              { value: 'cargo', label: 'Cargo (compra)', icon: 'arrow-up-circle-outline' },
-            ]}
-            value={tipoActual}
-            onChange={(v) => {
-              setTipo(v);
-              setMensaje(null);
-            }}
-          />
-          <TextField
-            label="Monto"
-            required
-            value={monto}
-            onChangeText={setMonto}
-            placeholder="0.00"
-            keyboardType="decimal-pad"
-            prefix="$"
-            hint={tipoActual === 'abono' ? `Debe ${money(saldo)}` : `Disponible ${money(disponible)}`}
-          />
-          {tipoActual === 'abono' && (
-            <Button title={`Liquidar todo (${money(saldo)})`} variant="ghost" size="sm" onPress={() => setMonto(saldo.toFixed(2))} />
+          <SectionTitle>{esDueno ? 'Registrar movimiento' : 'Registrar abono'}</SectionTitle>
+          {puedeRegistrar ? (
+            <>
+              {esDueno && (
+                <Segmented
+                  options={[
+                    { value: 'abono', label: 'Abono (pago)', icon: 'arrow-down-circle-outline', disabled: saldo <= 0 },
+                    { value: 'cargo', label: 'Cargo (compra)', icon: 'arrow-up-circle-outline' },
+                  ]}
+                  value={tipoActual}
+                  onChange={(v) => {
+                    setTipo(v);
+                    setMensaje(null);
+                  }}
+                />
+              )}
+              <TextField
+                label="Monto"
+                required
+                value={monto}
+                onChangeText={setMonto}
+                placeholder="0.00"
+                keyboardType="decimal-pad"
+                prefix="$"
+                hint={tipoActual === 'abono' ? `Debe ${money(saldo)}` : `Disponible ${money(disponible)}`}
+              />
+              {tipoActual === 'abono' && (
+                <Button title={`Liquidar todo (${money(saldo)})`} variant="ghost" size="sm" onPress={() => setMonto(saldo.toFixed(2))} />
+              )}
+              <TextField
+                label="Concepto (opcional)"
+                value={concepto}
+                onChangeText={setConcepto}
+                placeholder={tipoActual === 'abono' ? 'Ej: Pago en efectivo' : 'Ej: Pedido de mayoreo'}
+              />
+            </>
+          ) : (
+            <Text variant="caption">Este cliente no tiene saldo pendiente: no hay abonos por registrar.</Text>
           )}
-          <TextField
-            label="Concepto (opcional)"
-            value={concepto}
-            onChangeText={setConcepto}
-            placeholder={tipoActual === 'abono' ? 'Ej: Pago en efectivo' : 'Ej: Pedido de mayoreo'}
-          />
           {mensaje && <Banner tono={mensaje.tono}>{mensaje.texto}</Banner>}
-          <Button
-            title={tipoActual === 'cargo' ? 'Registrar cargo' : 'Registrar abono'}
-            icon="checkmark"
-            onPress={onRegistrar}
-            loading={registrar.isPending}
-          />
+          {puedeRegistrar && (
+            <Button
+              title={tipoActual === 'cargo' ? 'Registrar cargo' : 'Registrar abono'}
+              icon="checkmark"
+              onPress={onRegistrar}
+              loading={registrar.isPending}
+            />
+          )}
         </Card>
 
         <Card padded={false}>

@@ -52,7 +52,7 @@ export default function RootLayout() {
 }
 
 function Navegacion({ listo }: { listo: boolean }) {
-  const { estado } = useAuth();
+  const { estado, esDueno } = useAuth();
   const cargando = !listo || estado === 'cargando';
 
   useEffect(() => {
@@ -87,8 +87,14 @@ function Navegacion({ listo }: { listo: boolean }) {
           <Stack.Screen name="cliente/[id]" options={{ title: 'Cliente' }} />
           <Stack.Screen name="creditos/index" options={{ title: 'Créditos' }} />
           <Stack.Screen name="creditos/[id]" options={{ title: 'Estado de cuenta' }} />
-          <Stack.Screen name="reportes" options={{ title: 'Reportes' }} />
-          <Stack.Screen name="negocio" options={{ title: 'Mi negocio' }} />
+
+          {/* Solo el dueño: reportes, datos del negocio y cuentas de empleados */}
+          <Stack.Protected guard={esDueno}>
+            <Stack.Screen name="reportes" options={{ title: 'Reportes' }} />
+            <Stack.Screen name="negocio" options={{ title: 'Mi negocio' }} />
+            <Stack.Screen name="empleados/index" options={{ title: 'Empleados' }} />
+            <Stack.Screen name="empleados/[id]" options={{ title: 'Empleado' }} />
+          </Stack.Protected>
         </Stack.Protected>
 
         <Stack.Screen name="servidor" options={{ title: 'Servidor' }} />

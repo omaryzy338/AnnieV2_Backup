@@ -1,6 +1,7 @@
 import { leerPayload, tokenVencido } from '@/lib/jwt';
 import {
   gananciaNeta,
+  margen,
   resumenMes,
   topClientes,
   topProductos,
@@ -85,6 +86,12 @@ describe('reportes', () => {
     expect(gananciaNeta(ventas, [{ _id: 'p1', cost: 0 } as Product])).toBeNull();
   });
 
+  it('margen: sin costo (como le llegan los productos al empleado) no hay margen', () => {
+    expect(margen({ price: 40, cost: 25 })).toBe(37.5);
+    expect(margen({ price: 40 })).toBeNull();
+    expect(margen({ price: 40, cost: null })).toBeNull();
+  });
+
   it('CSV con BOM, comillas escapadas y columnas de pago', () => {
     const csv = ventasCSV([
       v(ahora, 40, { folio: 7, product: { _id: 'p1', name: 'Pan "grande", integral', price: 40 }, amountPaid: 50, change: 10 }),
@@ -127,6 +134,13 @@ describe('ticket', () => {
     expect(html).not.toContain('<script>alert');
     expect(html).toContain('&lt;script&gt;');
     expect(html).toContain('A &amp; B');
+  });
+
+  it('muestra quién atendió la venta (escapado); las ventas antiguas no lo traen', () => {
+    const html = ticketHTML({ ...venta, vendedorNombre: ' Luis <b>Pérez</b> ' }, { name: 'Tienda' });
+    expect(html).toContain('<span>Atendió</span><strong>Luis &lt;b&gt;Pérez&lt;/b&gt;</strong>');
+    expect(ticketHTML(venta, { name: 'Tienda' })).not.toContain('Atendió');
+    expect(ticketHTML({ ...venta, vendedorNombre: '  ' }, null)).not.toContain('Atendió');
   });
 });
 

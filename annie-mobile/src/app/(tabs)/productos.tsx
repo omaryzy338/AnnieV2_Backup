@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { FlatList, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Card, Chip, Divider, EmptyState, ErrorView, Fab, Kpi, KpiGrid, ListRow, LoadingView, ProductImage, SearchBar, Text } from '@/components/ui';
+import { useAuth } from '@/context/auth';
 import { mensajeError } from '@/lib/api';
 import { money, plural } from '@/lib/format';
 import { useProducts } from '@/lib/queries';
@@ -30,6 +31,8 @@ function ordenar(lista: Product[], orden: Orden) {
 
 export default function ProductosScreen() {
   const router = useRouter();
+  // El empleado solo consulta el inventario: no agrega productos ni ve costos
+  const { esDueno } = useAuth();
   const productos = useProducts();
   const [busqueda, setBusqueda] = useState('');
   const [categoria, setCategoria] = useState<string | null>(null);
@@ -110,7 +113,8 @@ export default function ProductosScreen() {
           </View>
         }
         renderItem={({ item: p, index }) => {
-          const m = margen(p);
+          // Al empleado el backend no le manda el costo (margen() da null); se oculta de todos modos
+          const m = esDueno ? margen(p) : null;
           return (
             <View style={[styles.item, index === 0 && styles.primero, index === filtrados.length - 1 && styles.ultimo]}>
               {index > 0 && <Divider />}
@@ -150,7 +154,11 @@ export default function ProductosScreen() {
         ListEmptyComponent={
           <Card style={{ marginHorizontal: spacing.lg }}>
             {lista.length === 0 ? (
-              <EmptyState icon="cube-outline" title="Sin productos todavía" message="Agrega tu primer producto con el botón de abajo." />
+              <EmptyState
+                icon="cube-outline"
+                title="Sin productos todavía"
+                message={esDueno ? 'Agrega tu primer producto con el botón de abajo.' : 'Aún no hay productos. Pídele al dueño que los agregue.'}
+              />
             ) : (
               <EmptyState icon="search" title="Sin resultados" message="No hay productos que coincidan con la búsqueda o la categoría." />
             )}
@@ -164,7 +172,7 @@ export default function ProductosScreen() {
           ) : undefined
         }
       />
-      <Fab label="Agregar" onPress={() => router.push({ pathname: '/producto/[id]', params: { id: 'nuevo' } })} />
+      {esDueno && <Fab label="Agregar" onPress={() => router.push({ pathname: '/producto/[id]', params: { id: 'nuevo' } })} />}
     </View>
   );
 }

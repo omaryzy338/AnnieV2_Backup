@@ -1,19 +1,25 @@
 import { folioTxt, isoLocalDate, money, parseAmount, plural } from '@/lib/format';
 import {
   camposACliente,
+  camposAEmpleado,
   camposAProducto,
   clienteVacio,
+  empleadoACampos,
+  empleadoVacio,
   productoACampos,
   productoVacio,
   validarCliente,
+  validarEmpleado,
   validarMovimiento,
   validarProducto,
+  type CamposCliente,
 } from '@/lib/formularios';
-import type { Product } from '@/lib/types';
+import type { Empleado, Product } from '@/lib/types';
 import {
   CAMPOS_REGISTRO_VACIOS,
   CATEGORIAS_PRODUCTO,
   limpiarRFC,
+  MENSAJE_PASSWORD,
   PASSWORD_REGEX,
   sinRFCReal,
   validarRegistro,
@@ -120,5 +126,73 @@ describe('formulario de cliente y créditos', () => {
     expect(validarMovimiento('abono', '150', 100, 50)).toMatch(/abono/);
     expect(validarMovimiento('cargo', '60', 100, 50)).toMatch(/cargo/);
     expect(validarMovimiento('abono', '100', 100, 50)).toBeNull();
+  });
+});
+
+describe('cliente capturado por un empleado (solo datos de contacto)', () => {
+  const deCredito: CamposCliente = {
+    ...clienteVacio,
+    name: ' Juan ',
+    lastName: 'Pérez',
+    email: 'juan@correo.com',
+    phone: '555 123 4567',
+    esMayoreo: true,
+    tipoPersona: 'moral',
+    rfc: 'ABC010101XY9',
+    razonSocial: 'Juan SA',
+    limiteCredito: '1000',
+  };
+
+  it('no manda esMayoreo ni datos fiscales o de crédito', () => {
+    expect(camposACliente(deCredito, { soloContacto: true })).toEqual({
+      name: 'Juan',
+      lastName: 'Pérez',
+      email: 'juan@correo.com',
+      phone: '555 123 4567',
+    });
+  });
+
+  it('no valida el RFC ni el límite, que el empleado no ve', () => {
+    const conDatosMalos = { ...deCredito, rfc: 'MALO', limiteCredito: '-5' };
+    expect(validarCliente(conDatosMalos, 500, { soloContacto: true })).toEqual({});
+    expect(validarCliente({ ...conDatosMalos, name: '' }, 500, { soloContacto: true })).toEqual({ name: 'El nombre es obligatorio' });
+    expect(Object.keys(validarCliente(conDatosMalos, 500)).sort()).toEqual(['limiteCredito', 'rfc']);
+  });
+
+  it('el dueño sigue mandando el crédito y los datos fiscales', () => {
+    expect(camposACliente(deCredito)).toMatchObject({ esMayoreo: true, tipoPersona: 'moral', rfc: 'ABC010101XY9', razonSocial: 'Juan SA', limiteCredito: 1000 });
+  });
+});
+
+describe('formulario de empleado', () => {
+  const empleado: Empleado = {
+    _id: 'e1', name: 'Luis', lastName: 'Pérez', email: 'luis@correo.com', rol: 'empleado', activo: true, createdAt: '', updatedAt: '',
+  };
+
+  it('al crear, todos los campos son obligatorios y la contraseña sigue las reglas del registro', () => {
+    const e = validarEmpleado({ ...empleadoVacio, email: 'malo', password: 'abc', confirmar: 'xyz' }, true);
+    expect(Object.keys(e).sort()).toEqual(['confirmar', 'email', 'lastName', 'name', 'password']);
+    expect(e.password).toBe(MENSAJE_PASSWORD);
+    expect(e.email).toBe('El correo no tiene un formato válido');
+    expect(validarEmpleado(empleadoVacio, true).email).toBe('Escribe el correo');
+  });
+
+  it('arma el cuerpo de POST /employees', () => {
+    const c = { ...empleadoVacio, name: ' Luis ', lastName: ' Pérez ', email: ' Luis@Correo.com ', password: 'Segura123!', confirmar: 'Segura123!' };
+    expect(validarEmpleado(c, true)).toEqual({});
+    expect(camposAEmpleado(c, true)).toEqual({ name: 'Luis', lastName: 'Pérez', email: 'luis@correo.com', password: 'Segura123!' });
+  });
+
+  it('al editar, la contraseña es opcional y solo se manda si se cambia', () => {
+    const c = empleadoACampos(empleado);
+    expect(c).toMatchObject({ name: 'Luis', email: 'luis@correo.com', password: '', activo: true });
+    expect(validarEmpleado(c, false)).toEqual({});
+    expect(camposAEmpleado({ ...c, activo: false }, false)).toEqual({ name: 'Luis', lastName: 'Pérez', activo: false });
+
+    expect(validarEmpleado({ ...c, password: 'corta', confirmar: 'corta' }, false).password).toBe(MENSAJE_PASSWORD);
+    expect(validarEmpleado({ ...c, password: 'Nueva123!', confirmar: 'Otra123!' }, false).confirmar).toBe('Las contraseñas no coinciden');
+    const conNueva = { ...c, password: 'Nueva123!', confirmar: 'Nueva123!' };
+    expect(validarEmpleado(conNueva, false)).toEqual({});
+    expect(camposAEmpleado(conNueva, false)).toEqual({ name: 'Luis', lastName: 'Pérez', activo: true, password: 'Nueva123!' });
   });
 });

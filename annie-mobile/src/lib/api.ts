@@ -38,9 +38,12 @@ export function normalizarUrl(url: string) {
   return u.replace(/\/+$/, '');
 }
 
+/** Recibe el mensaje del backend (p. ej. "Tu acceso como empleado fue desactivado..."), si lo mandó. */
+type ManejadorNoAutorizado = (mensaje?: string) => void;
+
 let baseUrl = urlPorDefecto();
 let token: string | null = null;
-let onUnauthorized: (() => void) | null = null;
+let onUnauthorized: ManejadorNoAutorizado | null = null;
 
 export const getApiBaseUrl = () => baseUrl;
 export const setApiBaseUrl = (url: string) => {
@@ -49,7 +52,7 @@ export const setApiBaseUrl = (url: string) => {
 export const setAuthToken = (t: string | null) => {
   token = t;
 };
-export const setUnauthorizedHandler = (fn: (() => void) | null) => {
+export const setUnauthorizedHandler = (fn: ManejadorNoAutorizado | null) => {
   onUnauthorized = fn;
 };
 
@@ -111,10 +114,10 @@ async function request<T>(method: string, path: string, body?: unknown, opciones
   }
 
   if (!res.ok) {
-    if (res.status === 401 && !path.startsWith('/auth/')) onUnauthorized?.();
+    const delBackend: string | undefined = typeof data?.message === 'string' && data.message ? data.message : undefined;
+    if (res.status === 401 && !path.startsWith('/auth/')) onUnauthorized?.(delBackend);
     const mensaje =
-      data?.message ||
-      (res.status >= 500 ? 'Ocurrió un error en el servidor. Intenta de nuevo.' : `Error ${res.status}`);
+      delBackend ?? (res.status >= 500 ? 'Ocurrió un error en el servidor. Intenta de nuevo.' : `Error ${res.status}`);
     throw new ApiError(mensaje, res.status);
   }
   return data as T;

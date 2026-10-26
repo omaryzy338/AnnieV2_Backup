@@ -18,6 +18,7 @@ import {
   Text,
   TextField,
 } from '@/components/ui';
+import { useAuth } from '@/context/auth';
 import { useDesplazamientoTeclado } from '@/hooks/useDesplazamientoTeclado';
 import { mensajeError } from '@/lib/api';
 import { formatDate, fullName, initials, money, plural } from '@/lib/format';
@@ -30,10 +31,12 @@ import { colors, spacing } from '@/theme';
 
 export default function ClienteFormScreen() {
   const { id, credito } = useLocalSearchParams<{ id: string; credito?: string }>();
+  const { esDueno } = useAuth();
   const clientes = useClients();
 
   // Desde Créditos se llega con ?credito=1 para registrar un cliente de mayoreo
-  if (id === 'nuevo') return <ClienteForm id={id} existente={null} conCredito={credito === '1'} />;
+  // (solo el dueño da crédito)
+  if (id === 'nuevo') return <ClienteForm id={id} existente={null} conCredito={credito === '1' && esDueno} />;
   if (clientes.isPending) return <LoadingView />;
   if (clientes.isError) return <ErrorView mensaje={mensajeError(clientes.error)} onRetry={() => clientes.refetch()} />;
   const existente = clientes.data.find((c) => c._id === id);
@@ -45,6 +48,10 @@ function ClienteForm({ id, existente, conCredito = false }: { id: string; existe
   const desplazamientoTeclado = useDesplazamientoTeclado();
   const esNuevo = !existente;
   const router = useRouter();
+  // El empleado solo captura los datos de contacto: el crédito, los datos
+  // fiscales y eliminar clientes son del dueño
+  const { esDueno } = useAuth();
+  const soloContacto = !esDueno;
   const ventas = useSales();
   const perfil = useProfile();
   const guardar = useGuardarCliente();
@@ -76,11 +83,11 @@ function ClienteForm({ id, existente, conCredito = false }: { id: string; existe
 
   const onGuardar = async () => {
     setError(null);
-    const e = validarCliente(c, saldo);
+    const e = validarCliente(c, saldo, { soloContacto });
     setErrores(e);
     if (Object.keys(e).length) return setError('Revisa los campos marcados.');
     try {
-      await guardar.mutateAsync({ id: esNuevo ? undefined : id, datos: camposACliente(c) });
+      await guardar.mutateAsync({ id: esNuevo ? undefined : id, datos: camposACliente(c, { soloContacto }) });
       router.back();
     } catch (err) {
       setError(mensajeError(err, 'Error al guardar el cliente'));
@@ -167,79 +174,81 @@ function ClienteForm({ id, existente, conCredito = false }: { id: string; existe
           />
         </Card>
 
-        <Card style={{ gap: spacing.lg }}>
-          <Row style={{ justifyContent: 'space-between' }}>
-            <View style={{ flex: 1 }}>
-              <Text variant="subheading">Cliente de mayoreo</Text>
-              <Text variant="caption">Con línea de crédito (puede comprar fiado)</Text>
-            </View>
-            <Switch
-              value={c.esMayoreo}
-              onValueChange={(v) => set('esMayoreo', v)}
-              disabled={(c.esMayoreo && !puedeQuitarCredito) || (!c.esMayoreo && !puedeActivarCredito)}
-              trackColor={{ true: colors.primary, false: colors.borderStrong }}
-              thumbColor={colors.white}
-              accessibilityLabel="Cliente de mayoreo con crédito"
-            />
-          </Row>
+        {esDueno && (
+          <Card style={{ gap: spacing.lg }}>
+            <Row style={{ justifyContent: 'space-between' }}>
+              <View style={{ flex: 1 }}>
+                <Text variant="subheading">Cliente de mayoreo</Text>
+                <Text variant="caption">Con línea de crédito (puede comprar fiado)</Text>
+              </View>
+              <Switch
+                value={c.esMayoreo}
+                onValueChange={(v) => set('esMayoreo', v)}
+                disabled={(c.esMayoreo && !puedeQuitarCredito) || (!c.esMayoreo && !puedeActivarCredito)}
+                trackColor={{ true: colors.primary, false: colors.borderStrong }}
+                thumbColor={colors.white}
+                accessibilityLabel="Cliente de mayoreo con crédito"
+              />
+            </Row>
 
-          {!puedeActivarCredito && !c.esMayoreo && (
-            <Banner
-              tono="aviso"
-              action={
-                <Pressable onPress={() => router.push('/negocio')} accessibilityRole="link">
-                  <Text variant="body" weight="semibold" color={colors.warning}>
-                    Configurar RFC →
-                  </Text>
-                </Pressable>
-              }>
-              Para dar crédito necesitas registrar el RFC real de tu negocio (sin RFC no puedes facturar).
-            </Banner>
-          )}
-          {c.esMayoreo && !puedeQuitarCredito && (
-            <Text variant="caption">No se puede quitar el crédito mientras el cliente deba {money(saldo)}.</Text>
-          )}
+            {!puedeActivarCredito && !c.esMayoreo && (
+              <Banner
+                tono="aviso"
+                action={
+                  <Pressable onPress={() => router.push('/negocio')} accessibilityRole="link">
+                    <Text variant="body" weight="semibold" color={colors.warning}>
+                      Configurar RFC →
+                    </Text>
+                  </Pressable>
+                }>
+                Para dar crédito necesitas registrar el RFC real de tu negocio (sin RFC no puedes facturar).
+              </Banner>
+            )}
+            {c.esMayoreo && !puedeQuitarCredito && (
+              <Text variant="caption">No se puede quitar el crédito mientras el cliente deba {money(saldo)}.</Text>
+            )}
 
-          {c.esMayoreo && (
-            <>
-              <Segmented
-                options={[
-                  { value: 'fisica', label: 'Persona física' },
-                  { value: 'moral', label: 'Persona moral' },
-                ]}
-                value={c.tipoPersona}
-                onChange={(v) => set('tipoPersona', v)}
-              />
-              <TextField
-                label="RFC"
-                required
-                value={c.rfc}
-                onChangeText={(t) => set('rfc', t.toUpperCase())}
-                placeholder={c.tipoPersona === 'moral' ? '12 caracteres' : '13 caracteres'}
-                autoCapitalize="characters"
-                maxLength={13}
-                error={errores.rfc ?? rfcError}
-                hint={c.rfc.trim() && !rfcError ? 'RFC válido ✓' : undefined}
-              />
-              {c.tipoPersona === 'moral' && (
-                <TextField label="Razón social" value={c.razonSocial} onChangeText={(t) => set('razonSocial', t)} placeholder="Ej: Distribuidora Ejemplo S.A. de C.V." />
-              )}
-              <TextField
-                label="Límite de crédito"
-                value={c.limiteCredito}
-                onChangeText={(t) => set('limiteCredito', t)}
-                placeholder="0.00"
-                keyboardType="decimal-pad"
-                prefix="$"
-                error={errores.limiteCredito}
-                hint="Lo máximo que el cliente puede deber."
-              />
-            </>
-          )}
-        </Card>
+            {c.esMayoreo && (
+              <>
+                <Segmented
+                  options={[
+                    { value: 'fisica', label: 'Persona física' },
+                    { value: 'moral', label: 'Persona moral' },
+                  ]}
+                  value={c.tipoPersona}
+                  onChange={(v) => set('tipoPersona', v)}
+                />
+                <TextField
+                  label="RFC"
+                  required
+                  value={c.rfc}
+                  onChangeText={(t) => set('rfc', t.toUpperCase())}
+                  placeholder={c.tipoPersona === 'moral' ? '12 caracteres' : '13 caracteres'}
+                  autoCapitalize="characters"
+                  maxLength={13}
+                  error={errores.rfc ?? rfcError}
+                  hint={c.rfc.trim() && !rfcError ? 'RFC válido ✓' : undefined}
+                />
+                {c.tipoPersona === 'moral' && (
+                  <TextField label="Razón social" value={c.razonSocial} onChangeText={(t) => set('razonSocial', t)} placeholder="Ej: Distribuidora Ejemplo S.A. de C.V." />
+                )}
+                <TextField
+                  label="Límite de crédito"
+                  value={c.limiteCredito}
+                  onChangeText={(t) => set('limiteCredito', t)}
+                  placeholder="0.00"
+                  keyboardType="decimal-pad"
+                  prefix="$"
+                  error={errores.limiteCredito}
+                  hint="Lo máximo que el cliente puede deber."
+                />
+              </>
+            )}
+          </Card>
+        )}
 
         <Button title={esNuevo ? 'Registrar cliente' : 'Guardar cambios'} icon="checkmark" size="lg" onPress={onGuardar} loading={guardar.isPending} />
-        {!esNuevo && <Button title="Eliminar cliente" icon="trash-outline" variant="danger" onPress={onEliminar} loading={eliminar.isPending} />}
+        {!esNuevo && esDueno && <Button title="Eliminar cliente" icon="trash-outline" variant="danger" onPress={onEliminar} loading={eliminar.isPending} />}
       </Screen>
     </KeyboardAvoidingView>
   );
