@@ -21,7 +21,7 @@ La sesión se guarda **cifrada** en el teléfono (SecureStore) y dura 30 días.
 ## Requisitos
 
 - Node.js 22.13 o más reciente (recomendado 24).
-- En el celular: la app **Expo Go** (Play Store / App Store), compatible con **SDK 58**.
+- En el celular: la app **Expo Go** para **SDK 54**: en iPhone, la de la App Store; en Android, si la de Play Store es para un SDK más nuevo, instala la de SDK 54 desde https://expo.dev/go. El proyecto se queda en Expo SDK 54 (React Native 0.81) por Expo Go de la App Store: no actualices el SDK sin revisar que Expo Go lo soporte.
 - El backend de Annie corriendo (en Render o en tu computadora).
 
 ## Instalación

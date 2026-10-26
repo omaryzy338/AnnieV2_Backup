@@ -26,7 +26,7 @@ Muchos pequeños negocios llevan sus ventas, inventario y créditos en libreta p
 | Capa | Tecnologías |
 |------|-------------|
 | Frontend web | React 19, React Router, Axios, Recharts, Web App Manifest (PWA en desarrollo) |
-| App móvil | React Native 0.88, Expo SDK 58, Expo Router, TypeScript, React Query, SecureStore, expo-print |
+| App móvil | React Native 0.81, Expo SDK 54, Expo Router, TypeScript, React Query, SecureStore, expo-print |
 | Backend | Node.js, Express 5, MongoDB (Mongoose), JWT, bcryptjs, Helmet |
 | Despliegue | Vercel (web), Render (backend), EAS Build (APK de Android) |
 | Pruebas | node:test + supertest + mongodb-memory-server (backend), Jest + Testing Library (móvil) |

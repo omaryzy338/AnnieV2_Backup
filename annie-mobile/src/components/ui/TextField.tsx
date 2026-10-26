@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState, type Ref } from 'react';
-import { Platform, Pressable, StyleSheet, TextInput, View, type TextInputInstance, type TextInputProps } from 'react-native';
+import { Platform, Pressable, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 
 import { colors, fonts, radius } from '@/theme';
 import { Text } from './Text';
@@ -12,7 +12,7 @@ type Props = TextInputProps & {
   prefix?: string;
   required?: boolean;
   password?: boolean;
-  ref?: Ref<TextInputInstance>;
+  ref?: Ref<TextInput>;
 };
 
 /** Campo de texto con etiqueta, prefijo opcional ($), error y ayuda. */
